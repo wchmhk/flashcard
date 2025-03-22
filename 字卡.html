@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="您的網站名稱">
+    <link rel="apple-touch-icon" href="圖標URL.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遺忘曲線字卡程式</title>
+    <title>字卡程式</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -23,7 +27,116 @@
             }
         }
     </script>
+
     <style>
+
+        /* 共用編輯器容器樣式 */
+        .card-editor-container {
+          margin-bottom: 1.5rem;
+        }
+
+        /* 工具欄樣式 */
+        .editor-toolbar {
+          border: 1px solid rgb(209, 213, 219);
+          border-top-left-radius: 0.5rem;
+          border-top-right-radius: 0.5rem;
+          border-bottom: none;
+          background-color: white;
+        }
+
+        .dark .editor-toolbar {
+          border-color: rgb(75, 85, 99);
+          background-color: rgb(31, 41, 55);
+        }
+
+        /* 上下輸入區容器 */
+        .combined-editors {
+          border: 1px solid rgb(209, 213, 219);
+          border-bottom-left-radius: 0.5rem;
+          border-bottom-right-radius: 0.5rem;
+          overflow: hidden;
+        }
+
+        .dark .combined-editors {
+          border-color: rgb(75, 85, 99);
+        }
+
+        /* 輸入區樣式 */
+        .editor-section {
+          position: relative;
+          background-color: white;
+        }
+
+        .dark .editor-section {
+          background-color: rgb(31, 41, 55);
+        }
+
+        /* 輸入區標籤 */
+        .editor-label {
+          position: absolute;
+          top: 0.25rem;
+          left: 0.5rem;
+          padding: 0 0.25rem;
+          font-size: 0.75rem;
+          color: rgb(107, 114, 128);
+          pointer-events: none;
+          z-index: 10;
+        }
+
+        .dark .editor-label {
+          color: rgb(156, 163, 175);
+        }
+
+        /* 正面和背面輸入區分隔線 */
+        .editor-divider {
+          height: 1px;
+          background-color: rgb(229, 231, 235);
+        }
+
+        .dark .editor-divider {
+          background-color: rgb(75, 85, 99);
+        }
+
+        /* 編輯器內容區域，設置一些padding以容納標籤 */
+        .editor-content {
+          padding: 1.75rem 0.75rem 0.75rem;
+          min-height: 80px;
+        }
+
+        .editor-content .ql-editor {
+          padding: 0;
+          min-height: 80px;
+        }
+
+        /* 圖片按鈕樣式 */
+        .image-btn {
+          padding: 0.6rem;
+          border: 1px solid rgb(209, 213, 219);
+          border-radius: 0.5rem;
+          background-color: rgb(243, 244, 246);
+          transition: background-color 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .dark .image-btn {
+          border-color: rgb(75, 85, 99);
+          background-color: rgb(55, 65, 81);
+        }
+
+        .image-btn:hover {
+          background-color: rgb(229, 231, 235);
+        }
+
+        .dark .image-btn:hover {
+          background-color: rgb(75, 85, 99);
+        }
+
+        /* 圖片預覽區域調整 */
+        #frontImagePreview, #backImagePreview {
+          margin-top: 0.5rem;
+        }
 
         /* 自定義多選下拉框樣式 */
         .multiselect-dropdown {
@@ -145,15 +258,62 @@
             background-color: rgb(31, 41, 55);
         }
 
-        /* 調整編輯器連接圖片按鈕的樣式 */
-        .editor-with-button .ql-container.ql-snow {
-            border-right: none;
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
+        /* 修改編輯器和按鈕布局相關樣式 */
+        .editor-with-button {
+            display: flex;
+            flex-direction: column; /* 改為垂直排列 */
+            align-items: stretch;
+            width: 100%;
+            position: relative;
         }
 
+        /* 編輯器容器樣式 */
+        .editor-with-button .ql-container.ql-snow {
+            flex-grow: 1;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-bottom: none; /* 移除底部邊框 */
+            min-height: 100px;
+        }
+
+        /* 工具欄樣式 */
         .editor-with-button .ql-toolbar.ql-snow {
-            border-top-right-radius: 0;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            width: 100%; /* 確保寬度與編輯器一致 */
+        }
+
+        /* 按鈕區域樣式 */
+        .editor-with-button .button-container {
+            display: flex;
+            width: 100%;
+        }
+
+        /* 按鈕樣式 */
+        .editor-with-button button {
+            padding: 0.5rem 1rem;
+            border: 1px solid rgb(209, 213, 219);
+            border-top: none; /* 移除頂部邊框使其與編輯器連接 */
+            border-radius: 0 0 0.5rem 0.5rem; /* 只保留底部圓角 */
+            background-color: rgb(243, 244, 246);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+            width: 100%; /* 讓按鈕填滿整個寬度 */
+        }
+
+        .dark .editor-with-button button {
+            background-color: rgb(55, 65, 81);
+            border-color: rgb(75, 85, 99);
+        }
+
+        .editor-with-button button:hover {
+            background-color: rgb(229, 231, 235);
+        }
+
+        .dark .editor-with-button button:hover {
+            background-color: rgb(75, 85, 99);
         }
 
         /* 字卡正面背面分隔線 */
@@ -408,67 +568,85 @@
             </div>
 
             <form id="cardForm" class="space-y-6">
-                <div class="space-y-4">
-                    <label class="block text-lg font-medium">卡片正面 (問題)</label>
-                    <div class="editor-with-button">
-                        <!-- Quill編輯器將替換這個div -->
-                        <div id="frontEditor"></div>
+              <div class="card-editor-container space-y-4">
+                <label class="block text-lg font-medium">字卡內容</label>
 
-                        <div class="input-group drag-area">
-                            <button type="button" id="frontImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-base">
-                                選擇圖片
-                            </button>
-                            <input type="file" id="cardFrontImage" accept="image/*" class="hidden" />
-                            <div class="drag-overlay">
-                                <div class="drag-text">拖放圖片至此</div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- 共用的編輯工具欄 -->
+                <div class="editor-toolbar" id="sharedToolbar"></div>
 
-                    <div id="frontImagePreview" class="mt-2 hidden">
-                        <div class="flex items-center">
-                            <img id="frontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                            <button type="button" id="removeFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                移除圖片
-                            </button>
-                        </div>
-                        <span id="frontImageName" class="text-sm text-gray-500 dark:text-gray-400 mt-1 block"></span>
-                    </div>
+                <!-- 上下輸入區容器 -->
+                <div class="combined-editors">
+                  <!-- a. 正面輸入區 -->
+                  <div class="editor-section front-section">
+                    <div class="editor-label">正面 (問題)</div>
+                    <div id="frontEditor" class="editor-content"></div>
+                  </div>
+
+                  <!-- b. 分隔線 -->
+                  <div class="editor-divider"></div>
+
+                  <!-- c. 背面輸入區 -->
+                  <div class="editor-section back-section">
+                    <div class="editor-label">背面 (答案)</div>
+                    <div id="backEditor" class="editor-content"></div>
+                  </div>
                 </div>
 
-                <div class="space-y-4">
-                    <label class="block text-lg font-medium">卡片背面 (答案)</label>
-                    <div class="editor-with-button">
-                        <!-- Quill編輯器將替換這個div -->
-                        <div id="backEditor"></div>
-
-                        <div class="input-group drag-area">
-                            <button type="button" id="backImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-base">
-                                選擇圖片
-                            </button>
-                            <input type="file" id="cardBackImage" accept="image/*" class="hidden" />
-                            <div class="drag-overlay">
-                                <div class="drag-text">拖放圖片至此</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="backImagePreview" class="mt-2 hidden">
-                        <div class="flex items-center">
-                            <img id="backPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                            <button type="button" id="removeBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                移除圖片
-                            </button>
-                        </div>
-                        <span id="backImageName" class="text-sm text-gray-500 dark:text-gray-400 mt-1 block"></span>
-                    </div>
+                <!-- 並排的圖片選擇按鈕 -->
+                <div class="image-buttons grid grid-cols-2 gap-2">
+                  <button type="button" id="frontImageBtn" class="image-btn">
+                    選擇正面圖片
+                  </button>
+                  <button type="button" id="backImageBtn" class="image-btn">
+                    選擇背面圖片
+                  </button>
+                  <input type="file" id="cardFrontImage" accept="image/*" class="hidden" />
+                  <input type="file" id="cardBackImage" accept="image/*" class="hidden" />
                 </div>
 
-                <div class="pt-4">
-                    <button type="submit" class="w-full bg-primary hover:bg-opacity-80 text-white font-semibold py-2 px-6 rounded-lg transition-colors" tabindex="3">
-                        新增字卡
-                    </button>
+                <!-- 拖放區域 -->
+                <div class="flex space-x-2">
+                  <div class="flex-1 drag-area" id="frontDragArea">
+                    <div class="drag-overlay">
+                      <div class="drag-text">拖放正面圖片</div>
+                    </div>
+                  </div>
+                  <div class="flex-1 drag-area" id="backDragArea">
+                    <div class="drag-overlay">
+                      <div class="drag-text">拖放背面圖片</div>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- 圖片預覽區域 -->
+                <div class="grid grid-cols-2 gap-4">
+                  <div id="frontImagePreview" class="hidden">
+                    <div class="flex items-center">
+                      <img id="frontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                      <button type="button" id="removeFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                        移除
+                      </button>
+                    </div>
+                    <span id="frontImageName" class="text-sm text-gray-500 dark:text-gray-400 mt-1 block"></span>
+                  </div>
+                  <div id="backImagePreview" class="hidden">
+                    <div class="flex items-center">
+                      <img id="backPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                      <button type="button" id="removeBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                        移除
+                      </button>
+                    </div>
+                    <span id="backImageName" class="text-sm text-gray-500 dark:text-gray-400 mt-1 block"></span>
+                  </div>
+                </div>
+
+                <!-- 創建字卡的提交按鈕 -->
+                <div class="mt-4 flex justify-end">
+                  <button type="submit" class="bg-primary hover:bg-opacity-80 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+                    建立字卡
+                  </button>
+                </div>
+              </div>
             </form>
         </div>
 
@@ -575,10 +753,10 @@
         </div>
 
         <!-- Card edit modal -->
-        <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4">
-                <h2 class="text-xl font-semibold mb-4">編輯字卡</h2>
-                <div class="space-y-4">
+        <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 my-auto max-h-[85vh] overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4 sticky top-0 bg-white dark:bg-gray-800 py-2 z-10 border-b border-gray-200 dark:border-gray-700">編輯字卡</h2>
+                <div class="space-y-4 overflow-y-auto">
                     <div>
                         <label for="editCardFrontInput" class="block text-sm font-medium mb-1">正面（問題）</label>
                         <div class="editor-with-button">
@@ -918,9 +1096,9 @@
                         </div>
 
                         <div class="mt-4 flex justify-end">
-                            <button id="finishImportBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
-                                完成
-                            </button>
+                          <button type="submit" class="bg-primary hover:bg-opacity-80 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+                            建立字卡
+                          </button>
                         </div>
                     </div>
                 </div>
@@ -1277,58 +1455,305 @@
         const newDeckDescription = document.getElementById('newDeckDescription');
         const importResults = document.getElementById('importResults');
 
-        // 初始化Quill編輯器
+        // 初始化Quill編輯器 - 使用直接HTML創建工具欄，並防止表單提交
         function initQuillEditors() {
-            // 配置工具欄選項
-            const toolbarOptions = [
+          console.log("初始化Quill編輯器...");
+
+          // 清除舊樣式
+          const oldStyles = document.getElementById('quill-custom-styles');
+          if (oldStyles) oldStyles.remove();
+
+          // 添加強制樣式確保工具欄可見
+          const styleElement = document.createElement('style');
+          styleElement.id = 'quill-custom-styles';
+          styleElement.innerHTML = `
+            #toolbar-container {
+              display: flex !important;
+              flex-wrap: wrap !important;
+              background-color: #f3f4f6 !important;
+              border: 1px solid #d1d5db !important;
+              border-radius: 0.5rem 0.5rem 0 0 !important;
+              padding: 8px !important;
+              margin-bottom: 0 !important;
+              visibility: visible !important;
+              opacity: 1 !important;
+            }
+
+            .dark #toolbar-container {
+              background-color: #374151 !important;
+              border-color: #4b5563 !important;
+            }
+
+            #toolbar-container button {
+              display: inline-flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              height: 24px !important;
+              width: 28px !important;
+              background: none !important;
+              border: 1px solid transparent !important;
+              border-radius: 0.25rem !important;
+              cursor: pointer !important;
+              margin-right: 3px !important;
+            }
+
+            #toolbar-container button:hover {
+              background-color: rgba(0,0,0,0.05) !important;
+            }
+
+            .dark #toolbar-container button:hover {
+              background-color: rgba(255,255,255,0.1) !important;
+            }
+
+            .dark #toolbar-container button svg {
+              stroke: white !important;
+            }
+
+            #toolbar-container .format-group {
+              display: flex !important;
+              margin-right: 15px !important;
+              margin-bottom: 5px !important;
+            }
+
+            .format-button.active {
+              background-color: rgba(0,0,0,0.1) !important;
+            }
+
+            .dark .format-button.active {
+              background-color: rgba(255,255,255,0.2) !important;
+            }
+          `;
+          document.head.appendChild(styleElement);
+
+          // 直接創建HTML工具欄 - 不依賴Quill自動生成
+          // 關鍵修改：明確指定按鈕類型為button
+          const toolbarContainer = document.getElementById('sharedToolbar');
+          toolbarContainer.innerHTML = `
+            <div id="toolbar-container" style="visibility:visible; display:flex;">
+              <div class="format-group">
+                <button type="button" class="format-button" id="bold-button" title="加粗">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <path class="ql-stroke" d="M5,4H9.5A2.5,2.5,0,0,1,12,6.5v0A2.5,2.5,0,0,1,9.5,9H5A0,0,0,0,1,5,9V4A0,0,0,0,1,5,4Z"></path>
+                    <path class="ql-stroke" d="M5,9h5.5A2.5,2.5,0,0,1,13,11.5v0A2.5,2.5,0,0,1,10.5,14H5a0,0,0,0,1,0,0V9A0,0,0,0,1,5,9Z"></path>
+                  </svg>
+                </button>
+                <button type="button" class="format-button" id="italic-button" title="斜體">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <line class="ql-stroke" x1="7" x2="13" y1="4" y2="4"></line>
+                    <line class="ql-stroke" x1="5" x2="11" y1="14" y2="14"></line>
+                    <line class="ql-stroke" x1="8" x2="10" y1="14" y2="4"></line>
+                  </svg>
+                </button>
+                <button type="button" class="format-button" id="underline-button" title="底線">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <path class="ql-stroke" d="M5,3V9a4.012,4.012,0,0,0,4,4H9a4.012,4.012,0,0,0,4-4V3"></path>
+                    <rect class="ql-fill" height="1" rx="0.5" ry="0.5" width="12" x="3" y="15"></rect>
+                  </svg>
+                </button>
+                <button type="button" class="format-button" id="strike-button" title="刪除線">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <line class="ql-stroke ql-thin" x1="15.5" x2="2.5" y1="8.5" y2="9.5"></line>
+                    <path class="ql-fill" d="M9.007,8C6.542,7.791,6,7.519,6,6.5,6,5.792,7.283,5,9,5c1.571,0,2.765.679,2.969,1.309a1,1,0,0,0,1.9-.617C13.356,4.106,11.354,3,9,3,6.2,3,4,4.538,4,6.5a3.2,3.2,0,0,0,.5,1.843Z"></path>
+                    <path class="ql-fill" d="M8.984,10C11.457,10.208,12,10.479,12,11.5c0,0.708-1.283,1.5-3,1.5-1.571,0-2.765-.679-2.969-1.309a1,1,0,1,0-1.9.617C4.644,13.894,6.646,15,9,15c2.8,0,5-1.538,5-3.5a3.2,3.2,0,0,0-.5-1.843Z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="format-group">
+                <button type="button" class="format-button" id="blockquote-button" title="引用">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <rect class="ql-fill ql-stroke" height="3" width="3" x="4" y="5"></rect>
+                    <rect class="ql-fill ql-stroke" height="3" width="3" x="11" y="5"></rect>
+                    <path class="ql-even ql-fill ql-stroke" d="M7,8c0,4.031-3,5-3,5"></path>
+                    <path class="ql-even ql-fill ql-stroke" d="M14,8c0,4.031-3,5-3,5"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="format-group">
+                <button type="button" class="format-button" id="ordered-list-button" title="有序列表">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <line class="ql-stroke" x1="7" x2="15" y1="4" y2="4"></line>
+                    <line class="ql-stroke" x1="7" x2="15" y1="9" y2="9"></line>
+                    <line class="ql-stroke" x1="7" x2="15" y1="14" y2="14"></line>
+                    <line class="ql-stroke ql-thin" x1="2.5" x2="4.5" y1="5.5" y2="5.5"></line>
+                    <path class="ql-fill" d="M3.5,6A0.5,0.5,0,0,1,3,5.5V3.085l-0.276.138A0.5,0.5,0,0,1,2.053,3c-0.124-.247-0.023-0.324.224-0.447l1-.5A0.5,0.5,0,0,1,4,2.5v3A0.5,0.5,0,0,1,3.5,6Z"></path>
+                    <path class="ql-stroke ql-thin" d="M4.5,10.5h-2c0-.234,1.85-1.076,1.85-2.234A0.959,0.959,0,0,0,2.5,8.156"></path>
+                    <path class="ql-stroke ql-thin" d="M2.5,14.846a0.959,0.959,0,0,0,1.85-.109A0.7,0.7,0,0,0,3.75,14a0.688,0.688,0,0,0,.6-0.736,0.959,0.959,0,0,0-1.85-.109"></path>
+                  </svg>
+                </button>
+                <button type="button" class="format-button" id="bullet-list-button" title="無序列表">
+                  <svg viewBox="0 0 18 18" width="18" height="18">
+                    <line class="ql-stroke" x1="6" x2="15" y1="4" y2="4"></line>
+                    <line class="ql-stroke" x1="6" x2="15" y1="9" y2="9"></line>
+                    <line class="ql-stroke" x1="6" x2="15" y1="14" y2="14"></line>
+                    <line class="ql-stroke" x1="3" x2="3" y1="4" y2="4"></line>
+                    <line class="ql-stroke" x1="3" x2="3" y1="9" y2="9"></line>
+                    <line class="ql-stroke" x1="3" x2="3" y1="14" y2="14"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `;
+
+          console.log("工具欄HTML已創建");
+
+          // 創建編輯器
+          console.log("創建編輯器實例...");
+          frontQuill = new Quill('#frontEditor', {
+            theme: 'snow',
+            modules: {
+              toolbar: false // 不使用自動工具欄
+            },
+            placeholder: '輸入卡片正面內容...'
+          });
+
+          backQuill = new Quill('#backEditor', {
+            theme: 'snow',
+            modules: {
+              toolbar: false // 不使用自動工具欄
+            },
+            placeholder: '輸入卡片背面內容...'
+          });
+
+          // 編輯模式編輯器初始化
+          editFrontQuill = new Quill('#editFrontEditor', {
+            theme: 'snow',
+            modules: {
+              toolbar: [
                 ['bold', 'italic', 'underline', 'strike'],
                 ['blockquote'],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                 [{ 'color': [] }, { 'background': [] }],
                 [{ 'size': ['small', false, 'large', 'huge'] }]
-            ];
+              ]
+            },
+            placeholder: '輸入卡片正面內容...'
+          });
 
-            // 創建前面編輯器
-            frontQuill = new Quill('#frontEditor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: toolbarOptions
-                },
-                placeholder: '輸入卡片正面內容...'
+          editBackQuill = new Quill('#editBackEditor', {
+            theme: 'snow',
+            modules: {
+              toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }]
+              ]
+            },
+            placeholder: '輸入卡片背面內容...'
+          });
+
+          // 移除編輯器內容區域的重複工具欄
+          document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
+            if (toolbar.parentNode) {
+              toolbar.parentNode.removeChild(toolbar);
+            }
+          });
+
+          console.log("編輯器已創建，設置事件處理器...");
+
+          // 跟踪當前活動的編輯器
+          let activeQuill = frontQuill;
+
+          // 手動管理格式化功能
+          const formatButtons = {
+            bold: document.getElementById('bold-button'),
+            italic: document.getElementById('italic-button'),
+            underline: document.getElementById('underline-button'),
+            strike: document.getElementById('strike-button'),
+            blockquote: document.getElementById('blockquote-button'),
+            orderedList: document.getElementById('ordered-list-button'),
+            bulletList: document.getElementById('bullet-list-button')
+          };
+
+          // 為按鈕添加事件處理器 - 關鍵修改：添加防止表單提交的代碼
+          Object.entries(formatButtons).forEach(([format, button]) => {
+            if (!button) return;
+
+            button.addEventListener('click', (e) => {
+              // 防止默認行為和事件冒泡 - 這是關鍵
+              e.preventDefault();
+              e.stopPropagation();
+
+              if (!activeQuill) return;
+
+              const currentFormat = activeQuill.getFormat();
+
+              // 根據格式類型應用不同的處理邏輯
+              if (format === 'orderedList') {
+                const isOrdered = currentFormat.list === 'ordered';
+                activeQuill.format('list', isOrdered ? false : 'ordered');
+                button.classList.toggle('active', !isOrdered);
+              }
+              else if (format === 'bulletList') {
+                const isBullet = currentFormat.list === 'bullet';
+                activeQuill.format('list', isBullet ? false : 'bullet');
+                button.classList.toggle('active', !isBullet);
+              }
+              else {
+                // 其他標準格式
+                const formatKey = format === 'blockquote' ? 'blockquote' : format;
+                const newValue = !currentFormat[formatKey];
+                activeQuill.format(formatKey, newValue);
+                button.classList.toggle('active', newValue);
+              }
+
+              // 返回焦點到編輯器
+              activeQuill.focus();
+
+              // 明確返回false，進一步確保不會觸發表單提交
+              return false;
             });
+          });
 
-            // 創建背面編輯器
-            backQuill = new Quill('#backEditor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: toolbarOptions
-                },
-                placeholder: '輸入卡片背面內容...'
+          // 更新按鈕活動狀態的函數
+          function updateButtonStates() {
+            if (!activeQuill) return;
+            const format = activeQuill.getFormat();
+
+            Object.entries(formatButtons).forEach(([key, button]) => {
+              if (!button) return;
+
+              if (key === 'orderedList') {
+                button.classList.toggle('active', format.list === 'ordered');
+              } else if (key === 'bulletList') {
+                button.classList.toggle('active', format.list === 'bullet');
+              } else {
+                const formatKey = key === 'blockquote' ? 'blockquote' : key;
+                button.classList.toggle('active', !!format[formatKey]);
+              }
             });
+          }
 
-            // 創建編輯模態框中的編輯器
-            editFrontQuill = new Quill('#editFrontEditor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: toolbarOptions
-                },
-                placeholder: '輸入卡片正面內容...'
-            });
+          // 為編輯器添加焦點和選擇事件
+          frontQuill.root.addEventListener('focus', function() {
+            activeQuill = frontQuill;
+            updateButtonStates();
+          });
 
-            editBackQuill = new Quill('#editBackEditor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: toolbarOptions
-                },
-                placeholder: '輸入卡片背面內容...'
-            });
+          backQuill.root.addEventListener('focus', function() {
+            activeQuill = backQuill;
+            updateButtonStates();
+          });
 
-            // 添加焦點Tab鍵順序
-            frontQuill.root.setAttribute('tabindex', '1');
-            backQuill.root.setAttribute('tabindex', '2');
+          // 選擇變更時更新按鈕狀態
+          frontQuill.on('selection-change', updateButtonStates);
+          backQuill.on('selection-change', updateButtonStates);
 
-            // 調整Quill編輯器的深色模式
-            adjustQuillForDarkMode();
+          // 添加Tab鍵順序
+          frontQuill.root.setAttribute('tabindex', '1');
+          backQuill.root.setAttribute('tabindex', '2');
+
+          // 調整Quill編輯器的深色模式
+          adjustQuillForDarkMode();
+
+          // 初始化時設置焦點
+          setTimeout(() => {
+            frontQuill.focus();
+            console.log("初始化完成，設置焦點到前面編輯器");
+          }, 100);
         }
 
         // 根據當前主題調整Quill編輯器
@@ -1653,68 +2078,79 @@
         // 設置拖放上傳功能
         function setupDragAndDrop() {
             // 獲取拖放區域元素
-            const dragAreas = document.querySelectorAll('.drag-area');
+            const frontDragArea = document.getElementById('frontDragArea');
+            const backDragArea = document.getElementById('backDragArea');
 
-            dragAreas.forEach(area => {
-                const inputGroup = area.closest('.input-group');
+            if (frontDragArea) {
+                setupDragArea(frontDragArea, cardFrontImageInput);
+            }
 
-                // 判斷是哪個輸入區域是否與前面或後面圖片按鈕相關
-                const isFront = area.querySelector('#frontImageBtn') || area.querySelector('#editFrontImageBtn');
-                const fileInput = isFront
-                    ? (area.querySelector('#frontImageBtn') ? cardFrontImageInput : editCardFrontImage)
-                    : (area.querySelector('#backImageBtn') ? cardBackImageInput : editCardBackImage);
+            if (backDragArea) {
+                setupDragArea(backDragArea, cardBackImageInput);
+            }
 
-                // 阻止默認拖放行為以允許自定義處理
-                inputGroup.addEventListener('dragenter', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    inputGroup.classList.add('drag-over');
-                });
+            // 同樣為編輯模式設置拖放區
+            const editFrontDragArea = document.getElementById('editFrontDragArea');
+            const editBackDragArea = document.getElementById('editBackDragArea');
 
-                inputGroup.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    inputGroup.classList.add('drag-over');
-                });
+            if (editFrontDragArea) {
+                setupDragArea(editFrontDragArea, editCardFrontImage);
+            }
 
-                inputGroup.addEventListener('dragleave', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+            if (editBackDragArea) {
+                setupDragArea(editBackDragArea, editCardBackImage);
+            }
+        }
 
-                    // 檢查是否真的離開了元素
-                    const rect = inputGroup.getBoundingClientRect();
-                    const x = e.clientX;
-                    const y = e.clientY;
+        function setupDragArea(dragArea, fileInput) {
+            // 阻止默認拖放行為以允許自定義處理
+            dragArea.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragArea.querySelector('.drag-overlay').style.display = 'block';
+            });
 
-                    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
-                        inputGroup.classList.remove('drag-over');
+            dragArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            dragArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // 檢查是否真的離開了元素
+                const rect = dragArea.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+
+                if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+                    dragArea.querySelector('.drag-overlay').style.display = 'none';
+                }
+            });
+
+            dragArea.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragArea.querySelector('.drag-overlay').style.display = 'none';
+
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+
+                    // 檢查是否為圖片
+                    if (file.type.match('image.*')) {
+                        // 使用現有的檔案輸入框處理圖片
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(file);
+                        fileInput.files = dataTransfer.files;
+
+                        // 觸發 change 事件以處理圖片
+                        const event = new Event('change', { bubbles: true });
+                        fileInput.dispatchEvent(event);
+                    } else {
+                        showNotification('請上傳圖片檔案');
                     }
-                });
-
-                inputGroup.addEventListener('drop', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    inputGroup.classList.remove('drag-over');
-
-                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        const file = e.dataTransfer.files[0];
-
-                        // 檢查是否為圖片
-                        if (file.type.match('image.*')) {
-                            // 使用現有的檔案輸入框處理圖片
-                            // 建立一個新的 DataTransfer 對象
-                            const dataTransfer = new DataTransfer();
-                            dataTransfer.items.add(file);
-                            fileInput.files = dataTransfer.files;
-
-                            // 觸發 change 事件以處理圖片
-                            const event = new Event('change', { bubbles: true });
-                            fileInput.dispatchEvent(event);
-                        } else {
-                            showNotification('請上傳圖片檔案');
-                        }
-                    }
-                });
+                }
             });
         }
 
@@ -2379,12 +2815,16 @@
                 }
             });
 
-            // Close modal and refresh UI
+            // 關閉模態框並刷新UI
             closeImportPreviewModal();
 
-            // Refresh UI based on current section
+            // 無論當前在哪個頁面，都預先更新複習頁面的卡組列表
+            loadDeckList();
+
+            // 根據當前頁面刷新UI其他部分
             if (!reviewSection.classList.contains('hidden')) {
-                loadDeckList();
+                // 如果當前在複習頁面，確保卡組列表可見
+                showReviewStage('deckSelection');
             } else if (!manageDeckSection.classList.contains('hidden')) {
                 loadAllDecks();
             } else if (!manageCardSection.classList.contains('hidden')) {
@@ -2394,7 +2834,7 @@
 
             showNotification('數據匯入成功！');
 
-            // Clear cached import data
+            // 清除緩存的導入數據
             importDataCache = null;
         }
 
@@ -3235,8 +3675,21 @@
         // Select a deck for review
         function selectDeck(deckId) {
             const deck = decksData.find(d => d.id === deckId);
-            if (!deck || deck.cardIds.length === 0) {
-                showNotification('該卡組為空，請先添加字卡！');
+            if (!deck) return;
+
+            // 檢查卡組是否為空
+            if (deck.cardIds.length === 0) {
+                // 自動轉跳到建立字卡頁面
+                showSection('createCard');
+
+                // 選中該卡組
+                selectedDeckIds = [deckId];
+
+                // 更新選中卡組的顯示
+                updateSelectedDecksDisplay();
+
+                // 顯示一個提示，告知用戶已自動轉跳
+                showNotification(`已選擇"${deck.name}"卡組。請添加字卡。`);
                 return;
             }
 
@@ -3876,8 +4329,19 @@
             if (currentCardIndex < cardsToReview.length) {
                 showCurrentCard();
             } else {
-                // No more cards to review - show completion message and return to deck selection
-                showReviewStage('reviewComplete');
+                // 日常模式下顯示恭喜提示並自動轉跳
+                if (currentMode === 'daily') {
+                    // 顯示恭喜提示
+                    showNotification('恭喜你！你已經複習完這個卡組的所有內容了！', 3000);
+
+                    // 延遲一些時間後轉跳到選擇卡組頁面
+                    setTimeout(() => {
+                        showReviewStage('deckSelection');
+                    }, 2000);
+                } else {
+                    // 其他模式仍然顯示完成界面
+                    showReviewStage('reviewComplete');
+                }
             }
         }
 
@@ -4756,7 +5220,14 @@
             });
 
             importExcelDataBtn.addEventListener('click', importExcelData);
-            finishImportBtn.addEventListener('click', closeExcelImportModal);
+            finishImportBtn.addEventListener('click', function() {
+                closeExcelImportModal();
+
+                // 如果當前在複習頁面，確保視圖已更新到最新狀態
+                if (!reviewSection.classList.contains('hidden')) {
+                    showReviewStage('deckSelection');
+                }
+            });
 
             // 卡組選擇選項的處理
             document.querySelectorAll('input[name="deckOption"]').forEach(radio => {
@@ -5372,6 +5843,13 @@
                                             </ul>
                                         `;
                                         importResults.appendChild(tipsElement);
+                                    }
+                                    // 預先更新複習頁面的卡組列表，確保導入後立即可見
+                                    loadDeckList();
+
+                                    // 如果用戶當前在複習頁面，確保視圖已正確更新
+                                    if (!reviewSection.classList.contains('hidden')) {
+                                        showReviewStage('deckSelection');
                                     }
                                 }
 
