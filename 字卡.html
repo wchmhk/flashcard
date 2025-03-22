@@ -1456,14 +1456,34 @@
         const importResults = document.getElementById('importResults');
 
         // 初始化Quill編輯器 - 使用直接HTML創建工具欄，並防止表單提交
+        // 初始化Quill編輯器 - 修復輸入問題
         function initQuillEditors() {
           console.log("初始化Quill編輯器...");
+
+          // 確保之前的實例被清理
+          if (frontQuill) {
+            try {
+              frontQuill.off('selection-change');
+              frontQuill = null;
+            } catch (e) {
+              console.log("清理前面編輯器失敗:", e);
+            }
+          }
+
+          if (backQuill) {
+            try {
+              backQuill.off('selection-change');
+              backQuill = null;
+            } catch (e) {
+              console.log("清理背面編輯器失敗:", e);
+            }
+          }
 
           // 清除舊樣式
           const oldStyles = document.getElementById('quill-custom-styles');
           if (oldStyles) oldStyles.remove();
 
-          // 添加強制樣式確保工具欄可見
+          // 添加強制樣式確保工具欄可見且不會攔截輸入
           const styleElement = document.createElement('style');
           styleElement.id = 'quill-custom-styles';
           styleElement.innerHTML = `
@@ -1477,6 +1497,7 @@
               margin-bottom: 0 !important;
               visibility: visible !important;
               opacity: 1 !important;
+              pointer-events: auto !important;
             }
 
             .dark #toolbar-container {
@@ -1495,6 +1516,7 @@
               border-radius: 0.25rem !important;
               cursor: pointer !important;
               margin-right: 3px !important;
+              pointer-events: auto !important;
             }
 
             #toolbar-container button:hover {
@@ -1522,12 +1544,36 @@
             .dark .format-button.active {
               background-color: rgba(255,255,255,0.2) !important;
             }
+
+            /* 確保Quill編輯器可以輸入 */
+            .ql-editor {
+              min-height: 80px;
+              cursor: text !important;
+              user-select: text !important;
+              pointer-events: auto !important;
+              z-index: 1 !important;
+            }
+
+            /* 修復潛在的內容可編輯問題 */
+            [contenteditable=true]:focus {
+              outline: none;
+            }
+
+            /* 確保其他輸入框也可編輯 */
+            input, textarea, select {
+              pointer-events: auto !important;
+              user-select: text !important;
+            }
           `;
           document.head.appendChild(styleElement);
 
-          // 直接創建HTML工具欄 - 不依賴Quill自動生成
-          // 關鍵修改：明確指定按鈕類型為button
+          // 直接創建HTML工具欄 - 使用類型為button的按鈕，避免表單提交
           const toolbarContainer = document.getElementById('sharedToolbar');
+          if (!toolbarContainer) {
+            console.error("找不到共享工具欄容器");
+            return;
+          }
+
           toolbarContainer.innerHTML = `
             <div id="toolbar-container" style="visibility:visible; display:flex;">
               <div class="format-group">
@@ -1596,164 +1642,253 @@
             </div>
           `;
 
-          console.log("工具欄HTML已創建");
+          console.log("工具欄HTML已創建，正在創建編輯器...");
 
-          // 創建編輯器
-          console.log("創建編輯器實例...");
-          frontQuill = new Quill('#frontEditor', {
-            theme: 'snow',
-            modules: {
-              toolbar: false // 不使用自動工具欄
-            },
-            placeholder: '輸入卡片正面內容...'
-          });
-
-          backQuill = new Quill('#backEditor', {
-            theme: 'snow',
-            modules: {
-              toolbar: false // 不使用自動工具欄
-            },
-            placeholder: '輸入卡片背面內容...'
-          });
-
-          // 編輯模式編輯器初始化
-          editFrontQuill = new Quill('#editFrontEditor', {
-            theme: 'snow',
-            modules: {
-              toolbar: [
-                ['bold', 'italic', 'underline', 'strike'],
-                ['blockquote'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }]
-              ]
-            },
-            placeholder: '輸入卡片正面內容...'
-          });
-
-          editBackQuill = new Quill('#editBackEditor', {
-            theme: 'snow',
-            modules: {
-              toolbar: [
-                ['bold', 'italic', 'underline', 'strike'],
-                ['blockquote'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }]
-              ]
-            },
-            placeholder: '輸入卡片背面內容...'
-          });
-
-          // 移除編輯器內容區域的重複工具欄
-          document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
-            if (toolbar.parentNode) {
-              toolbar.parentNode.removeChild(toolbar);
-            }
-          });
-
-          console.log("編輯器已創建，設置事件處理器...");
-
-          // 跟踪當前活動的編輯器
-          let activeQuill = frontQuill;
-
-          // 手動管理格式化功能
-          const formatButtons = {
-            bold: document.getElementById('bold-button'),
-            italic: document.getElementById('italic-button'),
-            underline: document.getElementById('underline-button'),
-            strike: document.getElementById('strike-button'),
-            blockquote: document.getElementById('blockquote-button'),
-            orderedList: document.getElementById('ordered-list-button'),
-            bulletList: document.getElementById('bullet-list-button')
-          };
-
-          // 為按鈕添加事件處理器 - 關鍵修改：添加防止表單提交的代碼
-          Object.entries(formatButtons).forEach(([format, button]) => {
-            if (!button) return;
-
-            button.addEventListener('click', (e) => {
-              // 防止默認行為和事件冒泡 - 這是關鍵
-              e.preventDefault();
-              e.stopPropagation();
-
-              if (!activeQuill) return;
-
-              const currentFormat = activeQuill.getFormat();
-
-              // 根據格式類型應用不同的處理邏輯
-              if (format === 'orderedList') {
-                const isOrdered = currentFormat.list === 'ordered';
-                activeQuill.format('list', isOrdered ? false : 'ordered');
-                button.classList.toggle('active', !isOrdered);
-              }
-              else if (format === 'bulletList') {
-                const isBullet = currentFormat.list === 'bullet';
-                activeQuill.format('list', isBullet ? false : 'bullet');
-                button.classList.toggle('active', !isBullet);
-              }
-              else {
-                // 其他標準格式
-                const formatKey = format === 'blockquote' ? 'blockquote' : format;
-                const newValue = !currentFormat[formatKey];
-                activeQuill.format(formatKey, newValue);
-                button.classList.toggle('active', newValue);
-              }
-
-              // 返回焦點到編輯器
-              activeQuill.focus();
-
-              // 明確返回false，進一步確保不會觸發表單提交
-              return false;
-            });
-          });
-
-          // 更新按鈕活動狀態的函數
-          function updateButtonStates() {
-            if (!activeQuill) return;
-            const format = activeQuill.getFormat();
-
-            Object.entries(formatButtons).forEach(([key, button]) => {
-              if (!button) return;
-
-              if (key === 'orderedList') {
-                button.classList.toggle('active', format.list === 'ordered');
-              } else if (key === 'bulletList') {
-                button.classList.toggle('active', format.list === 'bullet');
-              } else {
-                const formatKey = key === 'blockquote' ? 'blockquote' : key;
-                button.classList.toggle('active', !!format[formatKey]);
-              }
-            });
-          }
-
-          // 為編輯器添加焦點和選擇事件
-          frontQuill.root.addEventListener('focus', function() {
-            activeQuill = frontQuill;
-            updateButtonStates();
-          });
-
-          backQuill.root.addEventListener('focus', function() {
-            activeQuill = backQuill;
-            updateButtonStates();
-          });
-
-          // 選擇變更時更新按鈕狀態
-          frontQuill.on('selection-change', updateButtonStates);
-          backQuill.on('selection-change', updateButtonStates);
-
-          // 添加Tab鍵順序
-          frontQuill.root.setAttribute('tabindex', '1');
-          backQuill.root.setAttribute('tabindex', '2');
-
-          // 調整Quill編輯器的深色模式
-          adjustQuillForDarkMode();
-
-          // 初始化時設置焦點
+          // 使用延遲初始化，確保DOM已完全加載
           setTimeout(() => {
-            frontQuill.focus();
-            console.log("初始化完成，設置焦點到前面編輯器");
-          }, 100);
+            try {
+              // 檢查編輯器容器是否存在
+              const frontEditorContainer = document.getElementById('frontEditor');
+              const backEditorContainer = document.getElementById('backEditor');
+
+              if (!frontEditorContainer || !backEditorContainer) {
+                console.error("找不到編輯器容器元素");
+                return;
+              }
+
+              // 確保容器是空的並且能夠接收點擊
+              frontEditorContainer.innerHTML = '';
+              backEditorContainer.innerHTML = '';
+
+              // 確保編輯器容器可以接收事件
+              frontEditorContainer.style.pointerEvents = 'auto';
+              backEditorContainer.style.pointerEvents = 'auto';
+
+              // 初始化Quill編輯器
+              console.log("正在初始化前面編輯器...");
+              frontQuill = new Quill('#frontEditor', {
+                theme: 'snow',
+                modules: {
+                  toolbar: false // 不使用自動工具欄
+                },
+                placeholder: '輸入卡片正面內容...'
+              });
+
+              console.log("正在初始化背面編輯器...");
+              backQuill = new Quill('#backEditor', {
+                theme: 'snow',
+                modules: {
+                  toolbar: false // 不使用自動工具欄
+                },
+                placeholder: '輸入卡片背面內容...'
+              });
+
+              // 編輯模式編輯器初始化
+              const editFrontEditorContainer = document.getElementById('editFrontEditor');
+              const editBackEditorContainer = document.getElementById('editBackEditor');
+
+              if (editFrontEditorContainer && editBackEditorContainer) {
+                console.log("正在初始化編輯模式編輯器...");
+                editFrontQuill = new Quill('#editFrontEditor', {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: [
+                      ['bold', 'italic', 'underline', 'strike'],
+                      ['blockquote'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'color': [] }, { 'background': [] }],
+                      [{ 'size': ['small', false, 'large', 'huge'] }]
+                    ]
+                  },
+                  placeholder: '輸入卡片正面內容...'
+                });
+
+                editBackQuill = new Quill('#editBackEditor', {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: [
+                      ['bold', 'italic', 'underline', 'strike'],
+                      ['blockquote'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'color': [] }, { 'background': [] }],
+                      [{ 'size': ['small', false, 'large', 'huge'] }]
+                    ]
+                  },
+                  placeholder: '輸入卡片背面內容...'
+                });
+              } else {
+                console.log("編輯模式編輯器容器不存在，跳過初始化");
+              }
+
+              // 移除編輯器內容區域的重複工具欄
+              document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
+                if (toolbar.parentNode) {
+                  toolbar.parentNode.removeChild(toolbar);
+                }
+              });
+
+              console.log("編輯器已創建，設置事件處理器...");
+
+              // 確保編輯器區域可點擊，能夠獲得焦點
+              document.querySelectorAll('.ql-editor').forEach(editor => {
+                editor.style.pointerEvents = 'auto';
+                editor.style.userSelect = 'text';
+              });
+
+              // 跟踪當前活動的編輯器
+              let activeQuill = frontQuill;
+
+              // 手動管理格式化功能
+              const formatButtons = {
+                bold: document.getElementById('bold-button'),
+                italic: document.getElementById('italic-button'),
+                underline: document.getElementById('underline-button'),
+                strike: document.getElementById('strike-button'),
+                blockquote: document.getElementById('blockquote-button'),
+                orderedList: document.getElementById('ordered-list-button'),
+                bulletList: document.getElementById('bullet-list-button')
+              };
+
+              // 為每個按鈕添加獨立事件處理器，避免事件衝突
+              for (const [format, button] of Object.entries(formatButtons)) {
+                if (!button) {
+                  console.warn(`找不到按鈕: ${format}`);
+                  continue;
+                }
+
+                // 刪除任何現有的事件監聽器，避免重複
+                const newButton = button.cloneNode(true);
+                if (button.parentNode) {
+                  button.parentNode.replaceChild(newButton, button);
+                }
+
+                // 添加新的事件監聽器
+                newButton.addEventListener('click', (e) => {
+                  console.log(`點擊了 ${format} 按鈕`);
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  if (!activeQuill) {
+                    console.warn("沒有活動的編輯器");
+                    return false;
+                  }
+
+                  try {
+                    const currentFormat = activeQuill.getFormat();
+
+                    if (format === 'orderedList') {
+                      const isOrdered = currentFormat.list === 'ordered';
+                      activeQuill.format('list', isOrdered ? false : 'ordered');
+                      newButton.classList.toggle('active', !isOrdered);
+                    }
+                    else if (format === 'bulletList') {
+                      const isBullet = currentFormat.list === 'bullet';
+                      activeQuill.format('list', isBullet ? false : 'bullet');
+                      newButton.classList.toggle('active', !isBullet);
+                    }
+                    else {
+                      const formatKey = format === 'blockquote' ? 'blockquote' : format;
+                      const newValue = !currentFormat[formatKey];
+                      activeQuill.format(formatKey, newValue);
+                      newButton.classList.toggle('active', newValue);
+                    }
+
+                    activeQuill.focus();
+                  } catch (error) {
+                    console.error(`格式化錯誤 (${format}):`, error);
+                  }
+
+                  return false;
+                });
+
+                // 更新引用
+                formatButtons[format] = newButton;
+              }
+
+              // 更新按鈕活動狀態的函數
+              function updateButtonStates() {
+                if (!activeQuill) return;
+
+                try {
+                  const format = activeQuill.getFormat();
+
+                  Object.entries(formatButtons).forEach(([key, button]) => {
+                    if (!button) return;
+
+                    if (key === 'orderedList') {
+                      button.classList.toggle('active', format.list === 'ordered');
+                    } else if (key === 'bulletList') {
+                      button.classList.toggle('active', format.list === 'bullet');
+                    } else {
+                      const formatKey = key === 'blockquote' ? 'blockquote' : key;
+                      button.classList.toggle('active', !!format[formatKey]);
+                    }
+                  });
+                } catch (error) {
+                  console.error("更新按鈕狀態時出錯:", error);
+                }
+              }
+
+              // 為編輯器添加焦點和選擇事件
+              if (frontQuill && frontQuill.root) {
+                frontQuill.root.addEventListener('focus', function() {
+                  console.log("前面編輯器獲得焦點");
+                  activeQuill = frontQuill;
+                  updateButtonStates();
+                });
+
+                frontQuill.on('selection-change', function() {
+                  if (frontQuill.hasFocus()) {
+                    activeQuill = frontQuill;
+                    updateButtonStates();
+                  }
+                });
+              }
+
+              if (backQuill && backQuill.root) {
+                backQuill.root.addEventListener('focus', function() {
+                  console.log("背面編輯器獲得焦點");
+                  activeQuill = backQuill;
+                  updateButtonStates();
+                });
+
+                backQuill.on('selection-change', function() {
+                  if (backQuill.hasFocus()) {
+                    activeQuill = backQuill;
+                    updateButtonStates();
+                  }
+                });
+              }
+
+              // 添加Tab鍵順序
+              if (frontQuill && frontQuill.root) {
+                frontQuill.root.setAttribute('tabindex', '1');
+              }
+
+              if (backQuill && backQuill.root) {
+                backQuill.root.setAttribute('tabindex', '2');
+              }
+
+              // 調整Quill編輯器的深色模式
+              adjustQuillForDarkMode();
+
+              // 初始化時設置焦點
+              setTimeout(() => {
+                if (frontQuill) {
+                  try {
+                    frontQuill.focus();
+                    console.log("設置焦點到前面編輯器");
+                  } catch (error) {
+                    console.error("設置焦點時出錯:", error);
+                  }
+                }
+              }, 200);
+
+              console.log("Quill編輯器初始化完成");
+            } catch (error) {
+              console.error("初始化Quill編輯器時發生錯誤:", error);
+            }
+          }, 300);  // 延遲初始化，確保DOM已完全加載
         }
 
         // 根據當前主題調整Quill編輯器
