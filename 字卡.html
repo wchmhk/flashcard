@@ -3908,9 +3908,10 @@
 
         // 創建一個帶有縮放和拖動功能的圖片容器
         function createZoomableImage(imageUrl) {
-            // 創建容器
-            const container = document.createElement('div');
-            container.className = "relative flex justify-center items-center w-full overflow-hidden";
+
+          // 創建容器
+          const container = document.createElement('div');
+          container.className = "relative flex justify-center items-center w-full overflow-hidden mt-4"; // 增加頂部間距
 
             // 創建圖片包裝器用於拖動
             const imageWrapper = document.createElement('div');
@@ -3919,7 +3920,7 @@
             // 創建圖片
             const img = document.createElement('img');
             img.src = imageUrl;
-            img.className = "max-h-52 max-w-full object-contain rounded cursor-move";
+            img.className = "max-h-70 md:max-h-[28rem] max-w-full object-contain rounded cursor-move";
 
             // 保存變換狀態
             const transform = {
@@ -4413,6 +4414,18 @@
             cardBack.classList.add('hidden');
             ratingButtons.classList.add('hidden');
 
+            // 设置卡片布局样式
+            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
+            cardBack.className = "flex flex-col w-full h-full justify-between hidden";
+
+            // 确保文字区域有最小高度
+            frontText.style.minHeight = "80px";
+            backText.style.minHeight = "80px";
+
+            // 增加文字区域的边距
+            frontText.className = "mb-6 px-2";
+            backText.className = "mb-6 px-2";
+
             // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
@@ -4440,6 +4453,10 @@
                 // 正常顯示
                 frontText.innerHTML = card.frontText || '';
                 backText.innerHTML = card.backText || '';
+
+                // 增加間距類
+                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
+                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
 
                 // 處理圖片顯示
                 frontImage.innerHTML = '';
