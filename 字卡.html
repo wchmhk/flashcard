@@ -35,20 +35,6 @@
           margin-bottom: 1.5rem;
         }
 
-        /* 工具欄樣式 */
-        .editor-toolbar {
-          border: 1px solid rgb(209, 213, 219);
-          border-top-left-radius: 0.5rem;
-          border-top-right-radius: 0.5rem;
-          border-bottom: none;
-          background-color: white;
-        }
-
-        .dark .editor-toolbar {
-          border-color: rgb(75, 85, 99);
-          background-color: rgb(31, 41, 55);
-        }
-
         /* 上下輸入區容器 */
         .combined-editors {
           border: 1px solid rgb(209, 213, 219);
@@ -71,22 +57,6 @@
           background-color: rgb(31, 41, 55);
         }
 
-        /* 輸入區標籤 */
-        .editor-label {
-          position: absolute;
-          top: 0.25rem;
-          left: 0.5rem;
-          padding: 0 0.25rem;
-          font-size: 0.75rem;
-          color: rgb(107, 114, 128);
-          pointer-events: none;
-          z-index: 10;
-        }
-
-        .dark .editor-label {
-          color: rgb(156, 163, 175);
-        }
-
         /* 正面和背面輸入區分隔線 */
         .editor-divider {
           height: 1px;
@@ -97,9 +67,9 @@
           background-color: rgb(75, 85, 99);
         }
 
-        /* 編輯器內容區域，設置一些padding以容納標籤 */
+        /* 編輯器內容區域 */
         .editor-content {
-          padding: 1.75rem 0.75rem 0.75rem;
+          padding: 0.75rem;
           min-height: 80px;
         }
 
@@ -357,6 +327,144 @@
             background-color: #5D5CDE;
             border-color: #5D5CDE;
         }
+
+        /* Quill編輯器對齊樣式 */
+        .ql-align-center {
+          text-align: center;
+        }
+
+        .ql-align-right {
+          text-align: right;
+        }
+
+        .ql-align-justify {
+          text-align: justify;
+        }
+
+        /* 確保卡片顯示區域也應用相同的樣式 */
+        #cardFront .ql-align-center,
+        #cardBack .ql-align-center,
+        #frontText .ql-align-center,
+        #backText .ql-align-center {
+          text-align: center;
+        }
+
+        #cardFront .ql-align-right,
+        #cardBack .ql-align-right,
+        #frontText .ql-align-right,
+        #backText .ql-align-right {
+          text-align: right;
+        }
+
+        #cardFront .ql-align-justify,
+        #cardBack .ql-align-justify,
+        #frontText .ql-align-justify,
+        #backText .ql-align-justify {
+          text-align: justify;
+        }
+
+        /* 處理圖片對齊 */
+        .ql-align-center img {
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .ql-align-right img {
+          display: block;
+          margin-left: auto;
+          margin-right: 0;
+        }
+
+        .ql-align-justify img {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+
+        /* 根據字型大小調整圖片尺寸 - 優化版 */
+        .ql-size-small img {
+          max-width: 40%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
+        .ql-editor .ql-size-small img {
+          margin: 5px auto;
+          display: block;
+        }
+
+        .ql-size-large img {
+          max-width: 75%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
+        .ql-size-huge img {
+          max-width: 100%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
+        /* 確保卡片顯示時也保持這些樣式 */
+        #cardFront .ql-align-center img,
+        #cardBack .ql-align-center img,
+        #frontText .ql-align-center img,
+        #backText .ql-align-center img {
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        #cardFront .ql-align-right img,
+        #cardBack .ql-align-right img,
+        #frontText .ql-align-right img,
+        #backText .ql-align-right img {
+          display: block;
+          margin-left: auto;
+          margin-right: 0;
+        }
+
+        /* 字型大小對應的圖片樣式 - 優化版 */
+        #cardFront .ql-size-small img,
+        #cardBack .ql-size-small img,
+        #frontText .ql-size-small img,
+        #backText .ql-size-small img {
+          max-width: 40%;
+          height: auto;
+          margin: 5px auto;
+          display: block;
+          transition: all 0.3s ease;
+        }
+
+        #cardFront .ql-size-large img,
+        #cardBack .ql-size-large img,
+        #frontText .ql-size-large img,
+        #backText .ql-size-large img {
+          max-width: 75%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
+        #cardFront .ql-size-huge img,
+        #cardBack .ql-size-huge img,
+        #frontText .ql-size-huge img,
+        #backText .ql-size-huge img {
+          max-width: 100%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
+        /* 標準字體大小的圖片樣式 */
+        #cardFront img,
+        #cardBack img,
+        #frontText img,
+        #backText img {
+          max-width: 60%;
+          height: auto;
+          transition: all 0.3s ease;
+        }
+
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen pt-0">
@@ -571,14 +679,10 @@
               <div class="card-editor-container space-y-4">
                 <label class="block text-lg font-medium">字卡內容</label>
 
-                <!-- 共用的編輯工具欄 -->
-                <div class="editor-toolbar" id="sharedToolbar"></div>
-
                 <!-- 上下輸入區容器 -->
                 <div class="combined-editors">
                   <!-- a. 正面輸入區 -->
                   <div class="editor-section front-section">
-                    <div class="editor-label">正面 (問題)</div>
                     <div id="frontEditor" class="editor-content"></div>
                   </div>
 
@@ -587,7 +691,6 @@
 
                   <!-- c. 背面輸入區 -->
                   <div class="editor-section back-section">
-                    <div class="editor-label">背面 (答案)</div>
                     <div id="backEditor" class="editor-content"></div>
                   </div>
                 </div>
@@ -1482,169 +1585,6 @@
             }
           }
 
-          // 清除舊樣式
-          const oldStyles = document.getElementById('quill-custom-styles');
-          if (oldStyles) oldStyles.remove();
-
-          // 添加強制樣式確保工具欄可見且不會攔截輸入
-          const styleElement = document.createElement('style');
-          styleElement.id = 'quill-custom-styles';
-          styleElement.innerHTML = `
-            #toolbar-container {
-              display: flex !important;
-              flex-wrap: wrap !important;
-              background-color: #f3f4f6 !important;
-              border: 1px solid #d1d5db !important;
-              border-radius: 0.5rem 0.5rem 0 0 !important;
-              padding: 8px !important;
-              margin-bottom: 0 !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-            }
-
-            .dark #toolbar-container {
-              background-color: #374151 !important;
-              border-color: #4b5563 !important;
-            }
-
-            #toolbar-container button {
-              display: inline-flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-              height: 24px !important;
-              width: 28px !important;
-              background: none !important;
-              border: 1px solid transparent !important;
-              border-radius: 0.25rem !important;
-              cursor: pointer !important;
-              margin-right: 3px !important;
-              pointer-events: auto !important;
-            }
-
-            #toolbar-container button:hover {
-              background-color: rgba(0,0,0,0.05) !important;
-            }
-
-            .dark #toolbar-container button:hover {
-              background-color: rgba(255,255,255,0.1) !important;
-            }
-
-            .dark #toolbar-container button svg {
-              stroke: white !important;
-            }
-
-            #toolbar-container .format-group {
-              display: flex !important;
-              margin-right: 15px !important;
-              margin-bottom: 5px !important;
-            }
-
-            .format-button.active {
-              background-color: rgba(0,0,0,0.1) !important;
-            }
-
-            .dark .format-button.active {
-              background-color: rgba(255,255,255,0.2) !important;
-            }
-
-            /* 確保Quill編輯器可以輸入 */
-            .ql-editor {
-              min-height: 80px;
-              cursor: text !important;
-              user-select: text !important;
-              pointer-events: auto !important;
-              z-index: 1 !important;
-            }
-
-            /* 修復潛在的內容可編輯問題 */
-            [contenteditable=true]:focus {
-              outline: none;
-            }
-
-            /* 確保其他輸入框也可編輯 */
-            input, textarea, select {
-              pointer-events: auto !important;
-              user-select: text !important;
-            }
-          `;
-          document.head.appendChild(styleElement);
-
-          // 直接創建HTML工具欄 - 使用類型為button的按鈕，避免表單提交
-          const toolbarContainer = document.getElementById('sharedToolbar');
-          if (!toolbarContainer) {
-            console.error("找不到共享工具欄容器");
-            return;
-          }
-
-          toolbarContainer.innerHTML = `
-            <div id="toolbar-container" style="visibility:visible; display:flex;">
-              <div class="format-group">
-                <button type="button" class="format-button" id="bold-button" title="加粗">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <path class="ql-stroke" d="M5,4H9.5A2.5,2.5,0,0,1,12,6.5v0A2.5,2.5,0,0,1,9.5,9H5A0,0,0,0,1,5,9V4A0,0,0,0,1,5,4Z"></path>
-                    <path class="ql-stroke" d="M5,9h5.5A2.5,2.5,0,0,1,13,11.5v0A2.5,2.5,0,0,1,10.5,14H5a0,0,0,0,1,0,0V9A0,0,0,0,1,5,9Z"></path>
-                  </svg>
-                </button>
-                <button type="button" class="format-button" id="italic-button" title="斜體">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <line class="ql-stroke" x1="7" x2="13" y1="4" y2="4"></line>
-                    <line class="ql-stroke" x1="5" x2="11" y1="14" y2="14"></line>
-                    <line class="ql-stroke" x1="8" x2="10" y1="14" y2="4"></line>
-                  </svg>
-                </button>
-                <button type="button" class="format-button" id="underline-button" title="底線">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <path class="ql-stroke" d="M5,3V9a4.012,4.012,0,0,0,4,4H9a4.012,4.012,0,0,0,4-4V3"></path>
-                    <rect class="ql-fill" height="1" rx="0.5" ry="0.5" width="12" x="3" y="15"></rect>
-                  </svg>
-                </button>
-                <button type="button" class="format-button" id="strike-button" title="刪除線">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <line class="ql-stroke ql-thin" x1="15.5" x2="2.5" y1="8.5" y2="9.5"></line>
-                    <path class="ql-fill" d="M9.007,8C6.542,7.791,6,7.519,6,6.5,6,5.792,7.283,5,9,5c1.571,0,2.765.679,2.969,1.309a1,1,0,0,0,1.9-.617C13.356,4.106,11.354,3,9,3,6.2,3,4,4.538,4,6.5a3.2,3.2,0,0,0,.5,1.843Z"></path>
-                    <path class="ql-fill" d="M8.984,10C11.457,10.208,12,10.479,12,11.5c0,0.708-1.283,1.5-3,1.5-1.571,0-2.765-.679-2.969-1.309a1,1,0,1,0-1.9.617C4.644,13.894,6.646,15,9,15c2.8,0,5-1.538,5-3.5a3.2,3.2,0,0,0-.5-1.843Z"></path>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="format-group">
-                <button type="button" class="format-button" id="blockquote-button" title="引用">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <rect class="ql-fill ql-stroke" height="3" width="3" x="4" y="5"></rect>
-                    <rect class="ql-fill ql-stroke" height="3" width="3" x="11" y="5"></rect>
-                    <path class="ql-even ql-fill ql-stroke" d="M7,8c0,4.031-3,5-3,5"></path>
-                    <path class="ql-even ql-fill ql-stroke" d="M14,8c0,4.031-3,5-3,5"></path>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="format-group">
-                <button type="button" class="format-button" id="ordered-list-button" title="有序列表">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <line class="ql-stroke" x1="7" x2="15" y1="4" y2="4"></line>
-                    <line class="ql-stroke" x1="7" x2="15" y1="9" y2="9"></line>
-                    <line class="ql-stroke" x1="7" x2="15" y1="14" y2="14"></line>
-                    <line class="ql-stroke ql-thin" x1="2.5" x2="4.5" y1="5.5" y2="5.5"></line>
-                    <path class="ql-fill" d="M3.5,6A0.5,0.5,0,0,1,3,5.5V3.085l-0.276.138A0.5,0.5,0,0,1,2.053,3c-0.124-.247-0.023-0.324.224-0.447l1-.5A0.5,0.5,0,0,1,4,2.5v3A0.5,0.5,0,0,1,3.5,6Z"></path>
-                    <path class="ql-stroke ql-thin" d="M4.5,10.5h-2c0-.234,1.85-1.076,1.85-2.234A0.959,0.959,0,0,0,2.5,8.156"></path>
-                    <path class="ql-stroke ql-thin" d="M2.5,14.846a0.959,0.959,0,0,0,1.85-.109A0.7,0.7,0,0,0,3.75,14a0.688,0.688,0,0,0,.6-0.736,0.959,0.959,0,0,0-1.85-.109"></path>
-                  </svg>
-                </button>
-                <button type="button" class="format-button" id="bullet-list-button" title="無序列表">
-                  <svg viewBox="0 0 18 18" width="18" height="18">
-                    <line class="ql-stroke" x1="6" x2="15" y1="4" y2="4"></line>
-                    <line class="ql-stroke" x1="6" x2="15" y1="9" y2="9"></line>
-                    <line class="ql-stroke" x1="6" x2="15" y1="14" y2="14"></line>
-                    <line class="ql-stroke" x1="3" x2="3" y1="4" y2="4"></line>
-                    <line class="ql-stroke" x1="3" x2="3" y1="9" y2="9"></line>
-                    <line class="ql-stroke" x1="3" x2="3" y1="14" y2="14"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          `;
-
           console.log("工具欄HTML已創建，正在創建編輯器...");
 
           // 使用延遲初始化，確保DOM已完全加載
@@ -1667,12 +1607,30 @@
               frontEditorContainer.style.pointerEvents = 'auto';
               backEditorContainer.style.pointerEvents = 'auto';
 
-              // 初始化Quill編輯器
-              console.log("正在初始化前面編輯器...");
+              // 定義共用的工具欄配置
+              const standardToolbarOptions = [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': ['', 'center', 'right', 'justify'] }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['image'] // 添加圖片按鈕
+              ];
+
+              // 初始化Quill編輯器 - 使用擴展配置
               frontQuill = new Quill('#frontEditor', {
                 theme: 'snow',
                 modules: {
-                  toolbar: false // 不使用自動工具欄
+                  toolbar: {
+                    container: standardToolbarOptions,
+                    handlers: {
+                      // 可以添加自定義處理器
+                    }
+                  },
+                  clipboard: {
+                    matchVisual: false // 改進粘貼行為
+                  }
                 },
                 placeholder: '輸入卡片正面內容...'
               });
@@ -1681,12 +1639,12 @@
               backQuill = new Quill('#backEditor', {
                 theme: 'snow',
                 modules: {
-                  toolbar: false // 不使用自動工具欄
+                  toolbar: standardToolbarOptions
                 },
                 placeholder: '輸入卡片背面內容...'
               });
 
-              // 編輯模式編輯器初始化
+              // 編輯模式編輯器初始化 - 使用相同的工具欄配置確保一致性
               const editFrontEditorContainer = document.getElementById('editFrontEditor');
               const editBackEditorContainer = document.getElementById('editBackEditor');
 
@@ -1695,16 +1653,19 @@
                 editFrontQuill = new Quill('#editFrontEditor', {
                   theme: 'snow',
                   modules: {
-                    toolbar: [
-                      ['bold', 'italic', 'underline', 'strike'],
-                      ['blockquote'],
-                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                      [{ 'color': [] }, { 'background': [] }],
-                      [{ 'size': ['small', false, 'large', 'huge'] }]
-                    ]
+                    toolbar: standardToolbarOptions
                   },
                   placeholder: '輸入卡片正面內容...'
                 });
+
+                editBackQuill = new Quill('#editBackEditor', {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: standardToolbarOptions
+                  },
+                  placeholder: '輸入卡片背面內容...'
+                });
+
 
                 editBackQuill = new Quill('#editBackEditor', {
                   theme: 'snow',
@@ -1737,20 +1698,6 @@
                 editor.style.pointerEvents = 'auto';
                 editor.style.userSelect = 'text';
               });
-
-              // 跟踪當前活動的編輯器
-              let activeQuill = frontQuill;
-
-              // 手動管理格式化功能
-              const formatButtons = {
-                bold: document.getElementById('bold-button'),
-                italic: document.getElementById('italic-button'),
-                underline: document.getElementById('underline-button'),
-                strike: document.getElementById('strike-button'),
-                blockquote: document.getElementById('blockquote-button'),
-                orderedList: document.getElementById('ordered-list-button'),
-                bulletList: document.getElementById('bullet-list-button')
-              };
 
               // 為每個按鈕添加獨立事件處理器，避免事件衝突
               for (const [format, button] of Object.entries(formatButtons)) {
@@ -1893,6 +1840,71 @@
             }
           }, 300);  // 延遲初始化，確保DOM已完全加載
         }
+
+        // 處理圖片拖拽
+        [frontQuill, backQuill, editFrontQuill, editBackQuill].forEach(editor => {
+          if (!editor) return;
+
+          const editorElement = editor.root;
+
+          // 處理拖拽進入
+          editorElement.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            editorElement.classList.add('drag-over');
+          });
+
+          // 處理拖拽離開
+          editorElement.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            editorElement.classList.remove('drag-over');
+          });
+
+          // 處理拖拽放下
+          editorElement.addEventListener('drop', function(e) {
+            e.preventDefault();
+            editorElement.classList.remove('drag-over');
+
+            // 檢查是否有文件被拖拽
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const file = e.dataTransfer.files[0];
+
+              // 檢查是否為圖片
+              if (file.type.match('image.*')) {
+                const reader = new FileReader();
+
+                reader.onload = function(event) {
+                  // 獲取當前選中位置
+                  const range = editor.getSelection();
+
+                  // 在當前位置插入圖片
+                  if (range) {
+                    // 智能壓縮圖片
+                    analyzeAndCompressImage(event.target.result).then(compressedImage => {
+                      editor.insertEmbed(range.index, 'image', compressedImage);
+
+                      // 移動光標到圖片後面
+                      editor.setSelection(range.index + 1);
+                    });
+                  }
+                };
+
+                reader.readAsDataURL(file);
+              }
+            }
+          });
+        });
+
+        // 添加顯示拖拽區域的CSS樣式
+        const dragStyleElement = document.createElement('style');
+        dragStyleElement.textContent = `
+          .ql-editor.drag-over {
+            border: 2px dashed #5D5CDE;
+            background-color: rgba(93, 92, 222, 0.05);
+          }
+        `;
+        document.head.appendChild(dragStyleElement);
+
+
 
         // 根據當前主題調整Quill編輯器
         function adjustQuillForDarkMode() {
@@ -4500,8 +4512,12 @@
             }
         }
 
-        // Card creation handler
-        cardForm.addEventListener('submit', (e) => {
+        // 儲存編輯器格式設定的變數
+        let savedFrontFormats = {};
+        let savedBackFormats = {};
+
+        // 修改卡片建立處理函數，保存字體大小設定
+        cardForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
             const frontContent = frontQuill.root.innerHTML.trim();
@@ -4512,6 +4528,19 @@
                 return;
             }
 
+            // 保存當前的格式設定（包括字體大小）
+            // 為前面編輯器保存格式
+            if (!frontQuill.getSelection()) {
+                frontQuill.setSelection(0, 0);
+            }
+            savedFrontFormats = frontQuill.getFormat();
+
+            // 為背面編輯器保存格式
+            if (!backQuill.getSelection()) {
+                backQuill.setSelection(0, 0);
+            }
+            savedBackFormats = backQuill.getFormat();
+
             if (frontContent !== '<p><br></p>' || frontImageData || backContent !== '<p><br></p>' || backImageData) {
                 const newCardId = addNewCard(
                     frontContent !== '<p><br></p>' ? frontContent : '',
@@ -4520,7 +4549,7 @@
                     backImageData
                 );
 
-                // Add card to selected decks
+                // 添加卡片到選定的卡組
                 selectedDeckIds.forEach(deckId => {
                     const deckIndex = decksData.findIndex(deck => deck.id === deckId);
                     if (deckIndex !== -1) {
@@ -4528,9 +4557,11 @@
                     }
                 });
 
-                // Reset form but keep selected decks
-                frontQuill.root.innerHTML = '';
-                backQuill.root.innerHTML = '';
+                // 清空內容但保留格式設定（包括字體大小）
+                clearEditorContentButKeepFormat(frontQuill, savedFrontFormats);
+                clearEditorContentButKeepFormat(backQuill, savedBackFormats);
+
+                // 重置圖片相關內容
                 frontImageData = null;
                 backImageData = null;
                 frontImageName.textContent = '';
@@ -4538,19 +4569,232 @@
                 frontImagePreview.classList.add('hidden');
                 backImagePreview.classList.add('hidden');
 
-                // Focus back on front input for efficiency
+                // 聚焦到前面的編輯器以便繼續添加字卡
                 setTimeout(() => {
                     frontQuill.focus();
                 }, 0);
 
                 showNotification('字卡建立成功');
-
-                // Show storage reminder as data has changed
                 showStorageReminder();
             } else {
                 showNotification('請至少添加一些內容到字卡');
             }
         });
+
+        // 清空編輯器內容但保留格式的函數，包括字體大小
+        function clearEditorContentButKeepFormat(quill, formats) {
+            // 清空內容
+            quill.setText('');
+
+            // 恢復之前保存的格式
+            if (formats) {
+                // 選中新創建的空行
+                quill.setSelection(0, 1);
+
+                // 應用所有保存的格式
+                Object.keys(formats).forEach(format => {
+                    // 應用格式，包括對齊和字體大小
+                    if (format === 'align' || format === 'size') {
+                        quill.format(format, formats[format]);
+                    }
+                });
+
+                // 清除選擇
+                quill.setSelection(null);
+            }
+        }
+
+        // 在切換頁面時重置所有格式
+        function resetEditorFormats() {
+            savedFrontFormats = {};
+            savedBackFormats = {};
+
+            if (frontQuill) {
+                frontQuill.setSelection(0, frontQuill.getLength());
+                frontQuill.format('align', false);
+                frontQuill.format('size', false);
+                frontQuill.setSelection(null);
+            }
+
+            if (backQuill) {
+                backQuill.setSelection(0, backQuill.getLength());
+                backQuill.format('align', false);
+                backQuill.format('size', false);
+                backQuill.setSelection(null);
+            }
+        }
+
+        // 修改頁面切換函數，在切換時重置格式
+        const originalShowSection = showSection;
+        showSection = function(section) {
+            // 在切換頁面前重置格式
+            resetEditorFormats();
+
+            // 調用原始函數
+            originalShowSection(section);
+        };
+
+        // 添加監聽器以確保在切換頁面時重置格式
+        document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
+            btn.addEventListener('click', resetEditorFormats);
+        });
+
+        // 確保字體大小在字卡顯示時正確呈現
+        function fixFontSizeDisplay() {
+          // 1. 首先確保CSS選擇器正確匹配字卡顯示區域
+          const styleElement = document.createElement('style');
+          styleElement.textContent = `
+            /* 編輯器字體大小設定 */
+            .ql-size-small, p.ql-size-small, .ql-size-small p {
+              font-size: 0.75em !important;
+            }
+
+            .ql-size-large, p.ql-size-large, .ql-size-large p {
+              font-size: 1.5em !important;
+            }
+
+            .ql-size-huge, p.ql-size-huge, .ql-size-huge p {
+              font-size: 2em !important;
+            }
+
+            /* 確保字卡顯示區域的字體大小設定 */
+            #cardFront .ql-size-small,
+            #cardBack .ql-size-small,
+            #frontText .ql-size-small,
+            #backText .ql-size-small,
+            #cardFront p.ql-size-small,
+            #cardBack p.ql-size-small,
+            #frontText p.ql-size-small,
+            #backText p.ql-size-small {
+              font-size: 0.75em !important;
+            }
+
+            #cardFront .ql-size-large,
+            #cardBack .ql-size-large,
+            #frontText .ql-size-large,
+            #backText .ql-size-large,
+            #cardFront p.ql-size-large,
+            #cardBack p.ql-size-large,
+            #frontText p.ql-size-large,
+            #backText p.ql-size-large {
+              font-size: 1.5em !important;
+            }
+
+            #cardFront .ql-size-huge,
+            #cardBack .ql-size-huge,
+            #frontText .ql-size-huge,
+            #backText .ql-size-huge,
+            #cardFront p.ql-size-huge,
+            #cardBack p.ql-size-huge,
+            #frontText p.ql-size-huge,
+            #backText p.ql-size-huge {
+              font-size: 2em !important;
+            }
+          `;
+          document.head.appendChild(styleElement);
+
+          // 2. 修改顯示卡片內容的函數，確保字體大小類被保留
+          const originalShowCurrentCard = window.showCurrentCard;
+          window.showCurrentCard = function() {
+            originalShowCurrentCard.apply(this, arguments);
+
+            // 確保字體大小類被正確應用
+            const card = cardsToReview[currentCardIndex];
+            if (!card) return;
+
+            // 處理前面內容
+            if (card.frontText) {
+              // 檢查我們是否顯示前面還是背面
+              const targetElement = sidesFlipped ? backText : frontText;
+              fixFontSizeInHTML(targetElement);
+            }
+
+            // 處理背面內容
+            if (card.backText) {
+              // 檢查我們是否顯示前面還是背面
+              const targetElement = sidesFlipped ? frontText : backText;
+              fixFontSizeInHTML(targetElement);
+            }
+          };
+
+          // 3. 添加函數來確保字體大小類被正確處理
+          function fixFontSizeInHTML(element) {
+            if (!element) return;
+
+            // 尋找所有帶有字體大小類的元素
+            const sizeElements = element.querySelectorAll('[class*="ql-size-"]');
+
+            // 確保這些元素的字體大小被正確應用
+            sizeElements.forEach(el => {
+              // 確保字體大小類被設置為!important
+              const computedStyle = window.getComputedStyle(el);
+              const currentSize = computedStyle.fontSize;
+
+              if (el.classList.contains('ql-size-small')) {
+                el.style.setProperty('font-size', '0.75em', 'important');
+              } else if (el.classList.contains('ql-size-large')) {
+                el.style.setProperty('font-size', '1.5em', 'important');
+              } else if (el.classList.contains('ql-size-huge')) {
+                el.style.setProperty('font-size', '2em', 'important');
+              }
+            });
+
+            // 修復特殊情況：如果字體大小類被應用到<p>標籤，而內容在其中
+            const paragraphs = element.querySelectorAll('p[class*="ql-size-"]');
+            paragraphs.forEach(p => {
+              const sizeClass = Array.from(p.classList).find(cls => cls.startsWith('ql-size-'));
+              if (sizeClass) {
+                // 確保段落內的所有文本和元素都繼承字體大小
+                p.style.setProperty('font-size', sizeClass === 'ql-size-small' ? '0.75em' :
+                                   sizeClass === 'ql-size-large' ? '1.5em' :
+                                   sizeClass === 'ql-size-huge' ? '2em' : 'inherit', 'important');
+              }
+            });
+          }
+
+          // 4. 修改卡片保存函數，確保字體大小設定被保存
+          const originalAddNewCard = window.addNewCard;
+          window.addNewCard = function(frontText, frontImage, backText, backImage) {
+            // 確保HTML中的字體大小類被保存
+            if (frontText) {
+              frontText = ensureFontSizePresereved(frontText);
+            }
+
+            if (backText) {
+              backText = ensureFontSizePresereved(backText);
+            }
+
+            return originalAddNewCard(frontText, frontImage, backText, backImage);
+          };
+
+          function ensureFontSizePresereved(html) {
+            // 創建臨時元素來處理HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+
+            // 確保所有字體大小類都被正確設置
+            const sizeElements = temp.querySelectorAll('[class*="ql-size-"]');
+            sizeElements.forEach(el => {
+              // 添加內聯樣式以確保字體大小被保留
+              if (el.classList.contains('ql-size-small')) {
+                el.style.fontSize = '0.75em';
+              } else if (el.classList.contains('ql-size-large')) {
+                el.style.fontSize = '1.5em';
+              } else if (el.classList.contains('ql-size-huge')) {
+                el.style.fontSize = '2em';
+              }
+            });
+
+            return temp.innerHTML;
+          }
+        }
+
+        // 在頁面加載完成後執行此函數
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', fixFontSizeDisplay);
+        } else {
+          fixFontSizeDisplay();
+        }
 
         // Add new card
         function addNewCard(frontText, frontImage, backText, backImage) {
@@ -6074,6 +6318,72 @@
 
                                 // Initialize app when DOM is ready
                                 document.addEventListener('DOMContentLoaded', initApp);
+
+                                // 為建立字卡按鈕添加Command+Enter或Ctrl+Enter快捷鍵
+                                function setupCardSubmitShortcut() {
+                                    // 添加全局鍵盤事件監聽
+                                    document.addEventListener('keydown', function(e) {
+                                        // 檢測是否是Command+Enter (Mac) 或 Ctrl+Enter (Windows/Linux)
+                                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                            // 只有當建立字卡頁面可見時才執行
+                                            if (!createCardSection.classList.contains('hidden')) {
+
+                                                // 防止可能的默認行為
+                                                e.preventDefault();
+
+                                                // 模擬點擊「建立字卡」按鈕
+                                                const submitButton = cardForm.querySelector('button[type="submit"]');
+                                                if (submitButton) {
+                                                    // 添加按鈕點擊效果以提供視覺反饋
+                                                    submitButton.classList.add('active');
+                                                    setTimeout(() => {
+                                                        submitButton.classList.remove('active');
+                                                    }, 200);
+
+                                                    // 觸發表單提交
+                                                    submitButton.click();
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // 添加提示樣式
+                                    const styleElement = document.createElement('style');
+                                    styleElement.textContent = `
+                                        button[type="submit"].active {
+                                            transform: scale(0.95);
+                                            box-shadow: 0 0 0 3px rgba(93, 92, 222, 0.3);
+                                        }
+                                    `;
+                                    document.head.appendChild(styleElement);
+
+                                    // 添加快捷鍵提示到按鈕上
+                                    const submitButton = cardForm.querySelector('button[type="submit"]');
+                                    if (submitButton) {
+                                        // 檢測操作系統以顯示適當的快捷鍵提示
+                                        const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+                                        const shortcutText = isMac ? '⌘+Enter' : 'Ctrl+Enter';
+
+                                        // 創建提示元素
+                                        const shortcutTip = document.createElement('span');
+                                        shortcutTip.className = 'ml-2 text-xs text-white bg-black bg-opacity-30 px-2 py-1 rounded';
+                                        shortcutTip.textContent = shortcutText;
+
+                                        // 添加到按鈕中
+                                        submitButton.appendChild(shortcutTip);
+
+                                        // 更新按鈕樣式以容納提示
+                                        submitButton.classList.add('flex', 'items-center', 'justify-center');
+                                    }
+                                }
+
+                                // 確保DOM完全加載後運行
+                                if (document.readyState === 'loading') {
+                                    document.addEventListener('DOMContentLoaded', setupCardSubmitShortcut);
+                                } else {
+                                    setupCardSubmitShortcut();
+                                }
+
                             </script>
                         </body>
                         </html>
