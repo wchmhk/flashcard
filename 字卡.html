@@ -1095,10 +1095,13 @@
                             <!-- 匯入結果會動態添加到這裡 -->
                         </div>
 
-                        <div class="mt-4 flex justify-end">
-                          <button type="submit" class="bg-primary hover:bg-opacity-80 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
-                            建立字卡
-                          </button>
+                        <div class="mt-4 flex justify-between">
+                            <button id="importNewFileBtn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors">
+                                導入新檔案
+                            </button>
+                            <button id="finishImportBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white font-semibold rounded-lg transition-colors">
+                                完成
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -5365,6 +5368,22 @@
             nextToPreviewBtn.addEventListener('click', () => {
                 showExcelStep(2);
                 preparePreviewData();
+            });
+
+            // 處理"導入新檔案"按鈕點擊
+            importNewFileBtn.addEventListener('click', function() {
+                resetExcelImport();
+                showExcelStep(1);
+            });
+
+            // 處理"完成"按鈕點擊
+            finishImportBtn.addEventListener('click', function() {
+                closeExcelImportModal();
+
+                // 如果當前在複習頁面，確保視圖已更新到最新狀態
+                if (!reviewSection.classList.contains('hidden')) {
+                    showReviewStage('deckSelection');
+                }
             });
 
             backToFileBtn.addEventListener('click', () => {
