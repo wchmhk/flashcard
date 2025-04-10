@@ -1880,7 +1880,7 @@
                                         // 為每個工作表創建新卡組
                                         const newDeck = {
                                             id: Date.now() + index, // 確保ID唯一
-                                            name: '來自Sheets-' + sheetName + '-' + new Date().toLocaleDateString(),
+                                            name: sheetName,
                                             description: '從Google Sheets自動導入的字卡',
                                             cardIds: [],
                                             createdAt: Date.now()
@@ -1970,9 +1970,16 @@
                                         const row = sheetData[i];
                                         if (!row || !row.length) continue;
 
-                                        // 假設第0列是正面，第1列是背面
-                                        const frontContent = row[0];
-                                        const backContent = row[1];
+                                        // 使用正確的列索引，從sheetOptions中獲取
+                                        const frontContent = row[sheetOptions[sheetName].frontColumn];
+                                        const backContent = row[sheetOptions[sheetName].backColumn];
+
+                                        // 跳過空行
+                                        if ((!frontContent && !backContent) ||
+                                            (frontText === '' && backText === '')) {
+                                            skippedCount++;
+                                            continue;
+                                        }
 
                                         // 處理內容，支持格式化和純文本
                                         let frontText, backText;
@@ -3075,7 +3082,11 @@
                 if (!activeQuill) return;
 
                 try {
-                  const format = activeQuill.getFormat();
+                  // 檢查編輯器選擇範圍是否存在
+                  const selection = activeQuill.getSelection();
+                  if (!selection) return;
+
+                  const format = activeQuill.getFormat(selection);
 
                   Object.entries(formatButtons).forEach(([key, button]) => {
                     if (!button) return;
@@ -5925,17 +5936,30 @@
             savedBackFormats = {};
 
             if (frontQuill) {
-                frontQuill.setSelection(0, frontQuill.getLength());
-                frontQuill.format('align', false);
-                frontQuill.format('size', false);
-                frontQuill.setSelection(null);
+                try {
+                    // 檢查編輯器是否準備好且有內容
+                    if (frontQuill.getLength() > 0) {
+                        frontQuill.setSelection(0, frontQuill.getLength());
+                        frontQuill.format('align', false);
+                        frontQuill.format('size', false);
+                        frontQuill.setSelection(null);
+                    }
+                } catch (e) {
+                    console.log("重置前面編輯器格式失敗:", e);
+                }
             }
 
             if (backQuill) {
-                backQuill.setSelection(0, backQuill.getLength());
-                backQuill.format('align', false);
-                backQuill.format('size', false);
-                backQuill.setSelection(null);
+                try {
+                    if (backQuill.getLength() > 0) {
+                        backQuill.setSelection(0, backQuill.getLength());
+                        backQuill.format('align', false);
+                        backQuill.format('size', false);
+                        backQuill.setSelection(null);
+                    }
+                } catch (e) {
+                    console.log("重置背面編輯器格式失敗:", e);
+                }
             }
         }
 
