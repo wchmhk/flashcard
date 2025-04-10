@@ -6890,13 +6890,29 @@
 
         // 加載現有的卡組到下拉選單
         function loadExistingDecks() {
+            // 首先檢查元素是否存在
+            const targetExistingDeck = document.getElementById('targetExistingDeck');
+
+            // 如果元素不存在，直接返回
+            if (!targetExistingDeck) {
+                console.warn('找不到 targetExistingDeck 元素');
+                return;
+            }
+
             targetExistingDeck.innerHTML = '';
 
             if (decksData.length === 0) {
                 // 如果沒有現有卡組，默認選擇"創建新卡組"
-                document.querySelector('input[name="deckOption"][value="new"]').checked = true;
-                existingDeckSelector.classList.add('hidden');
-                newDeckInputs.classList.remove('hidden');
+                const newRadio = document.querySelector('input[name="deckOption"][value="new"]');
+                if (newRadio) {
+                    newRadio.checked = true;
+                }
+
+                const existingDeckSelector = document.getElementById('existingDeckSelector');
+                const newDeckInputs = document.getElementById('newDeckInputs');
+
+                if (existingDeckSelector) existingDeckSelector.classList.add('hidden');
+                if (newDeckInputs) newDeckInputs.classList.remove('hidden');
 
                 // 添加一個提示選項
                 const noDecksOption = document.createElement('option');
@@ -6905,6 +6921,7 @@
                 noDecksOption.disabled = true;
                 targetExistingDeck.appendChild(noDecksOption);
             } else {
+              
                 // 默認選擇"添加到現有卡組"
                 document.querySelector('input[name="deckOption"][value="existing"]').checked = true;
                 existingDeckSelector.classList.remove('hidden');
