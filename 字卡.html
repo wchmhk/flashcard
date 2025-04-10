@@ -1807,6 +1807,13 @@
                 // 提示用戶設置API密鑰
                 showNotification('請先設置Google API密鑰');
 
+                // 在讀取Google Sheets數據時
+                if (value && typeof value === 'string') {
+                    // 保留換行符，不要去除
+                    const preservedValue = value;
+                    // 繼續處理 preservedValue...
+                }
+
                 // 自動打開API設置對話框
                 const apiSettingsModal = document.getElementById('apiSettingsModal');
                 if (apiSettingsModal) {
@@ -2438,6 +2445,12 @@
                         window.gSheetsSyncData.lastSync = Date.now();
                     }
 
+                    if (value && typeof value === 'string') {
+                        // 保留換行符，不要去除
+                        const preservedValue = value;
+                        // 繼續處理 preservedValue...
+                    }
+
                     // 恢復同步指示器狀態
                     restoreSyncIndicator(syncIndicator);
 
@@ -2719,6 +2732,7 @@
         }
 
         // 將 Quill Delta 轉換為 HTML
+        // 修改 convertDeltaToHTML 函數以正確處理換行
         function convertDeltaToHTML(delta) {
             if (!delta || !delta.ops || delta.ops.length === 0) {
                 return '';
@@ -2731,20 +2745,51 @@
             delta.ops.forEach(op => {
                 if (!op.insert) return;
 
-                const span = document.createElement('span');
-                span.textContent = op.insert;
+                // 處理文本換行
+                if (typeof op.insert === 'string' && op.insert.includes('\n')) {
+                    // 將文本按換行符分割
+                    const lines = op.insert.split('\n');
 
-                // 應用格式
-                if (op.attributes) {
-                    if (op.attributes.bold) span.style.fontWeight = 'bold';
-                    if (op.attributes.italic) span.style.fontStyle = 'italic';
-                    if (op.attributes.underline) span.style.textDecoration = 'underline';
-                    if (op.attributes.strike) span.style.textDecoration = 'line-through';
-                    if (op.attributes.color) span.style.color = op.attributes.color;
-                    if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+                    for (let i = 0; i < lines.length; i++) {
+                        if (i > 0) {
+                            // 在每個換行前添加<br>標籤
+                            tempDiv.appendChild(document.createElement('br'));
+                        }
+
+                        if (lines[i]) {
+                            const span = document.createElement('span');
+                            span.textContent = lines[i];
+
+                            // 應用格式
+                            if (op.attributes) {
+                                if (op.attributes.bold) span.style.fontWeight = 'bold';
+                                if (op.attributes.italic) span.style.fontStyle = 'italic';
+                                if (op.attributes.underline) span.style.textDecoration = 'underline';
+                                if (op.attributes.strike) span.style.textDecoration = 'line-through';
+                                if (op.attributes.color) span.style.color = op.attributes.color;
+                                if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+                            }
+
+                            tempDiv.appendChild(span);
+                        }
+                    }
+                } else {
+                    // 處理普通文本
+                    const span = document.createElement('span');
+                    span.textContent = op.insert;
+
+                    // 應用格式
+                    if (op.attributes) {
+                        if (op.attributes.bold) span.style.fontWeight = 'bold';
+                        if (op.attributes.italic) span.style.fontStyle = 'italic';
+                        if (op.attributes.underline) span.style.textDecoration = 'underline';
+                        if (op.attributes.strike) span.style.textDecoration = 'line-through';
+                        if (op.attributes.color) span.style.color = op.attributes.color;
+                        if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+                    }
+
+                    tempDiv.appendChild(span);
                 }
-
-                tempDiv.appendChild(span);
             });
 
             return tempDiv.innerHTML;
