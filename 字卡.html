@@ -2406,12 +2406,12 @@
                 return { ops: [] };
             }
 
-            // 如果沒有格式運行，使用整體格式
-            if (!textFormatRuns || textFormatRuns.length === 0) {
-                const format = {};
+            const format = {};
 
-                // 從 effectiveFormat 提取全局格式
-                if (effectiveFormat && effectiveFormat.textFormat) {
+            // 從 effectiveFormat 提取全局格式
+            if (effectiveFormat) {
+                // 原有的格式處理（粗體、斜體等）
+                if (effectiveFormat.textFormat) {
                     if (effectiveFormat.textFormat.bold) format.bold = true;
                     if (effectiveFormat.textFormat.italic) format.italic = true;
                     if (effectiveFormat.textFormat.underline) format.underline = true;
@@ -2426,11 +2426,12 @@
                             const g = Math.round(color.green * 255);
                             const b = Math.round(color.blue * 255);
 
+                            // 檢查是否為默認黑色
+                            const isDefaultBlack = (r === 0 && g === 0 && b === 0);
                             if (!isDefaultBlack) {
-                              // 總是應用顏色，無論是什麼顏色
-                              format.color = `rgb(${r}, ${g}, ${b})`;
-                              // 保存原始顏色值以備在暗模式下使用
-                              format.originalColor = [r, g, b];
+                                format.color = `rgb(${r}, ${g}, ${b})`;
+                                // 保存原始顏色值以備在暗模式下使用
+                                format.originalColor = [r, g, b];
                             }
                         }
                     }
@@ -2449,7 +2450,7 @@
                     }
                 }
 
-                // 添加以下代碼處理對齊方式
+                // 處理對齊方式
                 if (effectiveFormat.horizontalAlignment) {
                     const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
                     if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
@@ -2458,6 +2459,8 @@
                 }
             }
 
+            // 如果沒有格式運行，使用整體格式
+            if (!textFormatRuns || textFormatRuns.length === 0) {
                 // 創建帶格式的 Delta
                 return {
                     ops: [
@@ -2493,12 +2496,12 @@
                 const text = value.substring(startIndex, endIndex);
 
                 // 提取格式 - 增強顏色處理
-                const format = {};
+                const segmentFormat = {};
                 if (run.format) {
-                    if (run.format.bold) format.bold = true;
-                    if (run.format.italic) format.italic = true;
-                    if (run.format.underline) format.underline = true;
-                    if (run.format.strikethrough) format.strike = true;
+                    if (run.format.bold) segmentFormat.bold = true;
+                    if (run.format.italic) segmentFormat.italic = true;
+                    if (run.format.underline) segmentFormat.underline = true;
+                    if (run.format.strikethrough) segmentFormat.strike = true;
 
                     // 處理前景色 - 加強顏色轉換
                     if (run.format.foregroundColor) {
@@ -2511,9 +2514,9 @@
                             // 檢查顏色是否為默認黑色
                             const isDefaultBlack = r === 0 && g === 0 && b === 0;
                             if (!isDefaultBlack) {
-                                format.color = `rgb(${r}, ${g}, ${b})`;
+                                segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
                                 // 保存原始顏色值
-                                format.originalColor = [r, g, b];
+                                segmentFormat.originalColor = [r, g, b];
                             }
                         }
                     }
@@ -2526,15 +2529,20 @@
                             const r = Math.round(bgColor.red * 255);
                             const g = Math.round(bgColor.green * 255);
                             const b = Math.round(bgColor.blue * 255);
-                            format.background = `rgb(${r}, ${g}, ${b})`;
+                            segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
                         }
                     }
+                }
+
+                // 添加對齊格式（如果全局有設定）
+                if (format.align) {
+                    segmentFormat.align = format.align;
                 }
 
                 // 添加帶格式的文本
                 ops.push({
                     insert: text,
-                    attributes: Object.keys(format).length > 0 ? format : undefined
+                    attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
                 });
 
                 // 更新處理索引
@@ -2549,7 +2557,7 @@
 
             return { ops: ops };
         }
-
+        
         // 根據 Google Sheets 數據更新字卡
         function updateCardsFromGSheets() {
             if (!activeSheetName || !excelSheets[activeSheetName]) return;
