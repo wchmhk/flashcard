@@ -1858,95 +1858,98 @@
                         loadBtn.textContent = originalText;
 
                         showNotification('成功載入 Google Sheets 數據（含格式）');
-                    })
 
-                    // 添加自動導入功能
-                    setTimeout(() => {
-                        // 詢問用戶是否直接導入
-                        if (confirm('成功載入數據！是否直接導入到新卡組？')) {
-                            // 從第一個工作表獲取數據
-                            const sheetName = Object.keys(excelSheets)[0];
-                            if (sheetName && excelSheets[sheetName]) {
-                                // 創建新卡組
-                                const newDeck = {
-                                    id: Date.now(),
-                                    name: '來自Sheets-' + new Date().toLocaleDateString(),
-                                    description: '從Google Sheets自動導入的字卡',
-                                    cardIds: [],
-                                    createdAt: Date.now()
-                                };
-
-                                // 添加卡組
-                                decksData.push(newDeck);
-
-                                // 處理數據（從第1行開始，跳過標題行）
-                                const sheetData = excelSheets[sheetName].data;
-                                let importCount = 0;
-
-                                for (let i = 1; i < sheetData.length; i++) {
-                                    const row = sheetData[i];
-                                    if (!row || !row.length) continue;
-
-                                    // 假設第0列是正面，第1列是背面
-                                    const frontContent = row[0];
-                                    const backContent = row[1];
-
-                                    // 處理內容，支持格式化和純文本
-                                    let frontText, backText;
-
-                                    if (excelSheets[sheetName].hasFormatting) {
-                                        // 處理格式化內容
-                                        frontText = typeof frontContent === 'object' && frontContent.delta
-                                            ? convertDeltaToHTML(frontContent.delta)
-                                            : (frontContent ? frontContent.toString() : '');
-
-                                        backText = typeof backContent === 'object' && backContent.delta
-                                            ? convertDeltaToHTML(backContent.delta)
-                                            : (backContent ? backContent.toString() : '');
-                                    } else {
-                                        // 處理純文本
-                                        frontText = frontContent ? frontContent.toString() : '';
-                                        backText = backContent ? backContent.toString() : '';
-                                    }
-
-                                    // 跳過空行
-                                    if (!frontText && !backText) continue;
-
-                                    // 創建新卡片
-                                    const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
-                                    const newCard = {
-                                        id: newCardId,
-                                        frontText: frontText,
-                                        backText: backText,
-                                        nextReview: Date.now(),
-                                        repetitions: 0,
-                                        easeFactor: 2.0,
-                                        interval: 1.0
+                        // 添加自動導入功能
+                        setTimeout(() => {
+                            // 詢問用戶是否直接導入
+                            if (confirm('成功載入數據！是否直接導入到新卡組？')) {
+                                // 從第一個工作表獲取數據
+                                const sheetName = Object.keys(excelSheets)[0];
+                                if (sheetName && excelSheets[sheetName]) {
+                                    // 創建新卡組
+                                    const newDeck = {
+                                        id: Date.now(),
+                                        name: '來自Sheets-' + new Date().toLocaleDateString(),
+                                        description: '從Google Sheets自動導入的字卡',
+                                        cardIds: [],
+                                        createdAt: Date.now()
                                     };
 
-                                    // 添加卡片
-                                    cardsData.push(newCard);
-                                    newDeck.cardIds.push(newCardId);
-                                    importCount++;
+                                    // 添加卡組
+                                    decksData.push(newDeck);
+
+                                    // 處理數據（從第1行開始，跳過標題行）
+                                    const sheetData = excelSheets[sheetName].data;
+                                    let importCount = 0;
+
+                                    for (let i = 1; i < sheetData.length; i++) {
+                                        const row = sheetData[i];
+                                        if (!row || !row.length) continue;
+
+                                        // 假設第0列是正面，第1列是背面
+                                        const frontContent = row[0];
+                                        const backContent = row[1];
+
+                                        // 處理內容，支持格式化和純文本
+                                        let frontText, backText;
+
+                                        if (excelSheets[sheetName].hasFormatting) {
+                                            // 處理格式化內容
+                                            frontText = typeof frontContent === 'object' && frontContent.delta
+                                                ? convertDeltaToHTML(frontContent.delta)
+                                                : (frontContent ? frontContent.toString() : '');
+
+                                            backText = typeof backContent === 'object' && backContent.delta
+                                                ? convertDeltaToHTML(backContent.delta)
+                                                : (backContent ? backContent.toString() : '');
+                                        } else {
+                                            // 處理純文本
+                                            frontText = frontContent ? frontContent.toString() : '';
+                                            backText = backContent ? backContent.toString() : '';
+                                        }
+
+                                        // 跳過空行
+                                        if (!frontText && !backText) continue;
+
+                                        // 創建新卡片
+                                        const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
+                                        const newCard = {
+                                            id: newCardId,
+                                            frontText: frontText,
+                                            backText: backText,
+                                            nextReview: Date.now(),
+                                            repetitions: 0,
+                                            easeFactor: 2.0,
+                                            interval: 1.0
+                                        };
+
+                                        // 添加卡片
+                                        cardsData.push(newCard);
+                                        newDeck.cardIds.push(newCardId);
+                                        importCount++;
+                                    }
+
+                                    // 顯示結果
+                                    showNotification(`成功導入 ${importCount} 張字卡到卡組 "${newDeck.name}"`);
+
+                                    // 刷新UI
+                                    loadDeckList();
+
+                                    // 顯示提醒保存數據
+                                    showStorageReminder();
+
+                                    // 關閉導入對話框
+                                    closeGSheetsImportModal();
+
+                                    // 切換到複習頁面查看結果
+                                    showSection('review');
                                 }
-
-                                // 顯示結果
-                                showNotification(`成功導入 ${importCount} 張字卡到卡組 "${newDeck.name}"`);
-
-                                // 刷新UI
-                                loadDeckList();
-
-                                // 顯示提醒保存數據
-                                showStorageReminder();
-
-                                // 關閉導入對話框
-                                closeGSheetsImportModal();
-
-                                // 切換到複習頁面查看結果
-                                showSection('review');
                             }
-                        }
-                    }, 500); // 短暫延遲確保通知顯示後再彈出確認
+                        }, 500); // 短暫延遲確保通知顯示後再彈出確認
+
+                    })
+
+
 
                     .catch(error => {
                         console.error('Google Sheets API 錯誤:', error);
