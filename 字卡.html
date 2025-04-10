@@ -1852,26 +1852,6 @@
                         showGSheetsStep(2);
                         preparePreviewData();
 
-                        .catch(error => {
-                            console.error('Google Sheets API 錯誤:', error);
-
-                            // 檢查是否是API密鑰錯誤
-                            if (error.message && (
-                                error.message.includes('API key') ||
-                                error.message.includes('invalid key') ||
-                                error.message.includes('unauthorized')
-                            )) {
-                                showNotification('Google API密鑰無效，請重新設置');
-
-                                // 自動打開API設置對話框
-                                const apiSettingsModal = document.getElementById('apiSettingsModal');
-                                if (apiSettingsModal) {
-                                    apiSettingsModal.classList.remove('hidden');
-                                }
-                            } else {
-                                showNotification(`載入失敗: ${error.message}`);
-                            }
-
                         // 恢復按鈕狀態
                         loadBtn.disabled = false;
                         loadBtn.textContent = originalText;
@@ -1879,11 +1859,28 @@
                         showNotification('成功載入 Google Sheets 數據（含格式）');
                     })
                     .catch(error => {
-                        console.error('Google API 載入錯誤:', error);
-                        showNotification('無法使用 API 載入格式，將嘗試不帶格式的導入方式');
+                        console.error('Google Sheets API 錯誤:', error);
 
-                        // 回退到 CSV 方式
-                        loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
+                        // 檢查是否是API密鑰錯誤
+                        if (error.message && (
+                            error.message.includes('API key') ||
+                            error.message.includes('invalid key') ||
+                            error.message.includes('unauthorized')
+                        )) {
+                            showNotification('Google API密鑰無效，請重新設置');
+
+                            // 自動打開API設置對話框
+                            const apiSettingsModal = document.getElementById('apiSettingsModal');
+                            if (apiSettingsModal) {
+                                apiSettingsModal.classList.remove('hidden');
+                            }
+                        } else {
+                            showNotification(`載入失敗: ${error.message}`);
+                        }
+
+                        // 恢復按鈕狀態
+                        loadBtn.disabled = false;
+                        loadBtn.textContent = originalText;
                     });
 
             } else {
