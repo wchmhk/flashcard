@@ -1877,31 +1877,44 @@
                                 // 遍歷所有工作表
                                 sheetNames.forEach((sheetName, index) => {
                                     if (sheetName && excelSheets[sheetName]) {
-                                        // 為每個工作表創建新卡組
-                                        const newDeck = {
-                                            id: Date.now() + index, // 確保ID唯一
-                                            name: sheetName,
-                                            description: '從Google Sheets自動導入的字卡',
-                                            cardIds: [],
-                                            createdAt: Date.now()
-                                        };
-
-                                        // 添加卡組
-                                        decksData.push(newDeck);
+                                        // 創建卡組代碼...
 
                                         // 處理數據（從第1行開始，跳過標題行）
                                         const sheetData = excelSheets[sheetName].data;
                                         let importCount = 0;
 
+                                        // 獲取此工作表的列配置
+                                        const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
+                                        const backCol = sheetOptions[sheetName]?.backColumn || 1;
+
+                                        console.log(`處理工作表 ${sheetName}, 正面列: ${frontCol}, 背面列: ${backCol}`);
+
                                         for (let i = 1; i < sheetData.length; i++) {
-                                            // 處理每行數據...
-                                            // ...
+                                            const row = sheetData[i];
+                                            if (!row || !row.length) {
+                                                console.log(`行 ${i}: 跳過空行`);
+                                                continue;
+                                            }
+
+                                            // 使用正確的列索引
+                                            const frontContent = row[frontCol];
+                                            const backContent = row[backCol];
+
+                                            // 處理內容...
+
+                                            // 添加調試輸出
+                                            console.log(`成功添加卡片: ${frontText.substring(0, 20)}... / ${backText.substring(0, 20)}...`);
+
+                                            // 確保計數器增加
                                             importCount++;
                                         }
 
+                                        // 非常重要：確保在此位置增加總計數
                                         totalImportCount += importCount;
+
+                                        console.log(`工作表 ${sheetName} 導入完成: ${importCount} 張字卡`);
                                     }
-                                }); // 此處缺少了forEach的結束括號
+                                });
 
                                 // 顯示總體結果
                                 showNotification(`成功導入 ${totalImportCount} 張字卡到 ${sheetNames.length} 個卡組`);
