@@ -1718,19 +1718,24 @@
             const googleApiKeyInput = document.getElementById('googleApiKeyInput');
             const showApiKey = document.getElementById('showApiKey');
 
-            // 檢查相關元素是否存在
+            // 檢查設置按鈕是否存在（不影響其他功能）
             if (!apiSettingsBtn) {
-                console.warn('找不到 apiSettingsBtn 元素，跳過設置');
-                // 您可以在這裡添加創建按鈕的代碼，或者直接使用其他觸發方式
-                return;
+                console.warn('找不到 apiSettingsBtn 元素，跳過設置按鈕綁定');
+                // 繼續執行，而不是返回
+            } else {
+                // 設置按鈕點擊事件
+                apiSettingsBtn.addEventListener('click', () => {
+                    // 載入當前API密鑰到輸入框
+                    googleApiKeyInput.value = GOOGLE_API_KEY || '';
+                    apiSettingsModal.classList.remove('hidden');
+                });
             }
 
-            // 設置按鈕點擊事件
-            apiSettingsBtn.addEventListener('click', () => {
-                // 載入當前API密鑰到輸入框
-                googleApiKeyInput.value = GOOGLE_API_KEY || '';
-                apiSettingsModal.classList.remove('hidden');
-            });
+            // 檢查必要的元素
+            if (!apiSettingsModal || !closeApiSettingsBtn || !saveApiSettingsBtn || !googleApiKeyInput) {
+                console.error('API設置模態框缺少必要元素，無法完成初始化');
+                return;
+            }
 
             // 關閉按鈕點擊事件
             closeApiSettingsBtn.addEventListener('click', () => {
@@ -1753,9 +1758,11 @@
             });
 
             // 顯示/隱藏密鑰切換
-            showApiKey.addEventListener('change', () => {
-                googleApiKeyInput.type = showApiKey.checked ? 'text' : 'password';
-            });
+            if (showApiKey) {
+                showApiKey.addEventListener('change', () => {
+                    googleApiKeyInput.type = showApiKey.checked ? 'text' : 'password';
+                });
+            }
 
             // 點擊對話框外部關閉
             apiSettingsModal.addEventListener('click', (e) => {
@@ -1763,19 +1770,6 @@
                     apiSettingsModal.classList.add('hidden');
                 }
             });
-
-            // 檢查是否有API密鑰，若無顯示提示
-            if (!GOOGLE_API_KEY) {
-                // 添加一個小提示到Google Sheets導入按鈕
-                const importGSheetsBtn = document.getElementById('importGSheetsBtn');
-                if (importGSheetsBtn) {
-                    importGSheetsBtn.title = '需要設置Google API密鑰才能使用格式化導入';
-                    const badgeSpan = document.createElement('span');
-                    badgeSpan.className = 'ml-1 bg-yellow-500 text-white text-xs px-1 rounded-full';
-                    badgeSpan.textContent = '!';
-                    importGSheetsBtn.appendChild(badgeSpan);
-                }
-            }
         }
 
         // 打開 Google Sheets 導入對話框
