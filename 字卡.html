@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+  <script src="https://apis.google.com/js/api.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="字卡">
@@ -16,6 +17,10 @@
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.0-rc.2/dist/quill.min.js"></script>
 
     <script>
+
+    // Google API 密鑰配置
+    const GOOGLE_API_KEY = 'AIzaSyB0ZU3TKRij9aRqaTBehND4egrP3vDeLf0'; // 將此處替換為您的 Google API 密鑰
+
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -26,6 +31,11 @@
                 }
             }
         }
+
+        // 定義全局變量
+        let formatButtons = {};
+        let activeQuill = null;
+
     </script>
 
     <style>
@@ -491,6 +501,13 @@
                   <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd" />
               </svg>
               導入Excel
+          </button>
+          <button id="importGSheetsBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                  <path d="M7 7h2v10H7zm4 0h2v10h-2zm4 0h2v10h-2z"/>
+              </svg>
+              從 Google Sheets 導入
           </button>
           <button id="exportExcelBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1289,6 +1306,65 @@
                 </div>
             </div>
         </div>
+
+        <!-- Google Sheets 導入對話框 -->
+        <div id="importGSheetsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl w-full mx-4 my-auto">
+                <h2 class="text-xl font-semibold mb-4">從 Google Sheets 導入字卡</h2>
+
+                <div id="gSheetsImportSteps" class="overflow-y-auto">
+                    <!-- 步驟1: 輸入 Google Sheets URL -->
+                    <div id="gSheetsStep1" class="space-y-4">
+                        <p class="mb-4 text-gray-600 dark:text-gray-400">請輸入已共享的 Google Sheets URL</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                            注意：Google Sheets 必須設置為「任何人都可以查看」，並請確保第一列為標題行
+                        </p>
+                        <div class="space-y-2">
+                            <label for="gSheetsUrlInput" class="block text-sm font-medium">Google Sheets URL</label>
+                            <input type="text" id="gSheetsUrlInput" placeholder="例如：https://docs.google.com/spreadsheets/d/..."
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
+                        </div>
+
+                        <div class="flex items-center mt-4">
+                            <input type="checkbox" id="enableSyncGSheets" class="mr-2">
+                            <label for="enableSyncGSheets" class="text-sm">
+                                保持同步（當 Google Sheets 更新時自動更新字卡）
+                            </label>
+                        </div>
+
+                        <div class="mt-6 flex justify-between">
+                            <div>
+                                <a href="https://support.google.com/docs/answer/183965" target="_blank" class="text-primary hover:underline text-sm">
+                                    如何共享 Google Sheets?
+                                </a>
+                            </div>
+                            <div>
+                                <button id="closeGSheetsModalBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg mr-2">
+                                    取消
+                                </button>
+                                <button id="loadGSheetsBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                                    載入
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 步驟2: 預覽和設置 (類似 Excel 導入) -->
+                    <div id="gSheetsStep2" class="space-y-4 hidden">
+                        <!-- 與 Excel 預覽部分類似的結構 -->
+                        <div id="formatStatusIndicator" class="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
+                            <span id="formatStatus" class="font-medium">格式狀態：</span>
+                            <span id="formatStatusValue">載入中...</span>
+                        </div>
+                    </div>
+
+                    <!-- 步驟3: 導入結果 -->
+                    <div id="gSheetsStep3" class="space-y-4 hidden">
+                        <!-- 與 Excel 結果部分類似的結構 -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1561,6 +1637,814 @@
         const newDeckDescription = document.getElementById('newDeckDescription');
         const importResults = document.getElementById('importResults');
 
+        // Google Sheets 相關函數 - 移至全局作用域
+
+        // 初始化 Google Sheets 導入功能
+        function initGSheetsImport() {
+            // 獲取元素
+            const importGSheetsBtn = document.getElementById('importGSheetsBtn');
+            const importGSheetsModal = document.getElementById('importGSheetsModal');
+            const closeGSheetsModalBtn = document.getElementById('closeGSheetsModalBtn');
+            const loadGSheetsBtn = document.getElementById('loadGSheetsBtn');
+            const gSheetsUrlInput = document.getElementById('gSheetsUrlInput');
+
+            // 綁定事件
+            importGSheetsBtn.addEventListener('click', openGSheetsImportModal);
+            closeGSheetsModalBtn.addEventListener('click', closeGSheetsImportModal);
+            loadGSheetsBtn.addEventListener('click', loadGSheetsData);
+
+            // 點擊對話框外部關閉
+            importGSheetsModal.addEventListener('click', function(e) {
+                if (e.target === importGSheetsModal) {
+                    closeGSheetsImportModal();
+                }
+            });
+
+            // 顯示 API 密鑰狀態
+            if (GOOGLE_API_KEY) {
+                console.log('Google API 密鑰已配置，將支持格式同步');
+            } else {
+                console.log('未配置 Google API 密鑰，將使用純文本方式同步');
+
+                // 可選：添加一個提示鏈接
+                const apiKeyLink = document.createElement('div');
+                apiKeyLink.className = 'mt-2 text-xs text-primary hover:underline cursor-pointer';
+                apiKeyLink.textContent = '如何獲取 Google API 密鑰以支持格式同步？';
+                apiKeyLink.addEventListener('click', () => {
+                    window.open('https://developers.google.com/sheets/api/guides/authorizing#APIKey', '_blank');
+                });
+
+                // 將鏈接添加到導入對話框
+                const gSheetsStep1 = document.getElementById('gSheetsStep1');
+                if (gSheetsStep1) {
+                    const linkContainer = gSheetsStep1.querySelector('div.mt-6 div:first-child');
+                    if (linkContainer) {
+                        linkContainer.appendChild(apiKeyLink);
+                    }
+                }
+            }
+        }
+
+        // 打開 Google Sheets 導入對話框
+        function openGSheetsImportModal() {
+            const importGSheetsModal = document.getElementById('importGSheetsModal');
+            importGSheetsModal.classList.remove('hidden');
+
+            // 重置表單
+            document.getElementById('gSheetsUrlInput').value = '';
+            document.getElementById('enableSyncGSheets').checked = false;
+
+            // 顯示第一步
+            showGSheetsStep(1);
+        }
+
+        // 關閉 Google Sheets 導入對話框
+        function closeGSheetsImportModal() {
+            const importGSheetsModal = document.getElementById('importGSheetsModal');
+            importGSheetsModal.classList.add('hidden');
+        }
+
+        // 顯示指定的 Google Sheets 導入步驟
+        function showGSheetsStep(step) {
+            document.getElementById('gSheetsStep1').classList.add('hidden');
+            document.getElementById('gSheetsStep2').classList.add('hidden');
+            document.getElementById('gSheetsStep3').classList.add('hidden');
+
+            document.getElementById(`gSheetsStep${step}`).classList.remove('hidden');
+        }
+
+        // 從 Google Sheets 載入數據
+        function loadGSheetsData() {
+            const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+            const enableSync = document.getElementById('enableSyncGSheets').checked;
+
+            if (!gSheetsUrl) {
+                showNotification('請輸入 Google Sheets URL');
+                return;
+            }
+
+            // 驗證 URL 格式
+            if (!isValidGSheetsUrl(gSheetsUrl)) {
+                showNotification('請輸入有效的 Google Sheets URL');
+                return;
+            }
+
+            // 顯示載入中狀態
+            const loadBtn = document.getElementById('loadGSheetsBtn');
+            const originalText = loadBtn.textContent;
+            loadBtn.disabled = true;
+            loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
+
+            // 從 URL 獲取 spreadsheetId
+            const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
+
+            // 先嘗試使用 Google API（帶格式），如果失敗則回退到 CSV（無格式）
+            if (GOOGLE_API_KEY) {
+                console.log('使用 Google API 載入格式化數據');
+                loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
+                    .then(() => {
+                        // 顯示預覽
+                        showGSheetsStep(2);
+                        preparePreviewData();
+
+                        // 恢復按鈕狀態
+                        loadBtn.disabled = false;
+                        loadBtn.textContent = originalText;
+
+                        showNotification('成功載入 Google Sheets 數據（含格式）');
+                    })
+                    .catch(error => {
+                        console.error('Google API 載入錯誤:', error);
+                        showNotification('無法使用 API 載入格式，將嘗試不帶格式的導入方式');
+
+                        // 回退到 CSV 方式
+                        loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
+                    });
+            } else {
+                // 使用 CSV 方式（無格式）
+                loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
+            }
+        }
+
+        // 使用 CSV 方式載入 Google Sheets 數據（無格式）
+        function loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText) {
+            // 構建導出 CSV 的 URL
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+
+            console.log('嘗試從 URL 載入數據:', exportUrl);
+
+            // 使用 JSONP 方式繞過 CORS 限制
+            const jsonpUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
+
+            fetch(jsonpUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`無法訪問 Google Sheets，狀態碼: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    // JSONP 回應需要處理，移除前缀和後缀
+                    const jsonStart = text.indexOf('{');
+                    const jsonEnd = text.lastIndexOf('}');
+                    if (jsonStart === -1 || jsonEnd === -1) {
+                        throw new Error('返回的數據格式不正確');
+                    }
+
+                    const jsonText = text.substring(jsonStart, jsonEnd + 1);
+                    const data = JSON.parse(jsonText);
+
+                    // 轉換為 CSV 格式的數據結構
+                    const rows = [];
+                    // 添加表頭
+                    const headers = data.table.cols.map(col => col.label || '');
+                    rows.push(headers);
+
+                    // 添加數據行
+                    data.table.rows.forEach(row => {
+                        const rowData = row.c.map(cell => (cell ? (cell.v || '') : ''));
+                        rows.push(rowData);
+                    });
+
+                    // 保存 Google Sheets 數據
+                    const sheetName = 'GoogleSheet';
+                    excelSheets = {};
+                    excelSheets[sheetName] = {
+                        data: rows,
+                        columns: headers,
+                        hasFormatting: false
+                    };
+
+                    // 設置默認卡組映射
+                    sheetMappings = {};
+                    sheetMappings[sheetName] = {
+                        deckOption: 'new',
+                        deckId: '',
+                        newDeckName: 'Google Sheets 導入',
+                        newDeckDescription: '從 Google Sheets 導入的字卡'
+                    };
+
+                    // 設置默認列選擇
+                    sheetOptions = {};
+                    sheetOptions[sheetName] = {
+                        frontColumn: 0,
+                        backColumn: 1
+                    };
+
+                    // 設置活動工作表
+                    activeSheetName = sheetName;
+
+                    // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                    if (enableSync) {
+                        window.gSheetsSyncData = {
+                            url: gSheetsUrl,
+                            spreadsheetId: spreadsheetId,
+                            lastSync: Date.now(),
+                            syncEnabled: true,
+                            useFormatting: false
+                        };
+
+                        setupGSheetsSync();
+                    }
+
+                    // 顯示預覽
+                    showGSheetsStep(2);
+                    preparePreviewData();
+
+                    // 恢復按鈕狀態
+                    if (loadBtn) {
+                        loadBtn.disabled = false;
+                        loadBtn.textContent = originalText;
+                    }
+
+                    showNotification('成功載入 Google Sheets 數據');
+                })
+                .catch(error => {
+                    console.error('Google Sheets 載入錯誤:', error);
+
+                    // 提供更詳細的錯誤說明和解決方案
+                    let errorMessage = `Google Sheets 載入失敗: ${error.message || '無法連接到Google Sheets'}`;
+                    errorMessage += '\n請確保：';
+                    errorMessage += '\n1. 您的Google Sheet已設為「任何人都可以查看」';
+                    errorMessage += '\n2. 已在「檔案 -> 發布到網路」中發布此表格';
+
+                    showNotification(errorMessage);
+
+                    // 恢復按鈕狀態
+                    if (loadBtn) {
+                        loadBtn.disabled = false;
+                        loadBtn.textContent = originalText;
+                    }
+                });
+        }
+
+        // 從 Google Sheets URL 提取 spreadsheetId
+        function extractSpreadsheetId(url) {
+            const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : null;
+        }
+
+        // 驗證 Google Sheets URL
+        function isValidGSheetsUrl(url) {
+            return url.includes('docs.google.com/spreadsheets/d/');
+        }
+
+        // 解析 CSV 數據為二維數組
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const result = [];
+
+            for (let line of lines) {
+                // 處理 CSV 行，支持引號括起的字段
+                const row = [];
+                let inQuotes = false;
+                let currentField = '';
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        row.push(currentField);
+                        currentField = '';
+                    } else {
+                        currentField += char;
+                    }
+                }
+
+                // 添加最後一個字段
+                row.push(currentField);
+                result.push(row);
+            }
+
+            return result;
+        }
+
+        // 帶格式的 Google Sheets 導入（使用 Google API）
+        function loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync) {
+            return new Promise((resolve, reject) => {
+                // 加載 Google API 客戶端
+                gapi.load('client', () => {
+                    gapi.client.init({
+                        apiKey: GOOGLE_API_KEY,
+                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                    })
+                    .then(() => {
+                        // 請求 Google Sheets 數據，包含格式信息
+                        return gapi.client.sheets.spreadsheets.get({
+                            spreadsheetId: spreadsheetId,
+                            includeGridData: true,
+                            ranges: []  // 空數組表示獲取所有工作表
+                        });
+                    })
+                    .then(response => {
+                        const sheets = response.result.sheets;
+
+                        // 檢查是否有工作表
+                        if (!sheets || sheets.length === 0) {
+                            reject(new Error('未找到工作表數據'));
+                            return;
+                        }
+
+                        // 重置 excelSheets
+                        excelSheets = {};
+
+                        // 處理所有工作表
+                        sheets.forEach(sheet => {
+                            const sheetName = sheet.properties.title;
+                            const gridData = sheet.data[0]; // 第一個數據網格
+
+                            if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
+                                console.warn(`工作表 "${sheetName}" 沒有數據`);
+                                return;
+                            }
+
+                            // 提取帶格式的數據
+                            const rowData = gridData.rowData;
+                            const formattedData = [];
+
+                            // 處理所有行
+                            rowData.forEach(row => {
+                                if (!row.values) return;
+
+                                const formattedRow = [];
+                                const values = row.values;
+
+                                // 處理每個單元格
+                                values.forEach(cell => {
+                                    // 獲取單元格值和格式
+                                    const value = cell.formattedValue || '';
+                                    const textFormatRuns = cell.textFormatRuns || [];
+                                    const effectiveFormat = cell.effectiveFormat || {};
+
+                                    // 創建帶格式的單元格對象
+                                    const formattedCell = {
+                                        value: value,
+                                        textContent: value, // 純文本內容（用於搜索等）
+                                        format: {
+                                            bold: effectiveFormat.textFormat?.bold || false,
+                                            italic: effectiveFormat.textFormat?.italic || false,
+                                            underline: effectiveFormat.textFormat?.underline || false,
+                                            strikethrough: effectiveFormat.textFormat?.strikethrough || false,
+                                            fontSize: effectiveFormat.textFormat?.fontSize || 10,
+                                            foregroundColor: effectiveFormat.textFormat?.foregroundColor || null,
+                                            backgroundColor: effectiveFormat.backgroundColor || null
+                                        },
+                                        formatRuns: textFormatRuns,
+                                        // 轉換為 Quill Delta 格式
+                                        delta: convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat)
+                                    };
+
+                                    formattedRow.push(formattedCell);
+                                });
+
+                                formattedData.push(formattedRow);
+                            });
+
+                            // 保存帶格式的工作表數據
+                            excelSheets[sheetName] = {
+                                data: formattedData,
+                                columns: formattedData[0].map(cell => cell.value),
+                                hasFormatting: true // 標記為帶格式
+                            };
+
+                            // 設置默認卡組映射
+                            if (!sheetMappings[sheetName]) {
+                                sheetMappings[sheetName] = {
+                                    deckOption: 'new',
+                                    deckId: '',
+                                    newDeckName: sheetName,
+                                    newDeckDescription: '從 Google Sheets 導入的字卡'
+                                };
+                            }
+
+                            // 設置默認列選擇
+                            if (!sheetOptions[sheetName]) {
+                                sheetOptions[sheetName] = {
+                                    frontColumn: 0,
+                                    backColumn: 1
+                                };
+                            }
+                        });
+
+                        // 設置第一個工作表為活動工作表
+                        activeSheetName = Object.keys(excelSheets)[0];
+
+                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                        if (enableSync) {
+                            // 保存同步元數據
+                            window.gSheetsSyncData = {
+                                url: gSheetsUrl,
+                                spreadsheetId: spreadsheetId,
+                                lastSync: Date.now(),
+                                syncEnabled: true,
+                                useFormatting: true // 標記為帶格式
+                            };
+
+                            // 設置定期同步
+                            setupGSheetsSync();
+                        }
+
+                        resolve();
+                    })
+                    .catch(error => {
+                        console.error('Google Sheets API 錯誤:', error);
+                        reject(error);
+                    });
+                });
+            });
+        }
+
+        // 與 Google Sheets 同步數據
+        function syncWithGoogleSheets() {
+            if (!window.gSheetsSyncData) return;
+
+            const { spreadsheetId, useFormatting } = window.gSheetsSyncData;
+
+            // 顯示同步中狀態
+            const syncIndicator = document.getElementById('gSheetsSyncIndicator');
+            if (syncIndicator) {
+                syncIndicator.classList.add('animate-pulse');
+                const syncNowBtn = document.getElementById('syncNowBtn');
+                if (syncNowBtn) {
+                    syncNowBtn.disabled = true;
+                    syncNowBtn.textContent = '同步中...';
+                }
+            }
+
+            // 根據是否使用格式化選擇同步方式
+            if (useFormatting && GOOGLE_API_KEY) {
+                // 使用 Google API 獲取帶格式的數據
+                loadFormattedGSheetsData(spreadsheetId, window.gSheetsSyncData.url, true)
+                    .then(() => {
+                        // 更新字卡數據
+                        updateCardsFromGSheets();
+
+                        // 更新同步時間
+                        window.gSheetsSyncData.lastSync = Date.now();
+
+                        // 恢復同步指示器狀態
+                        restoreSyncIndicator(syncIndicator);
+
+                        showNotification('已成功與 Google Sheets 同步（含格式）');
+                    })
+                    .catch(error => {
+                        console.error('Google Sheets API 同步錯誤:', error);
+                        showNotification('格式同步失敗，嘗試純文本同步');
+
+                        // 回退到 CSV 同步
+                        syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
+                    });
+            } else {
+                // 使用 CSV 獲取純文本數據
+                syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
+            }
+        }
+
+        // 使用 CSV 方式與 Google Sheets 同步（無格式）
+        function syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator) {
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+
+            fetch(exportUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('同步失敗，無法訪問 Google Sheets');
+                    }
+                    return response.text();
+                })
+                .then(csvData => {
+                    // 解析 CSV 數據
+                    const parsedData = parseCSV(csvData);
+
+                    // 保存 Google Sheets 數據
+                    const sheetName = 'GoogleSheet';
+                    excelSheets[sheetName] = {
+                        data: parsedData,
+                        columns: parsedData[0],
+                        hasFormatting: false
+                    };
+
+                    // 更新字卡數據
+                    updateCardsFromGSheets();
+
+                    // 更新同步時間
+                    if (window.gSheetsSyncData) {
+                        window.gSheetsSyncData.lastSync = Date.now();
+                    }
+
+                    // 恢復同步指示器狀態
+                    restoreSyncIndicator(syncIndicator);
+
+                    showNotification('已成功與 Google Sheets 同步（純文本）');
+                })
+                .catch(error => {
+                    console.error('Google Sheets 同步錯誤:', error);
+                    showNotification(error.message || 'Google Sheets 同步失敗');
+
+                    // 恢復同步指示器狀態
+                    restoreSyncIndicator(syncIndicator);
+                });
+        }
+
+        // 恢復同步指示器狀態
+        function restoreSyncIndicator(syncIndicator) {
+            if (syncIndicator) {
+                syncIndicator.classList.remove('animate-pulse');
+                const syncNowBtn = document.getElementById('syncNowBtn');
+                if (syncNowBtn) {
+                    syncNowBtn.disabled = false;
+                    syncNowBtn.textContent = '立即同步';
+                }
+            }
+        }
+
+        // 將 Google Sheets 單元格格式轉換為 Quill Delta 格式
+        function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
+            // 如果沒有文本，返回空 Delta
+            if (!value) {
+                return { ops: [] };
+            }
+
+            // 如果沒有格式運行，使用整體格式
+            if (!textFormatRuns || textFormatRuns.length === 0) {
+                const format = {};
+
+                // 從 effectiveFormat 提取全局格式
+                if (effectiveFormat && effectiveFormat.textFormat) {
+                    if (effectiveFormat.textFormat.bold) format.bold = true;
+                    if (effectiveFormat.textFormat.italic) format.italic = true;
+                    if (effectiveFormat.textFormat.underline) format.underline = true;
+                    if (effectiveFormat.textFormat.strikethrough) format.strike = true;
+
+                    // 處理前景色
+                    if (effectiveFormat.textFormat.foregroundColor) {
+                        const color = effectiveFormat.textFormat.foregroundColor;
+                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                            const r = Math.round(color.red * 255);
+                            const g = Math.round(color.green * 255);
+                            const b = Math.round(color.blue * 255);
+                            format.color = `rgb(${r}, ${g}, ${b})`;
+                        }
+                    }
+
+                    // 處理背景色（如果有）
+                    if (effectiveFormat.backgroundColor) {
+                        const bgColor = effectiveFormat.backgroundColor;
+                        if (bgColor.red !== undefined && bgColor.green !== undefined && bgColor.blue !== undefined) {
+                            const r = Math.round(bgColor.red * 255);
+                            const g = Math.round(bgColor.green * 255);
+                            const b = Math.round(bgColor.blue * 255);
+                            format.background = `rgb(${r}, ${g}, ${b})`;
+                        }
+                    }
+                }
+
+                // 創建帶格式的 Delta
+                return {
+                    ops: [
+                        {
+                            insert: value,
+                            attributes: Object.keys(format).length > 0 ? format : undefined
+                        }
+                    ]
+                };
+            }
+
+            // 如果有格式運行，處理每一段
+            const ops = [];
+            let lastIndex = 0;
+
+            // 按順序處理每個格式段
+            textFormatRuns.forEach(run => {
+                const startIndex = run.startIndex || 0;
+
+                // 添加前一段文本（如果有）
+                if (startIndex > lastIndex) {
+                    const text = value.substring(lastIndex, startIndex);
+                    if (text) {
+                        ops.push({ insert: text });
+                    }
+                }
+
+                // 獲取此格式段的結束索引
+                const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
+                const endIndex = nextRun ? nextRun.startIndex : value.length;
+
+                // 提取文本
+                const text = value.substring(startIndex, endIndex);
+
+                // 提取格式
+                const format = {};
+                if (run.format) {
+                    if (run.format.bold) format.bold = true;
+                    if (run.format.italic) format.italic = true;
+                    if (run.format.underline) format.underline = true;
+                    if (run.format.strikethrough) format.strike = true;
+
+                    // 處理前景色
+                    if (run.format.foregroundColor) {
+                        const color = run.format.foregroundColor;
+                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                            const r = Math.round(color.red * 255);
+                            const g = Math.round(color.green * 255);
+                            const b = Math.round(color.blue * 255);
+                            format.color = `rgb(${r}, ${g}, ${b})`;
+                        }
+                    }
+
+                    // 處理背景色
+                    if (run.format.backgroundColor) {
+                        const bgColor = run.format.backgroundColor;
+                        if (bgColor.red !== undefined && bgColor.green !== undefined && bgColor.blue !== undefined) {
+                            const r = Math.round(bgColor.red * 255);
+                            const g = Math.round(bgColor.green * 255);
+                            const b = Math.round(bgColor.blue * 255);
+                            format.background = `rgb(${r}, ${g}, ${b})`;
+                        }
+                    }
+                }
+
+                // 添加帶格式的文本
+                ops.push({
+                    insert: text,
+                    attributes: Object.keys(format).length > 0 ? format : undefined
+                });
+
+                // 更新處理索引
+                lastIndex = endIndex;
+            });
+
+            // 添加剩餘的文本（如果有）
+            if (lastIndex < value.length) {
+                const remainingText = value.substring(lastIndex);
+                ops.push({ insert: remainingText });
+            }
+
+            return { ops: ops };
+        }
+
+        // 根據 Google Sheets 數據更新字卡
+        function updateCardsFromGSheets() {
+            if (!activeSheetName || !excelSheets[activeSheetName]) return;
+
+            const sheetData = excelSheets[activeSheetName].data;
+            const hasFormatting = excelSheets[activeSheetName].hasFormatting;
+            const options = sheetOptions[activeSheetName];
+            const mapping = sheetMappings[activeSheetName];
+
+            // 確認選擇了正確的列
+            if (!options || options.frontColumn === undefined || options.backColumn === undefined) {
+                console.error('列選擇無效');
+                return;
+            }
+
+            // 獲取目標卡組
+            let targetDeckId;
+
+            if (mapping.deckOption === 'existing') {
+                targetDeckId = parseInt(mapping.deckId);
+            } else {
+                // 查找之前創建的卡組
+                const existingDeck = decksData.find(d => d.name === mapping.newDeckName);
+                if (existingDeck) {
+                    targetDeckId = existingDeck.id;
+                } else {
+                    // 如果沒有找到卡組，創建一個新卡組
+                    const newDeck = {
+                        id: Date.now(),
+                        name: mapping.newDeckName,
+                        description: mapping.newDeckDescription || '',
+                        cardIds: [],
+                        createdAt: Date.now()
+                    };
+
+                    decksData.push(newDeck);
+                    targetDeckId = newDeck.id;
+                }
+            }
+
+            // 獲取目標卡組
+            const targetDeck = decksData.find(d => d.id === targetDeckId);
+            if (!targetDeck) {
+                console.error('找不到目標卡組');
+                return;
+            }
+
+            // 臨時存儲卡片 ID 與行索引的映射
+            const cardRowMap = new Map();
+
+            // 處理每一行數據（跳過標題行）
+            for (let i = 1; i < sheetData.length; i++) {
+                const row = sheetData[i];
+
+                // 獲取正面和背面內容
+                const frontCell = row[options.frontColumn];
+                const backCell = row[options.backColumn];
+
+                // 跳過空行
+                if (!frontCell && !backCell) continue;
+
+                // 準備卡片內容
+                let frontText, backText;
+
+                if (hasFormatting) {
+                    // 處理帶格式的內容
+                    frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                    backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+                } else {
+                    // 處理純文本內容
+                    frontText = frontCell || '';
+                    backText = backCell || '';
+                }
+
+                // 生成一個用於識別這行的唯一鍵
+                const rowKey = `${frontText}_${backText}`;
+
+                // 查找是否已存在相同內容的卡片
+                let existingCard = null;
+                for (const cardId of targetDeck.cardIds) {
+                    const card = cardsData.find(c => c.id === cardId);
+                    if (card) {
+                        const cardKey = `${card.frontText}_${card.backText}`;
+                        if (cardKey === rowKey) {
+                            existingCard = card;
+                            break;
+                        }
+                    }
+                }
+
+                if (existingCard) {
+                    // 更新現有卡片
+                    existingCard.frontText = frontText;
+                    existingCard.backText = backText;
+                    cardRowMap.set(existingCard.id, i);
+                } else {
+                    // 創建新卡片
+                    const newCardId = Date.now() + i;
+                    const newCard = {
+                        id: newCardId,
+                        frontText: frontText,
+                        backText: backText,
+                        nextReview: Date.now(),
+                        repetitions: 0,
+                        easeFactor: 2.0,
+                        interval: 1.0
+                    };
+
+                    cardsData.push(newCard);
+                    targetDeck.cardIds.push(newCardId);
+                    cardRowMap.set(newCardId, i);
+                }
+            }
+
+            // 可選：移除不再存在於表格中的卡片
+            targetDeck.cardIds = targetDeck.cardIds.filter(cardId => {
+                return cardRowMap.has(cardId);
+            });
+
+            // 刷新相關 UI
+            loadDeckList();
+            if (!manageCardSection.classList.contains('hidden')) {
+                loadAllCards();
+            }
+
+            // 提醒用戶保存數據
+            showStorageReminder();
+        }
+
+        // 將 Quill Delta 轉換為 HTML
+        function convertDeltaToHTML(delta) {
+            if (!delta || !delta.ops || delta.ops.length === 0) {
+                return '';
+            }
+
+            // 創建臨時 div 元素
+            const tempDiv = document.createElement('div');
+
+            // 處理每個操作
+            delta.ops.forEach(op => {
+                if (!op.insert) return;
+
+                const span = document.createElement('span');
+                span.textContent = op.insert;
+
+                // 應用格式
+                if (op.attributes) {
+                    if (op.attributes.bold) span.style.fontWeight = 'bold';
+                    if (op.attributes.italic) span.style.fontStyle = 'italic';
+                    if (op.attributes.underline) span.style.textDecoration = 'underline';
+                    if (op.attributes.strike) span.style.textDecoration = 'line-through';
+                    if (op.attributes.color) span.style.color = op.attributes.color;
+                    if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+                }
+
+                tempDiv.appendChild(span);
+            });
+
+            return tempDiv.innerHTML;
+        }
+
         // 初始化Quill編輯器 - 使用直接HTML創建工具欄，並防止表單提交
         // 初始化Quill編輯器 - 修復輸入問題
         function initQuillEditors() {
@@ -1584,6 +2468,9 @@
               console.log("清理背面編輯器失敗:", e);
             }
           }
+
+          // 定義 formatButtons 對象
+          formatButtons = {};
 
           console.log("工具欄HTML已創建，正在創建編輯器...");
 
@@ -5669,6 +6556,7 @@
         function openExcelImportModal() {
             resetExcelImport();
             importExcelModal.classList.remove('hidden');
+            loadExistingDecks();
         }
 
         // 關閉Excel導入對話框
@@ -5790,6 +6678,19 @@
 
             // 設置工作表映射選項
             updateSheetMappingOptions();
+
+            // 更新格式狀態指示器
+            const formatStatusValue = document.getElementById('formatStatusValue');
+            if (formatStatusValue) {
+                const hasFormatting = excelSheets[activeSheetName]?.hasFormatting;
+                if (hasFormatting) {
+                    formatStatusValue.textContent = '帶格式（粗體、斜體等將被保留）';
+                    formatStatusValue.className = 'text-green-600 dark:text-green-400';
+                } else {
+                    formatStatusValue.textContent = '純文本（不保留格式）';
+                    formatStatusValue.className = 'text-yellow-600 dark:text-yellow-400';
+                }
+            }
         }
 
         // 更新工作表選項卡
@@ -6141,11 +7042,31 @@
                                                 }
 
                                                 // 創建新字卡
-                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000); // 使用遞增ID避免衝突
+                                                // 創建新字卡
+                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
+                                                let frontText = '';
+                                                let backText = '';
+
+                                                // 處理 Google Sheets 格式化內容
+                                                if (excelSheets[sheetName].hasFormatting) {
+                                                    const frontCell = row[options.frontColumn];
+                                                    const backCell = row[options.backColumn];
+
+                                                    // 轉換為 HTML
+                                                    frontText = frontCell ? convertDeltaToHTML(frontCell.delta || { ops: [] }) : '';
+                                                    backText = backCell ? convertDeltaToHTML(backCell.delta || { ops: [] }) : '';
+                                                } else {
+                                                    // 普通文本處理
+                                                    const frontContent = row[options.frontColumn];
+                                                    const backContent = row[options.backColumn];
+                                                    frontText = frontContent ? frontContent.toString() : '';
+                                                    backText = backContent ? backContent.toString() : '';
+                                                }
+
                                                 const newCard = {
                                                     id: newCardId,
-                                                    frontText: frontContent ? frontContent.toString() : '',
-                                                    backText: backContent ? backContent.toString() : '',
+                                                    frontText: frontText,
+                                                    backText: backText,
                                                     nextReview: Date.now(),
                                                     repetitions: 0,
                                                     easeFactor: 2.0,
@@ -6269,6 +7190,10 @@
 
                                 // Initialize app
                                 function initApp() {
+
+                                  // 初始化 Google Sheets 導入功能
+                                  initGSheetsImport();
+
                                     // Initialize Quill editors
                                     initQuillEditors();
 
