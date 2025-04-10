@@ -465,6 +465,8 @@
           transition: all 0.3s ease;
         }
 
+
+
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen pt-0">
@@ -2446,6 +2448,15 @@
                         }
                     }
                 }
+
+                // 添加以下代碼處理對齊方式
+                if (effectiveFormat.horizontalAlignment) {
+                    const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
+                    if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+                        format.align = alignment;
+                    }
+                }
+            }
 
                 // 創建帶格式的 Delta
                 return {
