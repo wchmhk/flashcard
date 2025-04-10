@@ -19,22 +19,12 @@
     <script>
 
     // Google API 密鑰配置
-    const GOOGLE_API_KEY = 'AIzaSyB0ZU3TKRij9aRqaTBehND4egrP3vDeLf0'; // 將此處替換為您的 Google API 密鑰
+    let GOOGLE_API_KEY = '';
 
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#5D5CDE',
-                    }
-                }
-            }
-        }
-
-        // 定義全局變量
-        let formatButtons = {};
-        let activeQuill = null;
+    // 從localStorage加載保存的API密鑰(如果有)
+    if (localStorage.getItem('google_api_key')) {
+        GOOGLE_API_KEY = localStorage.getItem('google_api_key');
+    }
 
     </script>
 
@@ -1365,6 +1355,41 @@
                 </div>
             </div>
         </div>
+        <!-- 在文件底部，其他對話框之後添加這個 -->
+        <div id="apiSettingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4">
+                <h2 class="text-xl font-semibold mb-4">API設置</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="googleApiKeyInput" class="block text-sm font-medium mb-1">Google API密鑰</label>
+                        <input type="password" id="googleApiKeyInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base" />
+                        <div class="flex items-center mt-1">
+                            <input type="checkbox" id="showApiKey" class="mr-2">
+                            <label for="showApiKey" class="text-sm">顯示密鑰</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">API密鑰用於訪問Google Sheets API，提供格式化數據。密鑰會安全地存儲在您的瀏覽器中。</p>
+                    </div>
+                    <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg text-sm">
+                        <h3 class="font-medium text-blue-700 dark:text-blue-400">如何獲取Google API密鑰</h3>
+                        <ol class="list-decimal list-inside mt-2 space-y-1 text-blue-600 dark:text-blue-300">
+                            <li>訪問 <a href="https://console.cloud.google.com/" target="_blank" class="underline">Google Cloud Console</a></li>
+                            <li>創建一個新項目</li>
+                            <li>啟用 Google Sheets API</li>
+                            <li>創建API密鑰 (憑證 → 創建憑證 → API密鑰)</li>
+                            <li>複製API密鑰並粘貼到上面的輸入框</li>
+                        </ol>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button id="closeApiSettingsBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                            取消
+                        </button>
+                        <button id="saveApiSettingsBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                            保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1685,6 +1710,67 @@
             }
         }
 
+        function initApiSettings() {
+            const apiSettingsBtn = document.getElementById('apiSettingsBtn');
+            const apiSettingsModal = document.getElementById('apiSettingsModal');
+            const closeApiSettingsBtn = document.getElementById('closeApiSettingsBtn');
+            const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
+            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            const showApiKey = document.getElementById('showApiKey');
+
+            // 設置按鈕點擊事件
+            apiSettingsBtn.addEventListener('click', () => {
+                // 載入當前API密鑰到輸入框
+                googleApiKeyInput.value = GOOGLE_API_KEY || '';
+                apiSettingsModal.classList.remove('hidden');
+            });
+
+            // 關閉按鈕點擊事件
+            closeApiSettingsBtn.addEventListener('click', () => {
+                apiSettingsModal.classList.add('hidden');
+            });
+
+            // 保存按鈕點擊事件
+            saveApiSettingsBtn.addEventListener('click', () => {
+                const newApiKey = googleApiKeyInput.value.trim();
+
+                // 保存API密鑰
+                GOOGLE_API_KEY = newApiKey;
+                localStorage.setItem('google_api_key', newApiKey);
+
+                // 顯示確認
+                showNotification('API設置已保存');
+
+                // 關閉對話框
+                apiSettingsModal.classList.add('hidden');
+            });
+
+            // 顯示/隱藏密鑰切換
+            showApiKey.addEventListener('change', () => {
+                googleApiKeyInput.type = showApiKey.checked ? 'text' : 'password';
+            });
+
+            // 點擊對話框外部關閉
+            apiSettingsModal.addEventListener('click', (e) => {
+                if (e.target === apiSettingsModal) {
+                    apiSettingsModal.classList.add('hidden');
+                }
+            });
+
+            // 檢查是否有API密鑰，若無顯示提示
+            if (!GOOGLE_API_KEY) {
+                // 添加一個小提示到Google Sheets導入按鈕
+                const importGSheetsBtn = document.getElementById('importGSheetsBtn');
+                if (importGSheetsBtn) {
+                    importGSheetsBtn.title = '需要設置Google API密鑰才能使用格式化導入';
+                    const badgeSpan = document.createElement('span');
+                    badgeSpan.className = 'ml-1 bg-yellow-500 text-white text-xs px-1 rounded-full';
+                    badgeSpan.textContent = '!';
+                    importGSheetsBtn.appendChild(badgeSpan);
+                }
+            }
+        }
+
         // 打開 Google Sheets 導入對話框
         function openGSheetsImportModal() {
             const importGSheetsModal = document.getElementById('importGSheetsModal');
@@ -1715,7 +1801,26 @@
 
         // 從 Google Sheets 載入數據
         function loadGSheetsData() {
-            const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+            // 檢查是否設置了API密鑰
+            if (!GOOGLE_API_KEY) {
+                // 提示用戶設置API密鑰
+                showNotification('請先設置Google API密鑰');
+
+                // 自動打開API設置對話框
+                const apiSettingsModal = document.getElementById('apiSettingsModal');
+                if (apiSettingsModal) {
+                    apiSettingsModal.classList.remove('hidden');
+
+                    // 聚焦到API密鑰輸入框
+                    const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+                    if (googleApiKeyInput) {
+                        googleApiKeyInput.focus();
+                    }
+                }
+
+                return;
+            }
+                        const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
             const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
@@ -1747,6 +1852,26 @@
                         showGSheetsStep(2);
                         preparePreviewData();
 
+                        .catch(error => {
+                            console.error('Google Sheets API 錯誤:', error);
+
+                            // 檢查是否是API密鑰錯誤
+                            if (error.message && (
+                                error.message.includes('API key') ||
+                                error.message.includes('invalid key') ||
+                                error.message.includes('unauthorized')
+                            )) {
+                                showNotification('Google API密鑰無效，請重新設置');
+
+                                // 自動打開API設置對話框
+                                const apiSettingsModal = document.getElementById('apiSettingsModal');
+                                if (apiSettingsModal) {
+                                    apiSettingsModal.classList.remove('hidden');
+                                }
+                            } else {
+                                showNotification(`載入失敗: ${error.message}`);
+                            }
+
                         // 恢復按鈕狀態
                         loadBtn.disabled = false;
                         loadBtn.textContent = originalText;
@@ -1760,6 +1885,7 @@
                         // 回退到 CSV 方式
                         loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
                     });
+
             } else {
                 // 使用 CSV 方式（無格式）
                 loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
@@ -1876,6 +2002,7 @@
                         loadBtn.textContent = originalText;
                     }
                 });
+
         }
 
         // 從 Google Sheets URL 提取 spreadsheetId
@@ -6921,7 +7048,7 @@
                 noDecksOption.disabled = true;
                 targetExistingDeck.appendChild(noDecksOption);
             } else {
-              
+
                 // 默認選擇"添加到現有卡組"
                 document.querySelector('input[name="deckOption"][value="existing"]').checked = true;
                 existingDeckSelector.classList.remove('hidden');
