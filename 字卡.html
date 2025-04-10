@@ -1870,8 +1870,8 @@
                                 // 為每個工作表創建新卡組，使用工作表名稱
                                 const newDeck = {
                                     id: Date.now() + Math.floor(Math.random() * 1000),
-                                    name: `${sheetName}-${new Date().toLocaleDateString()}`,
-                                    description: '從Google Sheets自動導入的字卡',
+                                    name: `${sheetName}`,
+                                    description: ,
                                     cardIds: [],
                                     createdAt: Date.now()
                                 };
@@ -1933,9 +1933,6 @@
                                     newDeck.cardIds.push(newCardId);
                                     cardImportCount++; // 正確計算每個工作表導入的卡片數
                                 }
-
-                                // 顯示每個工作表的導入結果
-                                showNotification(`成功導入 ${cardImportCount} 張字卡到卡組 "${newDeck.name}"`);
 
                                 // 添加到總計數
                                 totalImportCount += cardImportCount;
