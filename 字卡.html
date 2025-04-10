@@ -1903,7 +1903,7 @@
                                             // 處理內容...
 
                                             // 添加調試輸出
-console.log(`成功添加卡片: ${frontText ? frontText.substring(0, 20) : '(空)'}... / ${backText ? backText.substring(0, 20) : '(空)'}...`);
+                                            console.log(`成功添加卡片: ${(frontText && typeof frontText === 'string') ? frontText.substring(0, 20) : '(空)'}... / ${(backText && typeof backText === 'string') ? backText.substring(0, 20) : '(空)'}...`);
                                             // 確保計數器增加
                                             importCount++;
                                         }
