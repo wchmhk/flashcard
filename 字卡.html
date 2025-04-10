@@ -1856,6 +1856,95 @@
                 console.log('使用 Google API 載入格式化數據');
                 loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
                     .then(() => {
+
+                      // 添加自动导入功能
+                      setTimeout(() => {
+                          // 询问用户是否直接导入
+                          if (confirm('成功加载数据！是否直接导入到新卡组？')) {
+                              // 从第一个工作表获取数据
+                              const sheetName = Object.keys(excelSheets)[0];
+                              if (sheetName && excelSheets[sheetName]) {
+                                  // 创建新卡组
+                                  const newDeck = {
+                                      id: Date.now(),
+                                      name: '来自Sheets-' + new Date().toLocaleDateString(),
+                                      description: '从Google Sheets自动导入的字卡',
+                                      cardIds: [],
+                                      createdAt: Date.now()
+                                  };
+
+                                  // 添加卡组
+                                  decksData.push(newDeck);
+
+                                  // 处理数据（从第1行开始，跳过标题行）
+                                  const sheetData = excelSheets[sheetName].data;
+                                  let importCount = 0;
+
+                                  for (let i = 1; i < sheetData.length; i++) {
+                                      const row = sheetData[i];
+                                      if (!row || !row.length) continue;
+
+                                      // 假设第0列是正面，第1列是背面
+                                      const frontContent = row[0];
+                                      const backContent = row[1];
+
+                                      // 处理内容，支持格式化和纯文本
+                                      let frontText, backText;
+
+                                      if (excelSheets[sheetName].hasFormatting) {
+                                          // 处理格式化内容
+                                          frontText = typeof frontContent === 'object' && frontContent.delta
+                                              ? convertDeltaToHTML(frontContent.delta)
+                                              : (frontContent ? frontContent.toString() : '');
+
+                                          backText = typeof backContent === 'object' && backContent.delta
+                                              ? convertDeltaToHTML(backContent.delta)
+                                              : (backContent ? backContent.toString() : '');
+                                      } else {
+                                          // 处理纯文本
+                                          frontText = frontContent ? frontContent.toString() : '';
+                                          backText = backContent ? backContent.toString() : '';
+                                      }
+
+                                      // 跳过空行
+                                      if (!frontText && !backText) continue;
+
+                                      // 创建新卡片
+                                      const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
+                                      const newCard = {
+                                          id: newCardId,
+                                          frontText: frontText,
+                                          backText: backText,
+                                          nextReview: Date.now(),
+                                          repetitions: 0,
+                                          easeFactor: 2.0,
+                                          interval: 1.0
+                                      };
+
+                                      // 添加卡片
+                                      cardsData.push(newCard);
+                                      newDeck.cardIds.push(newCardId);
+                                      importCount++;
+                                  }
+
+                                  // 显示结果
+                                  showNotification(`成功导入 ${importCount} 张字卡到卡组 "${newDeck.name}"`);
+
+                                  // 刷新UI
+                                  loadDeckList();
+
+                                  // 显示提醒保存数据
+                                  showStorageReminder();
+
+                                  // 关闭导入对话框
+                                  closeGSheetsImportModal();
+
+                                  // 切换到复习页面查看结果
+                                  showSection('review');
+                              }
+                          }
+                      }, 500); // 短暂延迟确保通知显示后再弹出确认
+
                         // 顯示預覽
                         showGSheetsStep(2);
                         preparePreviewData();
