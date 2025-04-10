@@ -2477,7 +2477,6 @@
             }
         }
 
-        // 將 Google Sheets 單元格格式轉換為 Quill Delta 格式
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
             // 如果沒有文本，返回空 Delta
             if (!value) {
@@ -2495,23 +2494,32 @@
                     if (effectiveFormat.textFormat.underline) format.underline = true;
                     if (effectiveFormat.textFormat.strikethrough) format.strike = true;
 
-                    // 處理前景色
+                    // 處理前景色 - 增強顏色處理邏輯
                     if (effectiveFormat.textFormat.foregroundColor) {
                         const color = effectiveFormat.textFormat.foregroundColor;
                         if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                            // 使用更精確的RGB值
                             const r = Math.round(color.red * 255);
                             const g = Math.round(color.green * 255);
                             const b = Math.round(color.blue * 255);
-                            format.color = `rgb(${r}, ${g}, ${b})`;
+
+                            // 檢查顏色是否為默認黑色
+                            const isDefaultBlack = r === 0 && g === 0 && b === 0;
+                            // 只在不是默認黑色時添加顏色屬性
+                            if (!isDefaultBlack) {
+                                format.color = `rgb(${r}, ${g}, ${b})`;
+                                // 保存原始顏色值以備在暗模式下使用
+                                format.originalColor = [r, g, b];
+                            }
                         }
                     }
 
-                    // 修改背景色處理方式
-                    // 只有當背景色明顯不是默認背景色時才應用它
-                    if (effectiveFormat && effectiveFormat.backgroundColor) {
+                    // 處理背景色
+                    if (effectiveFormat.backgroundColor) {
                         const bgColor = effectiveFormat.backgroundColor;
-                        // 檢查是否不是默認的白色背景
-                        if (bgColor.red !== 1 || bgColor.green !== 1 || bgColor.blue !== 1) {
+                        // 檢查是否不是默認白色
+                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                        if (!isDefaultWhite) {
                             const r = Math.round(bgColor.red * 255);
                             const g = Math.round(bgColor.green * 255);
                             const b = Math.round(bgColor.blue * 255);
@@ -2554,7 +2562,7 @@
                 // 提取文本
                 const text = value.substring(startIndex, endIndex);
 
-                // 提取格式
+                // 提取格式 - 增強顏色處理
                 const format = {};
                 if (run.format) {
                     if (run.format.bold) format.bold = true;
@@ -2562,21 +2570,29 @@
                     if (run.format.underline) format.underline = true;
                     if (run.format.strikethrough) format.strike = true;
 
-                    // 處理前景色
+                    // 處理前景色 - 加強顏色轉換
                     if (run.format.foregroundColor) {
                         const color = run.format.foregroundColor;
                         if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
                             const r = Math.round(color.red * 255);
                             const g = Math.round(color.green * 255);
                             const b = Math.round(color.blue * 255);
-                            format.color = `rgb(${r}, ${g}, ${b})`;
+
+                            // 檢查顏色是否為默認黑色
+                            const isDefaultBlack = r === 0 && g === 0 && b === 0;
+                            if (!isDefaultBlack) {
+                                format.color = `rgb(${r}, ${g}, ${b})`;
+                                // 保存原始顏色值
+                                format.originalColor = [r, g, b];
+                            }
                         }
                     }
 
                     // 處理背景色
                     if (run.format.backgroundColor) {
                         const bgColor = run.format.backgroundColor;
-                        if (bgColor.red !== undefined && bgColor.green !== undefined && bgColor.blue !== undefined) {
+                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                        if (!isDefaultWhite) {
                             const r = Math.round(bgColor.red * 255);
                             const g = Math.round(bgColor.green * 255);
                             const b = Math.round(bgColor.blue * 255);
@@ -2741,6 +2757,9 @@
                 return '';
             }
 
+            // 檢測當前頁面模式
+            const isDarkMode = document.documentElement.classList.contains('dark');
+
             // 創建臨時 div 元素
             const tempDiv = document.createElement('div');
 
@@ -2748,9 +2767,7 @@
             delta.ops.forEach(op => {
                 if (!op.insert) return;
 
-                const span = document.createElement('span');
-
-                // 處理文本換行 (這部分保留之前的換行處理邏輯)
+                // 處理文本換行
                 if (typeof op.insert === 'string' && op.insert.includes('\n')) {
                     // 將文本按換行符分割
                     const lines = op.insert.split('\n');
@@ -2762,26 +2779,102 @@
                         }
 
                         if (lines[i]) {
-                            const lineSpan = document.createElement('span');
-                            lineSpan.textContent = lines[i];
+                            const span = document.createElement('span');
+                            span.textContent = lines[i];
 
-                            // 應用格式但調整背景色
-                            applyFormattingWithDarkModeAwareness(lineSpan, op.attributes);
+                            // 應用格式並顧及暗模式適配
+                            applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
-                            tempDiv.appendChild(lineSpan);
+                            tempDiv.appendChild(span);
                         }
                     }
                 } else {
+                    const span = document.createElement('span');
                     span.textContent = op.insert;
 
-                    // 應用格式但調整背景色
-                    applyFormattingWithDarkModeAwareness(span, op.attributes);
+                    // 應用格式
+                    applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
                     tempDiv.appendChild(span);
                 }
             });
 
             return tempDiv.innerHTML;
+        }
+
+        // 增強的格式應用函數，特別注重顏色處理
+        function applyFormattingWithColorEnhancement(element, attributes, isDarkMode) {
+            if (!attributes) return;
+
+            // 基本格式
+            if (attributes.bold) element.style.fontWeight = 'bold';
+            if (attributes.italic) element.style.fontStyle = 'italic';
+            if (attributes.underline) element.style.textDecoration = 'underline';
+            if (attributes.strike) element.style.textDecoration = 'line-through';
+
+            // 前景色處理 - 優化暗模式下的顏色顯示
+            if (attributes.color) {
+                // 直接使用color屬性
+                element.style.color = attributes.color;
+
+                // 對特定顏色在暗模式下進行調整
+                if (isDarkMode) {
+                    // 可能需要根據暗模式調整某些顏色的亮度/對比度
+                    // 例如：在暗模式下加亮深色文字
+                    const colorMatch = attributes.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                    if (colorMatch) {
+                        const r = parseInt(colorMatch[1]);
+                        const g = parseInt(colorMatch[2]);
+                        const b = parseInt(colorMatch[3]);
+
+                        // 計算顏色亮度 (0-255)
+                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+                        // 如果顏色太暗，在暗模式下提亮
+                        if (brightness < 128) {
+                            // 提亮顏色，但保持色調
+                            element.style.color = `rgb(${Math.min(r + 100, 255)}, ${Math.min(g + 100, 255)}, ${Math.min(b + 100, 255)})`;
+                            // 添加文字陰影增加可讀性
+                            element.style.textShadow = '0 0 2px rgba(0,0,0,0.5)';
+                        }
+                    }
+                }
+            }
+
+            // 背景色處理
+            if (attributes.background) {
+                // 檢查是否為白色或接近白色的背景
+                if (attributes.background === 'rgb(255, 255, 255)' ||
+                    attributes.background.match(/rgb\(2[0-9][0-9], 2[0-9][0-9], 2[0-9][0-9]\)/)) {
+
+                    if (isDarkMode) {
+                        // 在暗模式下將白色背景改為半透明
+                        element.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                        // 確保文字可見
+                        if (!attributes.color) {
+                            element.style.color = '#fff';
+                        }
+                    } else {
+                        element.style.backgroundColor = attributes.background;
+                    }
+                } else {
+                    // 其他背景色直接應用，可能還需按暗模式調整
+                    element.style.backgroundColor = attributes.background;
+
+                    // 在暗模式下，可能需要調整背景色的透明度
+                    if (isDarkMode) {
+                        const match = attributes.background.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                        if (match) {
+                            // 使背景色半透明以配合暗模式
+                            element.style.backgroundColor = `rgba(${match[1]}, ${match[2]}, ${match[3]}, 0.7)`;
+                        }
+                    }
+                }
+            }
+
+            // 添加CSS類以便進一步通過CSS自定義樣式
+            if (attributes.color) element.classList.add('has-text-color');
+            if (attributes.background) element.classList.add('has-background');
         }
 
         // 添加一個新的輔助函數來處理暗模式適應的格式應用
