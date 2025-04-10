@@ -1964,71 +1964,7 @@
 
                         showNotification('成功載入 Google Sheets 數據（含格式）');
 
-                        // 添加自動導入功能
-                        setTimeout(() => {
-                            // 詢問用戶是否直接導入
-                            if (confirm('成功載入數據！是否直接導入到新卡組？')) {
-                                // 獲取所有工作表名稱
-                                const sheetNames = Object.keys(excelSheets);
-                                let totalImportCount = 0;
 
-                                // 遍歷所有工作表
-                                sheetNames.forEach((sheetName, index) => {
-                                    if (sheetName && excelSheets[sheetName]) {
-                                        // 創建卡組代碼...
-
-                                        // 處理數據（從第1行開始，跳過標題行）
-                                        const sheetData = excelSheets[sheetName].data;
-                                        let importCount = 0;
-
-                                        // 獲取此工作表的列配置
-                                        const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
-                                        const backCol = sheetOptions[sheetName]?.backColumn || 1;
-
-                                        console.log(`處理工作表 ${sheetName}, 正面列: ${frontCol}, 背面列: ${backCol}`);
-
-                                        for (let i = 1; i < sheetData.length; i++) {
-                                            const row = sheetData[i];
-                                            if (!row || !row.length) {
-                                                console.log(`行 ${i}: 跳過空行`);
-                                                continue;
-                                            }
-
-                                            // 使用正確的列索引
-                                            const frontContent = row[frontCol];
-                                            const backContent = row[backCol];
-
-                                            // 處理內容...
-
-                                            // 添加調試輸出
-                                            console.log(`成功添加卡片: ${(frontText && typeof frontText === 'string') ? frontText.substring(0, 20) : '(空)'}... / ${(backText && typeof backText === 'string') ? backText.substring(0, 20) : '(空)'}...`);
-                                            // 確保計數器增加
-                                            importCount++;
-                                        }
-
-                                        // 非常重要：確保在此位置增加總計數
-                                        totalImportCount += importCount;
-
-                                        console.log(`工作表 ${sheetName} 導入完成: ${importCount} 張字卡`);
-                                    }
-                                });
-
-                                // 顯示總體結果
-                                showNotification(`成功導入 ${totalImportCount} 張字卡到 ${sheetNames.length} 個卡組`);
-
-                                // 刷新UI
-                                loadDeckList();
-
-                                // 顯示提醒保存數據
-                                showStorageReminder();
-
-                                // 關閉導入對話框
-                                closeGSheetsImportModal();
-
-                                // 切換到複習頁面查看結果
-                                showSection('review');
-                            }
-                        }, 500); // 此處缺少了setTimeout的結束括號
                     })
 
 
