@@ -2557,7 +2557,7 @@
 
             return { ops: ops };
         }
-        
+
         // 根據 Google Sheets 數據更新字卡
         function updateCardsFromGSheets() {
             if (!activeSheetName || !excelSheets[activeSheetName]) return;
@@ -2749,6 +2749,13 @@
             if (attributes.italic) element.style.fontStyle = 'italic';
             if (attributes.underline) element.style.textDecoration = 'underline';
             if (attributes.strike) element.style.textDecoration = 'line-through';
+
+            // 添加對齊屬性處理
+            if (attributes.align) {
+                element.style.textAlign = attributes.align;
+                // 添加對應的 CSS 類以增強支持
+                element.classList.add(`ql-align-${attributes.align}`);
+            }
 
             // 前景色處理 - 優化暗模式下的顏色顯示
             if (attributes.color) {
