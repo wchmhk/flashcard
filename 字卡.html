@@ -1718,6 +1718,13 @@
             const googleApiKeyInput = document.getElementById('googleApiKeyInput');
             const showApiKey = document.getElementById('showApiKey');
 
+            // 檢查相關元素是否存在
+            if (!apiSettingsBtn) {
+                console.warn('找不到 apiSettingsBtn 元素，跳過設置');
+                // 您可以在這裡添加創建按鈕的代碼，或者直接使用其他觸發方式
+                return;
+            }
+
             // 設置按鈕點擊事件
             apiSettingsBtn.addEventListener('click', () => {
                 // 載入當前API密鑰到輸入框
@@ -7334,6 +7341,9 @@
 
                                   // 初始化 Google Sheets 導入功能
                                   initGSheetsImport();
+
+                                  // 初始化 API 設置
+                                  initApiSettings();
 
                                     // Initialize Quill editors
                                     initQuillEditors();
