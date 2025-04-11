@@ -1303,7 +1303,19 @@
         <div id="importGSheetsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl w-full mx-4 my-auto">
                 <h2 class="text-xl font-semibold mb-4">從 Google Sheets 導入字卡</h2>
-
+                <!-- 添加 API Key 狀態和清除按鈕 -->
+                <div class="flex justify-between items-center mb-2 text-sm bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                    <div>
+                        <span class="font-medium">API Key 狀態:</span>
+                        <span id="apiKeyStatus" class="ml-2">
+                            <span class="text-green-600 dark:text-green-400" id="apiKeyPresent">已設定</span>
+                            <span class="text-yellow-600 dark:text-yellow-400 hidden" id="apiKeyMissing">未設定 (無法同步粗體、底線、對齊、隔行等設置)</span>
+                        </span>
+                    </div>
+                    <button id="clearApiKeyBtn" type="button" class="text-red-500 hover:text-red-700 text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                        清除 API Key
+                    </button>
+                </div>
                 <div id="gSheetsImportSteps" class="overflow-y-auto">
                     <!-- 步驟1: 輸入 Google Sheets URL -->
                     <div id="gSheetsStep1" class="space-y-4">
@@ -1679,6 +1691,40 @@
             importGSheetsBtn.addEventListener('click', openGSheetsImportModal);
             closeGSheetsModalBtn.addEventListener('click', closeGSheetsImportModal);
             loadGSheetsBtn.addEventListener('click', loadGSheetsData);
+
+            // 添加清除 API Key 按鈕功能
+            const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
+            const apiKeyPresent = document.getElementById('apiKeyPresent');
+            const apiKeyMissing = document.getElementById('apiKeyMissing');
+
+            // 顯示 API Key 狀態
+            function updateApiKeyStatus() {
+                if (GOOGLE_API_KEY) {
+                    apiKeyPresent.classList.remove('hidden');
+                    apiKeyMissing.classList.add('hidden');
+                } else {
+                    apiKeyPresent.classList.add('hidden');
+                    apiKeyMissing.classList.remove('hidden');
+                }
+            }
+
+            // 初始更新狀態
+            updateApiKeyStatus();
+
+            // 清除按鈕處理函數
+            clearApiKeyBtn.addEventListener('click', function() {
+                // 清除本地存儲中的 API Key
+                localStorage.removeItem('google_api_key');
+
+                // 清除內存中的 API Key
+                GOOGLE_API_KEY = '';
+
+                // 更新狀態顯示
+                updateApiKeyStatus();
+
+                // 顯示通知
+                showNotification('Google API Key 已清除');
+            });
 
             // 點擊對話框外部關閉
             importGSheetsModal.addEventListener('click', function(e) {
