@@ -1312,10 +1312,16 @@
                             <span class="text-yellow-600 dark:text-yellow-400 hidden" id="apiKeyMissing">未設定 (無法同步粗體、底線、對齊、隔行等設置)</span>
                         </span>
                     </div>
-                    <button id="clearApiKeyBtn" type="button" class="text-red-500 hover:text-red-700 text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                        清除 API Key
-                    </button>
+                    <div class="flex space-x-2">
+                        <button id="apiSettingsBtn" type="button" class="text-blue-500 hover:text-blue-700 text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                            設置 API Key
+                        </button>
+                        <button id="clearApiKeyBtn" type="button" class="text-red-500 hover:text-red-700 text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                            清除 API Key
+                        </button>
+                    </div>
                 </div>
+
                 <div id="gSheetsImportSteps" class="overflow-y-auto">
                     <!-- 步驟1: 輸入 Google Sheets URL -->
                     <div id="gSheetsStep1" class="space-y-4">
