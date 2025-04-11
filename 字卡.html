@@ -1799,6 +1799,27 @@
               });
             }
 
+            // 添加輸入事件監聽器，即時更新狀態顯示
+            googleApiKeyInput.addEventListener('input', function() {
+                // 獲取當前輸入的值
+                const currentInputValue = this.value.trim();
+
+                // 獲取狀態顯示元素
+                const apiKeyPresent = document.getElementById('apiKeyPresent');
+                const apiKeyMissing = document.getElementById('apiKeyMissing');
+
+                // 根據輸入值更新顯示
+                if (currentInputValue) {
+                    apiKeyPresent.classList.remove('hidden');
+                    apiKeyMissing.classList.add('hidden');
+                    // 添加"未保存"提示
+                    apiKeyPresent.textContent = '已輸入 (尚未保存)';
+                } else {
+                    apiKeyPresent.classList.add('hidden');
+                    apiKeyMissing.classList.remove('hidden');
+                }
+            });
+
             // 檢查必要的元素
             if (!apiSettingsModal || !closeApiSettingsBtn || !saveApiSettingsBtn || !googleApiKeyInput) {
                 console.error('API設置模態框缺少必要元素，無法完成初始化');
@@ -1826,6 +1847,9 @@
 
                 // 關閉對話框
                 apiSettingsModal.classList.add('hidden');
+
+                // 返回到Google Sheets URL輸入畫面
+                showGSheetsStep(1);
             });
 
             // 顯示/隱藏密鑰切換
@@ -1926,7 +1950,7 @@
                 if (currentInputValue) {
                     apiKeyPresent.classList.remove('hidden');
                     apiKeyMissing.classList.add('hidden');
-                    // 可選：添加"未保存"提示
+                    // 添加"未保存"提示
                     apiKeyPresent.textContent = '已輸入 (尚未保存)';
                 } else {
                     apiKeyPresent.classList.add('hidden');
@@ -1953,6 +1977,9 @@
 
                 // 關閉對話框
                 apiSettingsModal.classList.add('hidden');
+
+                // 返回到Google Sheets URL輸入畫面
+                showGSheetsStep(1);                
             });
 
             // 顯示載入中狀態
