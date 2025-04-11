@@ -1777,12 +1777,26 @@
                 console.warn('找不到 apiSettingsBtn 元素，跳過設置按鈕綁定');
                 // 繼續執行，而不是返回
             } else {
-                // 設置按鈕點擊事件
-                apiSettingsBtn.addEventListener('click', () => {
-                    // 載入當前API密鑰到輸入框
-                    googleApiKeyInput.value = GOOGLE_API_KEY || '';
-                    apiSettingsModal.classList.remove('hidden');
-                });
+              // 設置按鈕點擊事件
+              apiSettingsBtn.addEventListener('click', () => {
+                  // 載入當前API密鑰到輸入框
+                  googleApiKeyInput.value = GOOGLE_API_KEY || '';
+
+                  // 更新初始狀態顯示
+                  const apiKeyPresent = document.getElementById('apiKeyPresent');
+                  const apiKeyMissing = document.getElementById('apiKeyMissing');
+                  
+                  if (GOOGLE_API_KEY) {
+                      apiKeyPresent.classList.remove('hidden');
+                      apiKeyMissing.classList.add('hidden');
+                      apiKeyPresent.textContent = '已設定';
+                  } else {
+                      apiKeyPresent.classList.add('hidden');
+                      apiKeyMissing.classList.remove('hidden');
+                  }
+
+                  apiSettingsModal.classList.remove('hidden');
+              });
             }
 
             // 檢查必要的元素
@@ -1895,6 +1909,48 @@
                 showNotification('請輸入有效的 Google Sheets URL');
                 return;
             }
+
+            // 添加輸入事件監聽器，即時更新狀態顯示
+            googleApiKeyInput.addEventListener('input', function() {
+                // 獲取當前輸入的值
+                const currentInputValue = this.value.trim();
+
+                // 獲取狀態顯示元素
+                const apiKeyPresent = document.getElementById('apiKeyPresent');
+                const apiKeyMissing = document.getElementById('apiKeyMissing');
+
+                // 根據輸入值更新顯示
+                if (currentInputValue) {
+                    apiKeyPresent.classList.remove('hidden');
+                    apiKeyMissing.classList.add('hidden');
+                    // 可選：添加"未保存"提示
+                    apiKeyPresent.textContent = '已輸入 (尚未保存)';
+                } else {
+                    apiKeyPresent.classList.add('hidden');
+                    apiKeyMissing.classList.remove('hidden');
+                }
+            });
+
+            // 保存按鈕點擊事件 - 修改保存後的顯示
+            saveApiSettingsBtn.addEventListener('click', () => {
+                const newApiKey = googleApiKeyInput.value.trim();
+
+                // 保存API密鑰
+                GOOGLE_API_KEY = newApiKey;
+                localStorage.setItem('google_api_key', newApiKey);
+
+                // 更新狀態顯示 - 確保更新為最終狀態
+                const apiKeyPresent = document.getElementById('apiKeyPresent');
+                if (newApiKey) {
+                    apiKeyPresent.textContent = '已設定'; // 更改為最終顯示文字
+                }
+
+                // 顯示確認
+                showNotification('API設置已保存');
+
+                // 關閉對話框
+                apiSettingsModal.classList.add('hidden');
+            });
 
             // 顯示載入中狀態
             const loadBtn = document.getElementById('loadGSheetsBtn');
