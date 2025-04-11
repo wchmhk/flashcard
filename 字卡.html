@@ -1785,7 +1785,7 @@
                   // 更新初始狀態顯示
                   const apiKeyPresent = document.getElementById('apiKeyPresent');
                   const apiKeyMissing = document.getElementById('apiKeyMissing');
-                  
+
                   if (GOOGLE_API_KEY) {
                       apiKeyPresent.classList.remove('hidden');
                       apiKeyMissing.classList.add('hidden');
@@ -1817,6 +1817,9 @@
                 // 保存API密鑰
                 GOOGLE_API_KEY = newApiKey;
                 localStorage.setItem('google_api_key', newApiKey);
+
+                // 更新狀態顯示
+                updateApiKeyStatus();
 
                 // 顯示確認
                 showNotification('API設置已保存');
