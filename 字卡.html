@@ -1772,6 +1772,38 @@
             const googleApiKeyInput = document.getElementById('googleApiKeyInput');
             const showApiKey = document.getElementById('showApiKey');
 
+            // 添加這個函數用於更新API密鑰狀態顯示
+            function updateApiKeyStatus() {
+                const apiKeyPresent = document.getElementById('apiKeyPresent');
+                const apiKeyMissing = document.getElementById('apiKeyMissing');
+
+                if (GOOGLE_API_KEY) {
+                    apiKeyPresent.classList.remove('hidden');
+                    apiKeyMissing.classList.add('hidden');
+                    apiKeyPresent.textContent = '已設定';
+                } else {
+                    apiKeyPresent.classList.add('hidden');
+                    apiKeyMissing.classList.remove('hidden');
+                }
+            }
+
+            // 檢查設置按鈕是否存在（不影響其他功能）
+            if (!apiSettingsBtn) {
+                console.warn('找不到 apiSettingsBtn 元素，跳過設置按鈕綁定');
+                // 繼續執行，而不是返回
+            } else {
+              // 設置按鈕點擊事件
+              apiSettingsBtn.addEventListener('click', () => {
+                  // 載入當前API密鑰到輸入框
+                  googleApiKeyInput.value = GOOGLE_API_KEY || '';
+
+                  // 更新初始狀態顯示
+                  updateApiKeyStatus(); // 這裡使用上面定義的函數
+
+                  apiSettingsModal.classList.remove('hidden');
+              });
+            }
+
             // 檢查設置按鈕是否存在（不影響其他功能）
             if (!apiSettingsBtn) {
                 console.warn('找不到 apiSettingsBtn 元素，跳過設置按鈕綁定');
@@ -1840,7 +1872,7 @@
                 localStorage.setItem('google_api_key', newApiKey);
 
                 // 更新狀態顯示
-                updateApiKeyStatus();
+                updateApiKeyStatus(); // 這裡使用上面定義的函數
 
                 // 顯示確認
                 showNotification('API設置已保存');
@@ -1950,8 +1982,7 @@
                 if (currentInputValue) {
                     apiKeyPresent.classList.remove('hidden');
                     apiKeyMissing.classList.add('hidden');
-                    // 添加"未保存"提示
-                    apiKeyPresent.textContent = '已輸入 (尚未保存)';
+                    apiKeyPresent.textContent = '已輸入';
                 } else {
                     apiKeyPresent.classList.add('hidden');
                     apiKeyMissing.classList.remove('hidden');
