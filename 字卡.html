@@ -1979,7 +1979,7 @@
                 apiSettingsModal.classList.add('hidden');
 
                 // 返回到Google Sheets URL輸入畫面
-                showGSheetsStep(1);                
+                showGSheetsStep(1);
             });
 
             // 顯示載入中狀態
@@ -2086,8 +2086,10 @@
                             // 刷新UI
                             loadDeckList();
                             showStorageReminder();
-                            closeGSheetsImportModal();
-                            showSection('review');
+
+                            // 修改：返回到URL輸入畫面而不是關閉對話框
+                            showGSheetsStep(1);
+                            showNotification('導入完成，可以繼續輸入新的URL');
                         }
                       }, 500); // 短暫延遲確保通知顯示後再彈出確認
 
