@@ -363,6 +363,10 @@
           text-align: justify;
         }
 
+        #cardFront, #cardBack, #frontText, #backText, .ql-editor {
+          font-size: 24px; /* 調整這個值改變默認字體大小 */
+        }
+
         /* 處理圖片對齊 */
         .ql-align-center img {
           display: block;
@@ -404,6 +408,138 @@
           max-width: 100%;
           height: auto;
           transition: all 0.3s ease;
+        }
+
+        /* 確保按鈕在淺色模式下也能清晰可見 */
+        /* 主要按鈕 */
+        .bg-primary {
+          background-color: #5D5CDE;
+          border: 1px solid #5D5CDE;
+        }
+
+        /* 次要按鈕和白色文本按鈕在淺色模式下的樣式 */
+        @media (prefers-color-scheme: light) {
+          .bg-gray-500, .bg-red-500, .bg-yellow-500, .bg-blue-500, .bg-green-500,
+          .bg-gray-300, .bg-red-600, .bg-yellow-600, .bg-blue-600, .bg-green-600 {
+            border: 1px solid currentColor;
+          }
+
+          /* 特別處理白色文本按鈕 */
+          button.text-white:not(.bg-primary) {
+            border: 1px solid #718096;
+          }
+
+          /* 為沒有邊框的按鈕添加適當的對比度 */
+          button.text-white:not([class*="border"]) {
+            border: 1px solid #4a5568;
+          }
+
+          /* 评分按钮 */
+          .rating-btn {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+        }
+
+        /* 改進對比度的按鈕懸停效果 */
+        .bg-red-500:hover, .bg-green-500:hover, .bg-blue-500:hover, .bg-yellow-500:hover {
+          box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+        }
+
+        .dark .bg-red-500:hover, .dark .bg-green-500:hover,
+        .dark .bg-blue-500:hover, .dark .bg-yellow-500:hover {
+          box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+        }
+
+        /* 為刪除、編輯等操作按鈕添加深色模式支持 */
+        .text-red-500, .text-blue-500, .text-green-500 {
+          position: relative;
+        }
+
+        /* 淺色模式下操作按鈕的背景 */
+        @media (prefers-color-scheme: light) {
+          .text-red-500, .text-blue-500, .text-green-500 {
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            padding: 2px;
+          }
+
+          .text-red-500:hover, .text-blue-500:hover, .text-green-500:hover {
+            background-color: rgba(0,0,0,0.1);
+          }
+        }
+
+        /* 評分按鈕特別樣式 */
+        .rating-btn {
+          border: 1px solid transparent;
+        }
+
+        @media (prefers-color-scheme: light) {
+          .rating-btn {
+            border-color: currentColor;
+          }
+        }
+
+        /* 修復模態框的按鈕 */
+        .modal-btn {
+          border: 1px solid transparent;
+        }
+
+        @media (prefers-color-scheme: light) {
+          .modal-btn {
+            border-color: currentColor;
+          }
+        }
+
+        /* 修復翻轉按鈕在淺色模式下的顯示 */
+        #flipBtn {
+          border: 1px solid #5D5CDE;
+        }
+
+        /* 卡組編輯對話框樣式 */
+        #deckEditModal .bg-white.dark\:bg-gray-800 {
+          display: flex;
+          flex-direction: column;
+          max-height: 95vh;
+          height: 95vh;
+        }
+
+        #deckEditModal .space-y-4 {
+          flex-grow: 1;
+          overflow-y: auto;
+        }
+
+        #deckCardsList, #availableCardsList {
+          height: 30vh;
+          max-height: 30vh;
+          overflow-y: auto;
+          scrollbar-width: thin;
+        }
+
+        /* 美化滾動條 */
+        #deckCardsList::-webkit-scrollbar,
+        #availableCardsList::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        #deckCardsList::-webkit-scrollbar-thumb,
+        #availableCardsList::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 3px;
+        }
+
+        #deckCardsList::-webkit-scrollbar-track,
+        #availableCardsList::-webkit-scrollbar-track {
+          background-color: rgba(229, 231, 235, 0.3);
+        }
+
+        .dark #deckCardsList::-webkit-scrollbar-thumb,
+        .dark #availableCardsList::-webkit-scrollbar-thumb {
+          background-color: rgba(75, 85, 99, 0.5);
+        }
+
+        .dark #deckCardsList::-webkit-scrollbar-track,
+        .dark #availableCardsList::-webkit-scrollbar-track {
+          background-color: rgba(31, 41, 55, 0.3);
         }
 
         /* 確保卡片顯示時也保持這些樣式 */
@@ -847,6 +983,9 @@
                         </svg>
                         新增卡組
                     </button>
+                    <button id="mergeBatchDecksBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg transition-colors text-sm hidden">
+                        合併 (<span id="mergeSelectedDeckCount">0</span>)
+                    </button>
                     <button id="deleteBatchDecksBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-lg transition-colors text-sm hidden">
                         刪除選中 (<span id="selectedDeckCount">0</span>)
                     </button>
@@ -949,10 +1088,11 @@
         </div>
 
         <!-- Deck edit modal -->
-        <div id="deckEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4">
-                <h2 class="text-xl font-semibold mb-4">編輯卡組</h2>
-                <div class="space-y-4">
+        <div id="deckEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 overflow-hidden flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 flex-shrink-0">編輯卡組</h2>
+                <div class="space-y-4 overflow-y-auto flex-grow">
+                    <!-- 卡組信息部分 -->
                     <div>
                         <label for="editDeckNameInput" class="block text-sm font-medium mb-1">卡組名稱</label>
                         <input type="text" id="editDeckNameInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base" />
@@ -961,30 +1101,83 @@
                         <label for="editDeckDescriptionInput" class="block text-sm font-medium mb-1">描述</label>
                         <textarea id="editDeckDescriptionInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base" rows="2"></textarea>
                     </div>
-                    <div class="border-t border-gray-300 dark:border-gray-700 pt-4">
-                        <h3 class="font-medium mb-2">卡組中的字卡</h3>
-                        <div id="deckCardsList" class="max-h-60 overflow-y-auto space-y-2">
+                    <!-- 卡組卡片部分 -->
+                    <div class="border-t border-gray-300 dark:border-gray-700 pt-4 flex-shrink-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium">卡組中的字卡</h3>
+                            <div class="relative">
+                                <input type="text" id="searchDeckCards" placeholder="搜尋字卡..." class="px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
+                                <svg class="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div id="deckCardsList" class="overflow-y-auto space-y-2">
                             <!-- Cards will be added here dynamically -->
                         </div>
                     </div>
-                    <div class="border-t border-gray-300 dark:border-gray-700 pt-4">
-                        <h3 class="font-medium mb-2">添加字卡</h3>
-                        <div id="availableCardsList" class="max-h-60 overflow-y-auto space-y-2">
+                    <!-- 可用卡片部分 -->
+                    <div class="border-t border-gray-300 dark:border-gray-700 pt-4 flex-shrink-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium">添加字卡</h3>
+                            <div class="relative">
+                                <input type="text" id="searchAvailableCards" placeholder="搜尋字卡..." class="px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
+                                <svg class="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div id="availableCardsList" class="overflow-y-auto space-y-2">
                             <!-- Available cards will be added here dynamically -->
                         </div>
                     </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 mt-4 border-t border-gray-300 dark:border-gray-700 flex-shrink-0">
+                    <button id="closeDeckEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                        取消
+                    </button>
+                    <button id="saveDeckEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                        儲存
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- 合併卡組對話框 -->
+        <div id="mergeDeckModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4">
+                <h2 class="text-xl font-semibold mb-4">合併卡組</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="mb-4">您選擇了 <span id="mergeCount" class="font-medium"></span> 個卡組進行合併</p>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-1">選擇合併方式</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="radio" name="mergeOption" value="new" checked class="mr-2">
+                                    <span>建立新卡組</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="mergeOption" value="replace" class="mr-2">
+                                    <span>替換原有卡組（只保留第一個選中的卡組）</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="mergeNewDeckSection">
+                            <label for="mergedDeckNameInput" class="block text-sm font-medium mb-1">合併後的卡組名稱</label>
+                            <input type="text" id="mergedDeckNameInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base" />
+                        </div>
+                    </div>
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button id="closeDeckEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                        <button id="closeMergeDeckBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
                             取消
                         </button>
-                        <button id="saveDeckEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
-                            儲存
+                        <button id="saveMergeDeckBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                            合併
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- New deck modal -->
         <div id="newDeckModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4">
@@ -1335,13 +1528,6 @@
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
                         </div>
 
-                        <div class="flex items-center mt-4">
-                            <input type="checkbox" id="enableSyncGSheets" class="mr-2">
-                            <label for="enableSyncGSheets" class="text-sm">
-                                保持同步（當 Google Sheets 更新時自動更新字卡）
-                            </label>
-                        </div>
-
                         <div class="mt-6 flex justify-between">
                             <div>
                                 <a href="https://support.google.com/docs/answer/183965" target="_blank" class="text-primary hover:underline text-sm">
@@ -1650,6 +1836,15 @@
         const closeNewDeckBtn = document.getElementById('closeNewDeckBtn');
         const saveNewDeckBtn = document.getElementById('saveNewDeckBtn');
 
+        // DOM Elements - Merge Decks
+        const mergeBatchDecksBtn = document.getElementById('mergeBatchDecksBtn');
+        const mergeSelectedDeckCount = document.getElementById('mergeSelectedDeckCount');
+        const mergeDeckModal = document.getElementById('mergeDeckModal');
+        const mergedDeckNameInput = document.getElementById('mergedDeckNameInput');
+        const mergeCount = document.getElementById('mergeCount');
+        const closeMergeDeckBtn = document.getElementById('closeMergeDeckBtn');
+        const saveMergeDeckBtn = document.getElementById('saveMergeDeckBtn');
+
         // DOM Elements - Excel Import
         const importExcelBtn = document.getElementById('importExcelBtn');
         const importExcelModal = document.getElementById('importExcelModal');
@@ -1681,6 +1876,7 @@
         const newDeckName = document.getElementById('newDeckName');
         const newDeckDescription = document.getElementById('newDeckDescription');
         const importResults = document.getElementById('importResults');
+
 
         // Google Sheets 相關函數 - 移至全局作用域
 
@@ -1956,7 +2152,6 @@
                 return;
             }
                         const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
-            const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
                 showNotification('請輸入 Google Sheets URL');
@@ -2088,7 +2283,17 @@
                                     if (!frontText && !backText) continue;
 
                                     // 創建新卡片
-                                    const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
+                                    // 創建一個基於整個工作表名稱的更可靠哈希值
+                                    const getSheetHash = (str) => {
+                                        let hash = 0;
+                                        for (let i = 0; i < str.length; i++) {
+                                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                                            hash |= 0; // 轉換為32位整數
+                                        }
+                                        return Math.abs(hash);
+                                    };
+                                    const sheetHash = getSheetHash(sheetName) * 1000;
+                                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
                                     const newCard = {
                                         id: newCardId,
                                         frontText: frontText,
@@ -2238,19 +2443,6 @@
 
                     // 設置活動工作表
                     activeSheetName = sheetName;
-
-                    // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                    if (enableSync) {
-                        window.gSheetsSyncData = {
-                            url: gSheetsUrl,
-                            spreadsheetId: spreadsheetId,
-                            lastSync: Date.now(),
-                            syncEnabled: true,
-                            useFormatting: false
-                        };
-
-                        setupGSheetsSync();
-                    }
 
                     // 顯示預覽
                     showGSheetsStep(2);
@@ -2437,21 +2629,6 @@
                         // 設置第一個工作表為活動工作表
                         activeSheetName = Object.keys(excelSheets)[0];
 
-                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                        if (enableSync) {
-                            // 保存同步元數據
-                            window.gSheetsSyncData = {
-                                url: gSheetsUrl,
-                                spreadsheetId: spreadsheetId,
-                                lastSync: Date.now(),
-                                syncEnabled: true,
-                                useFormatting: true // 標記為帶格式
-                            };
-
-                            // 設置定期同步
-                            setupGSheetsSync();
-                        }
-
                         resolve();
                     })
                     .catch(error => {
@@ -2460,115 +2637,6 @@
                     });
                 });
             });
-        }
-
-        // 與 Google Sheets 同步數據
-        function syncWithGoogleSheets() {
-            if (!window.gSheetsSyncData) return;
-
-            const { spreadsheetId, useFormatting } = window.gSheetsSyncData;
-
-            // 顯示同步中狀態
-            const syncIndicator = document.getElementById('gSheetsSyncIndicator');
-            if (syncIndicator) {
-                syncIndicator.classList.add('animate-pulse');
-                const syncNowBtn = document.getElementById('syncNowBtn');
-                if (syncNowBtn) {
-                    syncNowBtn.disabled = true;
-                    syncNowBtn.textContent = '同步中...';
-                }
-            }
-
-            // 根據是否使用格式化選擇同步方式
-            if (useFormatting && GOOGLE_API_KEY) {
-                // 使用 Google API 獲取帶格式的數據
-                loadFormattedGSheetsData(spreadsheetId, window.gSheetsSyncData.url, true)
-                    .then(() => {
-                        // 更新字卡數據
-                        updateCardsFromGSheets();
-
-                        // 更新同步時間
-                        window.gSheetsSyncData.lastSync = Date.now();
-
-                        // 恢復同步指示器狀態
-                        restoreSyncIndicator(syncIndicator);
-
-                        showNotification('已成功與 Google Sheets 同步（含格式）');
-                    })
-                    .catch(error => {
-                        console.error('Google Sheets API 同步錯誤:', error);
-                        showNotification('格式同步失敗，嘗試純文本同步');
-
-                        // 回退到 CSV 同步
-                        syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
-                    });
-            } else {
-                // 使用 CSV 獲取純文本數據
-                syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
-            }
-        }
-
-        // 使用 CSV 方式與 Google Sheets 同步（無格式）
-        function syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator) {
-            const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
-
-            fetch(exportUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('同步失敗，無法訪問 Google Sheets');
-                    }
-                    return response.text();
-                })
-                .then(csvData => {
-                    // 解析 CSV 數據
-                    const parsedData = parseCSV(csvData);
-
-                    // 保存 Google Sheets 數據
-                    const sheetName = 'GoogleSheet';
-                    excelSheets[sheetName] = {
-                        data: parsedData,
-                        columns: parsedData[0],
-                        hasFormatting: false
-                    };
-
-                    // 更新字卡數據
-                    updateCardsFromGSheets();
-
-                    // 更新同步時間
-                    if (window.gSheetsSyncData) {
-                        window.gSheetsSyncData.lastSync = Date.now();
-                    }
-
-                    if (value && typeof value === 'string') {
-                        // 保留換行符，不要去除
-                        const preservedValue = value;
-                        // 繼續處理 preservedValue...
-                    }
-
-                    // 恢復同步指示器狀態
-                    restoreSyncIndicator(syncIndicator);
-
-                    showNotification('已成功與 Google Sheets 同步（純文本）');
-                })
-                .catch(error => {
-                    console.error('Google Sheets 同步錯誤:', error);
-                    showNotification(error.message || 'Google Sheets 同步失敗');
-
-                    // 恢復同步指示器狀態
-                    restoreSyncIndicator(syncIndicator);
-                });
-        }
-
-        // 恢復同步指示器狀態
-        function restoreSyncIndicator(syncIndicator) {
-            if (syncIndicator) {
-                syncIndicator.classList.remove('animate-pulse');
-                const syncNowBtn = document.getElementById('syncNowBtn');
-                if (syncNowBtn) {
-                    syncNowBtn.disabled = false;
-                    syncNowBtn.textContent = '立即同步';
-                }
-            }
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
@@ -2735,135 +2803,6 @@
             }
 
             return { ops: ops };
-        }
-
-        // 根據 Google Sheets 數據更新字卡
-        function updateCardsFromGSheets() {
-            if (!activeSheetName || !excelSheets[activeSheetName]) return;
-
-            const sheetData = excelSheets[activeSheetName].data;
-            const hasFormatting = excelSheets[activeSheetName].hasFormatting;
-            const options = sheetOptions[activeSheetName];
-            const mapping = sheetMappings[activeSheetName];
-
-            // 確認選擇了正確的列
-            if (!options || options.frontColumn === undefined || options.backColumn === undefined) {
-                console.error('列選擇無效');
-                return;
-            }
-
-            // 獲取目標卡組
-            let targetDeckId;
-
-            if (mapping.deckOption === 'existing') {
-                targetDeckId = parseInt(mapping.deckId);
-            } else {
-                // 查找之前創建的卡組
-                const existingDeck = decksData.find(d => d.name === mapping.newDeckName);
-                if (existingDeck) {
-                    targetDeckId = existingDeck.id;
-                } else {
-                    // 如果沒有找到卡組，創建一個新卡組
-                    const newDeck = {
-                        id: Date.now(),
-                        name: mapping.newDeckName,
-                        description: mapping.newDeckDescription || '',
-                        cardIds: [],
-                        createdAt: Date.now()
-                    };
-
-                    decksData.push(newDeck);
-                    targetDeckId = newDeck.id;
-                }
-            }
-
-            // 獲取目標卡組
-            const targetDeck = decksData.find(d => d.id === targetDeckId);
-            if (!targetDeck) {
-                console.error('找不到目標卡組');
-                return;
-            }
-
-            // 臨時存儲卡片 ID 與行索引的映射
-            const cardRowMap = new Map();
-
-            // 處理每一行數據（跳過標題行）
-            for (let i = 1; i < sheetData.length; i++) {
-                const row = sheetData[i];
-
-                // 獲取正面和背面內容
-                const frontCell = row[options.frontColumn];
-                const backCell = row[options.backColumn];
-
-                // 跳過空行
-                if (!frontCell && !backCell) continue;
-
-                // 準備卡片內容
-                let frontText, backText;
-
-                if (hasFormatting) {
-                    // 處理帶格式的內容
-                    frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
-                    backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
-                } else {
-                    // 處理純文本內容
-                    frontText = frontCell || '';
-                    backText = backCell || '';
-                }
-
-                // 生成一個用於識別這行的唯一鍵
-                const rowKey = `${frontText}_${backText}`;
-
-                // 查找是否已存在相同內容的卡片
-                let existingCard = null;
-                for (const cardId of targetDeck.cardIds) {
-                    const card = cardsData.find(c => c.id === cardId);
-                    if (card) {
-                        const cardKey = `${card.frontText}_${card.backText}`;
-                        if (cardKey === rowKey) {
-                            existingCard = card;
-                            break;
-                        }
-                    }
-                }
-
-                if (existingCard) {
-                    // 更新現有卡片
-                    existingCard.frontText = frontText;
-                    existingCard.backText = backText;
-                    cardRowMap.set(existingCard.id, i);
-                } else {
-                    // 創建新卡片
-                    const newCardId = Date.now() + i;
-                    const newCard = {
-                        id: newCardId,
-                        frontText: frontText,
-                        backText: backText,
-                        nextReview: Date.now(),
-                        repetitions: 0,
-                        easeFactor: 2.0,
-                        interval: 1.0
-                    };
-
-                    cardsData.push(newCard);
-                    targetDeck.cardIds.push(newCardId);
-                    cardRowMap.set(newCardId, i);
-                }
-            }
-
-            // 可選：移除不再存在於表格中的卡片
-            targetDeck.cardIds = targetDeck.cardIds.filter(cardId => {
-                return cardRowMap.has(cardId);
-            });
-
-            // 刷新相關 UI
-            loadDeckList();
-            if (!manageCardSection.classList.contains('hidden')) {
-                loadAllCards();
-            }
-
-            // 提醒用戶保存數據
-            showStorageReminder();
         }
 
         // 將 Quill Delta 轉換為 HTML
@@ -4296,6 +4235,8 @@
             document.addEventListener('click', handleImportModalOutsideClick);
         }
 
+
+
         // Function to load import preview list
         function loadImportPreviewList(data) {
             importDecksList.innerHTML = '';
@@ -4584,6 +4525,16 @@
             }
         }
 
+        // Update batch merge button visibility and count
+        function updateBatchMergeButton() {
+            mergeSelectedDeckCount.textContent = selectedDeckIds2.size;
+            if (selectedDeckIds2.size >= 2) {
+                mergeBatchDecksBtn.classList.remove('hidden');
+            } else {
+                mergeBatchDecksBtn.classList.add('hidden');
+            }
+        }
+
         // Update batch delete decks button visibility and count
         function updateBatchDeleteDecksButton() {
             selectedDeckCount.textContent = selectedDeckIds2.size;
@@ -4592,6 +4543,116 @@
             } else {
                 deleteBatchDecksBtn.classList.add('hidden');
             }
+
+            // 同時更新合併按鈕
+            updateBatchMergeButton();
+        }
+
+        // Function to open merge deck modal
+        function openMergeDeckModal() {
+            if (selectedDeckIds2.size < 2) {
+                showNotification('請至少選擇兩個卡組進行合併');
+                return;
+            }
+
+            mergeCount.textContent = selectedDeckIds2.size;
+
+            // 設置默認的合併後卡組名稱
+            const selectedDecks = [];
+            selectedDeckIds2.forEach(id => {
+                const deck = decksData.find(d => d.id === id);
+                if (deck) selectedDecks.push(deck);
+            });
+
+            if (selectedDecks.length >= 2) {
+                mergedDeckNameInput.value = `${selectedDecks[0].name}+${selectedDecks[1].name}` +
+                    (selectedDecks.length > 2 ? `+其他${selectedDecks.length-2}個` : '');
+            }
+
+            // 顯示對話框
+            mergeDeckModal.classList.remove('hidden');
+
+            // 添加點擊外部關閉功能
+            document.addEventListener('click', handleMergeDeckOutsideClick);
+        }
+
+        // Function to close merge deck modal
+        function closeMergeDeckModal() {
+            mergeDeckModal.classList.add('hidden');
+            document.removeEventListener('click', handleMergeDeckOutsideClick);
+        }
+
+        // Handle click outside the merge deck modal to close it
+        function handleMergeDeckOutsideClick(event) {
+            const modalContent = mergeDeckModal.querySelector('div');
+            if (mergeDeckModal.contains(event.target) && !modalContent.contains(event.target)) {
+                closeMergeDeckModal();
+            }
+        }
+
+        // Function to merge selected decks
+        function mergeSelectedDecks() {
+            const mergeOption = document.querySelector('input[name="mergeOption"]:checked').value;
+            const newDeckName = mergedDeckNameInput.value.trim();
+
+            if (!newDeckName) {
+                showNotification('請輸入合併後的卡組名稱');
+                return;
+            }
+
+            // 收集所有要合併的卡組
+            const decksToMerge = [];
+            const allCardIds = new Set();
+
+            selectedDeckIds2.forEach(id => {
+                const deck = decksData.find(d => d.id === id);
+                if (deck) {
+                    decksToMerge.push(deck);
+                    // 收集所有字卡ID
+                    deck.cardIds.forEach(cardId => allCardIds.add(cardId));
+                }
+            });
+
+            if (mergeOption === 'new') {
+                // 創建新的卡組
+                const newDeck = {
+                    id: Date.now(),
+                    name: newDeckName,
+                    description: `由 ${decksToMerge.map(d => d.name).join('、')} 合併而成`,
+                    cardIds: [...allCardIds],
+                    createdAt: Date.now()
+                };
+
+                decksData.push(newDeck);
+                showNotification(`已創建合併卡組: ${newDeckName}`);
+            } else if (mergeOption === 'replace') {
+                // 替換第一個卡組
+                if (decksToMerge.length > 0) {
+                    const targetDeck = decksToMerge[0];
+                    targetDeck.name = newDeckName;
+                    targetDeck.description = `由 ${decksToMerge.map(d => d.name).join('、')} 合併而成`;
+                    targetDeck.cardIds = [...allCardIds];
+
+                    // 刪除其他被合併的卡組
+                    for (let i = 1; i < decksToMerge.length; i++) {
+                        decksData = decksData.filter(d => d.id !== decksToMerge[i].id);
+                    }
+
+                    showNotification(`已合併卡組至: ${newDeckName}`);
+                }
+            }
+
+            // 清除選擇
+            selectedDeckIds2.clear();
+            updateBatchDeleteDecksButton();
+
+            // 關閉對話框並刷新UI
+            closeMergeDeckModal();
+            loadAllDecks();
+            loadDeckList();
+
+            // 顯示存儲提醒
+            showStorageReminder();
         }
 
         // Delete selected cards
@@ -4735,6 +4796,11 @@
             manageDeckSortPreference = e.target.value;
             loadAllDecks();
         });
+
+        // Merge Decks button
+        mergeBatchDecksBtn.addEventListener('click', openMergeDeckModal);
+        closeMergeDeckBtn.addEventListener('click', closeMergeDeckModal);
+        saveMergeDeckBtn.addEventListener('click', mergeSelectedDecks);
 
         // Add search input event listeners
         deckSearchInput.addEventListener('input', () => {
@@ -5150,6 +5216,13 @@
                 option.textContent = deck.name;
                 deckFilterSelect.appendChild(option);
             });
+
+            // 添加卡組下拉選單變更事件
+            deckFilterSelect.addEventListener('change', function() {
+                // 當卡組選擇變更時重新載入字卡
+                loadAllCards();
+            });
+
         }
 
         // Show different review stages
@@ -6291,22 +6364,22 @@
 
         // Add new card
         function addNewCard(frontText, frontImage, backText, backImage) {
-            const newCardId = Date.now();
+          // 創建新字卡 - 使用安全的唯一ID生成方式
+          const newCardId = Date.now() + Math.floor(Math.random() * 10000);
+          const newCard = {
+              id: newCardId,
+              frontText: frontText,
+              frontImage: frontImage,
+              backText: backText,
+              backImage: backImage,
+              nextReview: Date.now(),
+              repetitions: 0,
+              easeFactor: 2.0,
+              interval: 1.0
+          };
 
-            const newCard = {
-                id: newCardId,
-                frontText: frontText,
-                frontImage: frontImage,
-                backText: backText,
-                backImage: backImage,
-                nextReview: Date.now(),
-                repetitions: 0,
-                easeFactor: 2.0,
-                interval: 1.0
-            };
-
-            cardsData.push(newCard);
-            return newCardId;
+          cardsData.push(newCard);
+          return newCardId;
         }
 
         // Load all cards for management
@@ -6380,19 +6453,22 @@
                     `;
                 }
 
-                // Find which decks contain this card
+                // 查找哪些卡組包含這張卡片
                 const containingDecks = decksData.filter(deck => deck.cardIds.includes(card.id));
                 let deckBadges = '';
 
                 if (containingDecks.length > 0) {
                     const deckList = containingDecks.map(deck =>
-                        `<span class="text-xs px-2 py-1 bg-primary bg-opacity-10 text-primary rounded-full">
+                        `<span class="text-xs px-3 py-1.5 bg-primary bg-opacity-10 text-primary rounded-lg border border-primary border-opacity-20 shadow-sm flex items-center">
+                            <svg class="w-3 h-3 mr-1 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+                            </svg>
                             ${deck.name}
                         </span>`
                     ).join('');
 
                     deckBadges = `
-                        <div class="mt-2 flex flex-wrap gap-2">
+                        <div class="mt-3 mb-1 flex flex-wrap gap-2">
                             ${deckList}
                         </div>
                     `;
@@ -6422,12 +6498,6 @@
                                 ${backContent}
                                 <div class="mt-2 flex flex-wrap gap-2">
                                     ${difficultyBadge}
-                                    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-                                        下次複習: ${formatDate(card.nextReview)}
-                                    </span>
-                                    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-                                        複習次數: ${card.repetitions || 0}
-                                    </span>
                                 </div>
                                 ${deckBadges}
                             </div>
@@ -6790,6 +6860,7 @@
         }
 
         // Open deck edit modal
+        // 修改打開卡組編輯對話框的函數
         function openDeckEditModal(deckId) {
             const deck = decksData.find(d => d.id === deckId);
             if (!deck) return;
@@ -6798,25 +6869,99 @@
             editDeckNameInput.value = deck.name;
             editDeckDescriptionInput.value = deck.description || '';
 
-            // Load cards in deck
-            loadDeckCards(deck);
+            // 載入卡片
+            loadDeckCards(deck, '');
+            loadAvailableCards(deck, '');
 
-            // Load available cards (cards not in this deck)
-            loadAvailableCards(deck);
+            // 獲取搜尋框元素
+            const searchDeckCardsInput = document.getElementById('searchDeckCards');
+            const searchAvailableCardsInput = document.getElementById('searchAvailableCards');
 
-            // Show modal
+            // 重置搜尋框
+            if (searchDeckCardsInput) searchDeckCardsInput.value = '';
+            if (searchAvailableCardsInput) searchAvailableCardsInput.value = '';
+
+            // 添加搜尋事件監聽器
+            if (searchDeckCardsInput) {
+                searchDeckCardsInput.addEventListener('input', function() {
+                    loadDeckCards(deck, this.value.trim());
+                });
+            }
+
+            if (searchAvailableCardsInput) {
+                searchAvailableCardsInput.addEventListener('input', function() {
+                    loadAvailableCards(deck, this.value.trim());
+                });
+            }
+
+            // 顯示對話框
             deckEditModal.classList.remove('hidden');
 
-            // Setup event listeners
+            // 設置事件監聽器
             closeDeckEditBtn.addEventListener('click', closeDeckEditModal);
             saveDeckEditBtn.addEventListener('click', saveDeckEdit);
 
-            // Add click outside to close functionality
+            // 添加點擊外部關閉功能
             document.addEventListener('click', handleDeckEditOutsideClick);
         }
 
+        // 修改卡組編輯對話框的大小和布局
+        function adjustDeckEditModalHeight() {
+            const deckEditModal = document.getElementById('deckEditModal');
+            if (!deckEditModal) return;
+
+            const modalContent = deckEditModal.querySelector('.bg-white.dark\\:bg-gray-800');
+            if (!modalContent) return;
+
+            // 設置最大高度為視窗高度的95%，留一些空間
+            modalContent.style.maxHeight = '95vh';
+            modalContent.style.height = '95vh';
+            modalContent.style.display = 'flex';
+            modalContent.style.flexDirection = 'column';
+
+            // 獲取標題和按鈕區域的高度
+            const header = modalContent.querySelector('h2');
+            const footer = modalContent.querySelector('div.flex.justify-end');
+            const headerHeight = header ? header.offsetHeight : 0;
+            const footerHeight = footer ? footer.offsetHeight : 0;
+
+            // 獲取卡片列表容器
+            const deckCardsList = document.getElementById('deckCardsList');
+            const availableCardsList = document.getElementById('availableCardsList');
+
+            // 計算列表可用高度
+            const listsContainerHeight = modalContent.clientHeight - headerHeight - footerHeight - 80; // 減去padding和其他元素的高度
+            const listHeight = listsContainerHeight / 2 - 30; // 兩個列表平分高度，減去margin
+
+            // 應用高度
+            if (deckCardsList) {
+                deckCardsList.style.maxHeight = `${listHeight}px`;
+                deckCardsList.style.height = `${listHeight}px`;
+            }
+
+            if (availableCardsList) {
+                availableCardsList.style.maxHeight = `${listHeight}px`;
+                availableCardsList.style.height = `${listHeight}px`;
+            }
+        }
+
+        // 在視窗大小變化時調整對話框高度
+        window.addEventListener('resize', function() {
+            adjustDeckEditModalHeight();
+        });
+
+        // 修改原有的openDeckEditModal函數
+        const originalOpenDeckEditModal = openDeckEditModal;
+        openDeckEditModal = function(deckId) {
+            originalOpenDeckEditModal(deckId);
+
+            // 在對話框打開後調整高度
+            setTimeout(adjustDeckEditModalHeight, 0);
+        };
+
         // Load cards in deck for editing
-        function loadDeckCards(deck) {
+        // 修改卡片載入函數以支持搜尋
+        function loadDeckCards(deck, searchText = '') {
             deckCardsList.innerHTML = '';
 
             if (deck.cardIds.length === 0) {
@@ -6824,10 +6969,26 @@
                 return;
             }
 
-            deck.cardIds.forEach(cardId => {
-                const card = cardsData.find(c => c.id === cardId);
-                if (!card) return;
+            // 取得並過濾卡片
+            let filteredCards = deck.cardIds
+                .map(cardId => cardsData.find(c => c.id === cardId))
+                .filter(card => card); // 移除未找到的卡片
 
+            // 如果有搜尋文字，過濾卡片
+            if (searchText) {
+                const lowerSearchText = searchText.toLowerCase();
+                filteredCards = filteredCards.filter(card =>
+                    (card.frontText && stripHtml(card.frontText).toLowerCase().includes(lowerSearchText)) ||
+                    (card.backText && stripHtml(card.backText).toLowerCase().includes(lowerSearchText))
+                );
+            }
+
+            if (filteredCards.length === 0) {
+                deckCardsList.innerHTML = '<p class="text-gray-500 text-sm py-2">沒有符合搜尋條件的字卡</p>';
+                return;
+            }
+
+            filteredCards.forEach(card => {
                 const cardElement = document.createElement('div');
                 cardElement.className = 'flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded';
 
@@ -6836,9 +6997,20 @@
                     frontPreview = frontPreview.substring(0, 20) + '...';
                 }
 
+                // 處理背面預覽
+                let backPreview = stripHtml(card.backText);
+                if (backPreview && backPreview.length > 20) {
+                    backPreview = backPreview.substring(0, 20) + '...';
+                }
+
                 cardElement.innerHTML = `
-                    <span class="text-sm">${frontPreview || '無文字'}</span>
-                    <button class="remove-from-deck-btn text-red-500 hover:text-red-700 text-sm" data-card-id="${cardId}">
+                    <div class="flex-1 pr-2">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium">${frontPreview || '無文字'}</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">${backPreview || '無文字'}</span>
+                        </div>
+                    </div>
+                    <button class="remove-from-deck-btn text-red-500 hover:text-red-700 text-sm" data-card-id="${card.id}">
                         移除
                     </button>
                 `;
@@ -6846,7 +7018,7 @@
                 deckCardsList.appendChild(cardElement);
             });
 
-            // Add remove card from deck event listeners
+            // 添加移除字卡按鈕的事件監聽器
             document.querySelectorAll('.remove-from-deck-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const cardId = parseInt(e.currentTarget.dataset.cardId);
@@ -6856,17 +7028,27 @@
         }
 
         // Load available cards for deck editing
-        function loadAvailableCards(deck) {
+        function loadAvailableCards(deck, searchText = '') {
             availableCardsList.innerHTML = '';
 
             const availableCards = cardsData.filter(card => !deck.cardIds.includes(card.id));
 
-            if (availableCards.length === 0) {
-                availableCardsList.innerHTML = '<p class="text-gray-500 text-sm py-2">沒有可添加的字卡</p>';
+            // 如果有搜尋文字，過濾卡片
+            let filteredCards = availableCards;
+            if (searchText) {
+                const lowerSearchText = searchText.toLowerCase();
+                filteredCards = availableCards.filter(card =>
+                    (card.frontText && stripHtml(card.frontText).toLowerCase().includes(lowerSearchText)) ||
+                    (card.backText && stripHtml(card.backText).toLowerCase().includes(lowerSearchText))
+                );
+            }
+
+            if (filteredCards.length === 0) {
+                availableCardsList.innerHTML = '<p class="text-gray-500 text-sm py-2">沒有符合搜尋條件的字卡</p>';
                 return;
             }
 
-            availableCards.forEach(card => {
+            filteredCards.forEach(card => {
                 const cardElement = document.createElement('div');
                 cardElement.className = 'flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded';
 
@@ -6875,8 +7057,28 @@
                     frontPreview = frontPreview.substring(0, 20) + '...';
                 }
 
+                // 處理背面預覽
+                let backPreview = stripHtml(card.backText);
+                if (backPreview && backPreview.length > 20) {
+                    backPreview = backPreview.substring(0, 20) + '...';
+                }
+
+                // 查找所在卡組
+                const containingDecks = decksData.filter(d => d.cardIds.includes(card.id));
+                let decksInfo = '';
+                if (containingDecks.length > 0) {
+                    // 顯示具體卡組名稱
+                    const deckNames = containingDecks.map(d => d.name).join(', ');
+                    decksInfo = `<span class="text-xs text-gray-500 dark:text-gray-500">卡組: ${deckNames}</span>`;
+                }
                 cardElement.innerHTML = `
-                    <span class="text-sm">${frontPreview || '無文字'}</span>
+                    <div class="flex-1 pr-2">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium">${frontPreview || '無文字'}</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">${backPreview || '無文字'}</span>
+                            ${decksInfo}
+                        </div>
+                    </div>
                     <button class="add-to-deck-btn text-green-500 hover:text-green-700 text-sm" data-card-id="${card.id}">
                         添加
                     </button>
@@ -6895,15 +7097,23 @@
         }
 
         // Remove card from deck during editing
+        // 修改移除卡片函數
         function removeCardFromDeck(cardId) {
             const deckIndex = decksData.findIndex(d => d.id === editingDeckId);
             if (deckIndex === -1) return;
 
+            // 獲取當前搜尋文字
+            const searchDeckCardsInput = document.getElementById('searchDeckCards');
+            const searchAvailableCardsInput = document.getElementById('searchAvailableCards');
+            const deckSearchText = searchDeckCardsInput ? searchDeckCardsInput.value.trim() : '';
+            const availableSearchText = searchAvailableCardsInput ? searchAvailableCardsInput.value.trim() : '';
+
+            // 從卡組中移除卡片
             decksData[deckIndex].cardIds = decksData[deckIndex].cardIds.filter(id => id !== cardId);
 
-            // Reload card lists
-            loadDeckCards(decksData[deckIndex]);
-            loadAvailableCards(decksData[deckIndex]);
+            // 重新載入卡片列表，保持搜尋條件
+            loadDeckCards(decksData[deckIndex], deckSearchText);
+            loadAvailableCards(decksData[deckIndex], availableSearchText);
         }
 
         // Add card to deck during editing
@@ -7666,8 +7876,17 @@
 
                                                 // 創建新字卡
                                                 // 創建新字卡
-                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
-                                                let frontText = '';
+                                                // 創建一個基於整個工作表名稱的更可靠哈希值
+                                                const getSheetHash = (str) => {
+                                                    let hash = 0;
+                                                    for (let i = 0; i < str.length; i++) {
+                                                        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                                                        hash |= 0; // 轉換為32位整數
+                                                    }
+                                                    return Math.abs(hash);
+                                                };
+                                                const sheetHash = getSheetHash(sheetName) * 1000;
+                                                const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);                                                let frontText = '';
                                                 let backText = '';
 
                                                 // 處理 Google Sheets 格式化內容
