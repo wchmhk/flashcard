@@ -2102,8 +2102,6 @@
 
             // 重置表單
             document.getElementById('gSheetsUrlInput').value = '';
-            document.getElementById('enableSyncGSheets').checked = false;
-
             // 顯示第一步
             showGSheetsStep(1);
         }
@@ -2152,7 +2150,6 @@
                 return;
             }
                         const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
-            const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
                 showNotification('請輸入 Google Sheets URL');
@@ -2640,21 +2637,6 @@
 
                         // 設置第一個工作表為活動工作表
                         activeSheetName = Object.keys(excelSheets)[0];
-
-                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                        if (enableSync) {
-                            // 保存同步元數據
-                            window.gSheetsSyncData = {
-                                url: gSheetsUrl,
-                                spreadsheetId: spreadsheetId,
-                                lastSync: Date.now(),
-                                syncEnabled: true,
-                                useFormatting: true // 標記為帶格式
-                            };
-
-                            // 設置定期同步
-                            setupGSheetsSync();
-                        }
 
                         resolve();
                     })
