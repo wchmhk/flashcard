@@ -2034,9 +2034,9 @@
             }
 
             // 確保元素存在後再添加事件監聽器
-            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
-            if (googleApiKeyInput) {
-                googleApiKeyInput.addEventListener('input', function() {
+            let tempGoogleApiKeyInput = document.getElementById('googleApiKeyInput');
+            if (tempGoogleApiKeyInput) {
+                tempGoogleApiKeyInput.addEventListener('input', function() {
                     // 獲取當前輸入的值
                     const currentInputValue = this.value.trim();
 
