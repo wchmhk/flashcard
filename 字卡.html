@@ -2102,6 +2102,8 @@
 
             // 重置表單
             document.getElementById('gSheetsUrlInput').value = '';
+            document.getElementById('enableSyncGSheets').checked = false;
+
             // 顯示第一步
             showGSheetsStep(1);
         }
@@ -2150,6 +2152,7 @@
                 return;
             }
                         const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+            const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
                 showNotification('請輸入 Google Sheets URL');
@@ -2451,6 +2454,8 @@
                             syncEnabled: true,
                             useFormatting: false
                         };
+
+                        setupGSheetsSync();
                     }
 
                     // 顯示預覽
@@ -2638,6 +2643,21 @@
                         // 設置第一個工作表為活動工作表
                         activeSheetName = Object.keys(excelSheets)[0];
 
+                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                        if (enableSync) {
+                            // 保存同步元數據
+                            window.gSheetsSyncData = {
+                                url: gSheetsUrl,
+                                spreadsheetId: spreadsheetId,
+                                lastSync: Date.now(),
+                                syncEnabled: true,
+                                useFormatting: true // 標記為帶格式
+                            };
+
+                            // 設置定期同步
+                            setupGSheetsSync();
+                        }
+
                         resolve();
                     })
                     .catch(error => {
@@ -2646,6 +2666,115 @@
                     });
                 });
             });
+        }
+
+        // 與 Google Sheets 同步數據
+        function syncWithGoogleSheets() {
+            if (!window.gSheetsSyncData) return;
+
+            const { spreadsheetId, useFormatting } = window.gSheetsSyncData;
+
+            // 顯示同步中狀態
+            const syncIndicator = document.getElementById('gSheetsSyncIndicator');
+            if (syncIndicator) {
+                syncIndicator.classList.add('animate-pulse');
+                const syncNowBtn = document.getElementById('syncNowBtn');
+                if (syncNowBtn) {
+                    syncNowBtn.disabled = true;
+                    syncNowBtn.textContent = '同步中...';
+                }
+            }
+
+            // 根據是否使用格式化選擇同步方式
+            if (useFormatting && GOOGLE_API_KEY) {
+                // 使用 Google API 獲取帶格式的數據
+                loadFormattedGSheetsData(spreadsheetId, window.gSheetsSyncData.url, true)
+                    .then(() => {
+                        // 更新字卡數據
+                        updateCardsFromGSheets();
+
+                        // 更新同步時間
+                        window.gSheetsSyncData.lastSync = Date.now();
+
+                        // 恢復同步指示器狀態
+                        restoreSyncIndicator(syncIndicator);
+
+                        showNotification('已成功與 Google Sheets 同步（含格式）');
+                    })
+                    .catch(error => {
+                        console.error('Google Sheets API 同步錯誤:', error);
+                        showNotification('格式同步失敗，嘗試純文本同步');
+
+                        // 回退到 CSV 同步
+                        syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
+                    });
+            } else {
+                // 使用 CSV 獲取純文本數據
+                syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator);
+            }
+        }
+
+        // 使用 CSV 方式與 Google Sheets 同步（無格式）
+        function syncWithGoogleSheetsCSV(spreadsheetId, syncIndicator) {
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+
+            fetch(exportUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('同步失敗，無法訪問 Google Sheets');
+                    }
+                    return response.text();
+                })
+                .then(csvData => {
+                    // 解析 CSV 數據
+                    const parsedData = parseCSV(csvData);
+
+                    // 保存 Google Sheets 數據
+                    const sheetName = 'GoogleSheet';
+                    excelSheets[sheetName] = {
+                        data: parsedData,
+                        columns: parsedData[0],
+                        hasFormatting: false
+                    };
+
+                    // 更新字卡數據
+                    updateCardsFromGSheets();
+
+                    // 更新同步時間
+                    if (window.gSheetsSyncData) {
+                        window.gSheetsSyncData.lastSync = Date.now();
+                    }
+
+                    if (value && typeof value === 'string') {
+                        // 保留換行符，不要去除
+                        const preservedValue = value;
+                        // 繼續處理 preservedValue...
+                    }
+
+                    // 恢復同步指示器狀態
+                    restoreSyncIndicator(syncIndicator);
+
+                    showNotification('已成功與 Google Sheets 同步（純文本）');
+                })
+                .catch(error => {
+                    console.error('Google Sheets 同步錯誤:', error);
+                    showNotification(error.message || 'Google Sheets 同步失敗');
+
+                    // 恢復同步指示器狀態
+                    restoreSyncIndicator(syncIndicator);
+                });
+        }
+
+        // 恢復同步指示器狀態
+        function restoreSyncIndicator(syncIndicator) {
+            if (syncIndicator) {
+                syncIndicator.classList.remove('animate-pulse');
+                const syncNowBtn = document.getElementById('syncNowBtn');
+                if (syncNowBtn) {
+                    syncNowBtn.disabled = false;
+                    syncNowBtn.textContent = '立即同步';
+                }
+            }
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
@@ -2812,6 +2941,146 @@
             }
 
             return { ops: ops };
+        }
+
+        // 根據 Google Sheets 數據更新字卡
+        function updateCardsFromGSheets() {
+            if (!activeSheetName || !excelSheets[activeSheetName]) return;
+
+            const sheetData = excelSheets[activeSheetName].data;
+            const hasFormatting = excelSheets[activeSheetName].hasFormatting;
+            const options = sheetOptions[activeSheetName];
+            const mapping = sheetMappings[activeSheetName];
+
+            // 確認選擇了正確的列
+            if (!options || options.frontColumn === undefined || options.backColumn === undefined) {
+                console.error('列選擇無效');
+                return;
+            }
+
+            // 獲取目標卡組
+            let targetDeckId;
+
+            if (mapping.deckOption === 'existing') {
+                targetDeckId = parseInt(mapping.deckId);
+            } else {
+                // 查找之前創建的卡組
+                const existingDeck = decksData.find(d => d.name === mapping.newDeckName);
+                if (existingDeck) {
+                    targetDeckId = existingDeck.id;
+                } else {
+                    // 如果沒有找到卡組，創建一個新卡組
+                    const newDeck = {
+                        id: Date.now(),
+                        name: mapping.newDeckName,
+                        description: mapping.newDeckDescription || '',
+                        cardIds: [],
+                        createdAt: Date.now()
+                    };
+
+                    decksData.push(newDeck);
+                    targetDeckId = newDeck.id;
+                }
+            }
+
+            // 獲取目標卡組
+            const targetDeck = decksData.find(d => d.id === targetDeckId);
+            if (!targetDeck) {
+                console.error('找不到目標卡組');
+                return;
+            }
+
+            // 臨時存儲卡片 ID 與行索引的映射
+            const cardRowMap = new Map();
+
+            // 處理每一行數據（跳過標題行）
+            for (let i = 1; i < sheetData.length; i++) {
+                const row = sheetData[i];
+
+                // 獲取正面和背面內容
+                const frontCell = row[options.frontColumn];
+                const backCell = row[options.backColumn];
+
+                // 跳過空行
+                if (!frontCell && !backCell) continue;
+
+                // 準備卡片內容
+                let frontText, backText;
+
+                if (hasFormatting) {
+                    // 處理帶格式的內容
+                    frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                    backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+                } else {
+                    // 處理純文本內容
+                    frontText = frontCell || '';
+                    backText = backCell || '';
+                }
+
+                // 生成一個用於識別這行的唯一鍵
+                const rowKey = `${frontText}_${backText}`;
+
+                // 查找是否已存在相同內容的卡片
+                let existingCard = null;
+                for (const cardId of targetDeck.cardIds) {
+                    const card = cardsData.find(c => c.id === cardId);
+                    if (card) {
+                        const cardKey = `${card.frontText}_${card.backText}`;
+                        if (cardKey === rowKey) {
+                            existingCard = card;
+                            break;
+                        }
+                    }
+                }
+
+                if (existingCard) {
+                    // 更新現有卡片
+                    existingCard.frontText = frontText;
+                    existingCard.backText = backText;
+                    cardRowMap.set(existingCard.id, i);
+                } else {
+                    // 創建新卡片
+                    // 創建新字卡
+                    // 創建一個基於整個工作表名稱的更可靠哈希值
+                    const getSheetHash = (str) => {
+                        let hash = 0;
+                        for (let i = 0; i < str.length; i++) {
+                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                            hash |= 0; // 轉換為32位整數
+                        }
+                        return Math.abs(hash);
+                    };
+                    const sheetHash = getSheetHash(sheetName) * 1000;
+                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
+                    const newCard = {
+                        id: newCardId,
+                        frontText: frontText,
+                        backText: backText,
+                        nextReview: Date.now(),
+                        repetitions: 0,
+                        easeFactor: 2.0,
+                        interval: 1.0
+                    };
+
+                    cardsData.push(newCard);
+                    targetDeck.cardIds.push(newCardId);
+                    cardRowMap.set(newCardId, i);
+                }
+            }
+
+            // 可選：移除不再存在於表格中的卡片
+            targetDeck.cardIds = targetDeck.cardIds.filter(cardId => {
+                return cardRowMap.has(cardId);
+            });
+
+            // 刷新相關 UI
+            loadDeckList();
+            if (!manageCardSection.classList.contains('hidden')) {
+                loadAllCards();
+            }
+
+            // 提醒用戶保存數據
+            showStorageReminder();
         }
 
         // 將 Quill Delta 轉換為 HTML
