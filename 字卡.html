@@ -2389,50 +2389,34 @@
 
         // 使用 CSV 方式載入 Google Sheets 數據（無格式）
         function loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText) {
-            // 構建導出 CSV 的 URL
+            // 構建直接導出 CSV 的 URL
             const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+            console.log('嘗試直接從 URL 載入數據:', exportUrl);
 
-            console.log('嘗試從 URL 載入數據:', exportUrl);
-
-            // 使用 JSONP 方式繞過 CORS 限制
-            const jsonpUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
-
-            fetch(jsonpUrl)
+            return new Promise((resolve, reject) => {
+                // 首先嘗試直接使用fetch獲取CSV
+                fetch(exportUrl, {
+                    method: 'GET',
+                    credentials: 'omit',  // 避免cookie問題
+                    mode: 'cors',         // 嘗試跨域請求
+                    cache: 'no-cache'     // 避免緩存問題
+                })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(`無法訪問 Google Sheets，狀態碼: ${response.status}`);
+                        throw new Error(`無法直接訪問Google Sheets，狀態碼: ${response.status}`);
                     }
                     return response.text();
                 })
-                .then(text => {
-                    // JSONP 回應需要處理，移除前缀和後缀
-                    const jsonStart = text.indexOf('{');
-                    const jsonEnd = text.lastIndexOf('}');
-                    if (jsonStart === -1 || jsonEnd === -1) {
-                        throw new Error('返回的數據格式不正確');
-                    }
-
-                    const jsonText = text.substring(jsonStart, jsonEnd + 1);
-                    const data = JSON.parse(jsonText);
-
-                    // 轉換為 CSV 格式的數據結構
-                    const rows = [];
-                    // 添加表頭
-                    const headers = data.table.cols.map(col => col.label || '');
-                    rows.push(headers);
-
-                    // 添加數據行
-                    data.table.rows.forEach(row => {
-                        const rowData = row.c.map(cell => (cell ? (cell.v || '') : ''));
-                        rows.push(rowData);
-                    });
+                .then(csvData => {
+                    // 處理CSV數據
+                    const parsedData = parseCSV(csvData);
 
                     // 保存 Google Sheets 數據
                     const sheetName = 'GoogleSheet';
                     excelSheets = {};
                     excelSheets[sheetName] = {
-                        data: rows,
-                        columns: headers,
+                        data: parsedData,
+                        columns: parsedData[0] || [],
                         hasFormatting: false
                     };
 
@@ -2468,36 +2452,38 @@
                         setupGSheetsSync();
                     }
 
-                    // 顯示預覽
-                    showGSheetsStep(2);
-                    preparePreviewData();
-
                     // 恢復按鈕狀態
                     if (loadBtn) {
                         loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
+                        loadBtn.textContent = originalText || '載入';
                     }
 
-                    showNotification('成功載入 Google Sheets 數據');
+                    showNotification('成功載入 Google Sheets 數據（純文本方式）');
+                    resolve();
                 })
                 .catch(error => {
                     console.error('Google Sheets 載入錯誤:', error);
 
-                    // 提供更詳細的錯誤說明和解決方案
-                    let errorMessage = `Google Sheets 載入失敗: ${error.message || '無法連接到Google Sheets'}`;
-                    errorMessage += '\n請確保：';
-                    errorMessage += '\n1. 您的Google Sheet已設為「任何人都可以查看」';
-                    errorMessage += '\n2. 已在「檔案 -> 發布到網路」中發布此表格';
-
-                    showNotification(errorMessage);
+                    if (isSafari) {
+                        // 為 Safari 提供手動下載的選項
+                        const manualDownloadUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
+                        showNotification(`
+                            Safari 無法自動載入 Google Sheets。請
+                            <a href="${manualDownloadUrl}" target="_blank" class="text-blue-500 underline">點擊此處下載</a>
+                            然後使用"導入Excel"功能上傳`, 10000);
+                    } else {
+                        showNotification(`載入失敗: ${error.message || '無法連接到Google Sheets'}`);
+                    }
 
                     // 恢復按鈕狀態
                     if (loadBtn) {
                         loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
+                        loadBtn.textContent = originalText || '載入';
                     }
-                });
 
+                    reject(error);
+                });
+            });
         }
 
         // 從 Google Sheets URL 提取 spreadsheetId
@@ -2513,6 +2499,13 @@
             match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (match) return match[1];
 
+            // 檢查其他可能的格式
+            match = url.match(/sheets\.google\.com.*[?&]id=([a-zA-Z0-9-_]+)/i);
+            if (match) return match[1];
+
+            match = url.match(/docs\.google\.com\/spreadsheets.*[?&]key=([a-zA-Z0-9-_]+)/i);
+            if (match) return match[1];
+
             // 直接是ID的情況
             if (/^[a-zA-Z0-9-_]+$/.test(url)) return url;
 
@@ -2526,24 +2519,38 @@
 
         // 解析 CSV 數據為二維數組
         function parseCSV(text) {
-            const lines = text.split('\n');
+            if (!text) return [[]];
+
+            const lines = text.split(/\r?\n/);
             const result = [];
 
-            for (let line of lines) {
-                // 處理 CSV 行，支持引號括起的字段
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue;
+
                 const row = [];
                 let inQuotes = false;
                 let currentField = '';
 
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
 
                     if (char === '"') {
-                        inQuotes = !inQuotes;
+                        // 處理引號
+                        if (inQuotes && j < line.length - 1 && line[j + 1] === '"') {
+                            // 處理連續兩個引號（CSV中的轉義引號）
+                            currentField += '"';
+                            j++; // 跳過下一個引號
+                        } else {
+                            // 切換引號模式
+                            inQuotes = !inQuotes;
+                        }
                     } else if (char === ',' && !inQuotes) {
+                        // 非引號內的逗號表示字段分隔
                         row.push(currentField);
                         currentField = '';
                     } else {
+                        // 普通字符
                         currentField += char;
                     }
                 }
@@ -2559,135 +2566,165 @@
         // 帶格式的 Google Sheets 導入（使用 Google API）
         function loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync) {
             return new Promise((resolve, reject) => {
-                // 加載 Google API 客戶端
-                gapi.load('client', () => {
-                    gapi.client.init({
-                        apiKey: GOOGLE_API_KEY,
-                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                    })
-                    .then(() => {
-                        // 請求 Google Sheets 數據，包含格式信息
-                        return gapi.client.sheets.spreadsheets.get({
-                            spreadsheetId: spreadsheetId,
-                            includeGridData: true,
-                            ranges: []  // 空數組表示獲取所有工作表
-                        });
-                    })
-                    .then(response => {
-                        const sheets = response.result.sheets;
+                // 檢查gapi是否正確載入
+                if (typeof gapi === 'undefined') {
+                    console.error('Google API 未能正確載入，嘗試使用備選方案');
+                    // 降級到 CSV 方法
+                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                        .then(resolve)
+                        .catch(reject);
+                    return;
+                }
 
-                        // 檢查是否有工作表
-                        if (!sheets || sheets.length === 0) {
-                            reject(new Error('未找到工作表數據'));
-                            return;
-                        }
+                // 設置超時處理
+                const timeout = setTimeout(() => {
+                    reject(new Error('Google API 載入超時，嘗試使用備選方案'));
+                }, 10000); // 10秒超時
 
-                        // 重置 excelSheets
-                        excelSheets = {};
+                try {
+                    // 加載 Google API 客戶端
+                    gapi.load('client', () => {
+                        clearTimeout(timeout); // 清除超時計時器
 
-                        // 處理所有工作表
-                        sheets.forEach(sheet => {
-                            const sheetName = sheet.properties.title;
-                            const gridData = sheet.data[0]; // 第一個數據網格
+                        gapi.client.init({
+                            apiKey: GOOGLE_API_KEY,
+                            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                        })
+                        .then(() => {
+                            // 請求 Google Sheets 數據，包含格式信息
+                            return gapi.client.sheets.spreadsheets.get({
+                                spreadsheetId: spreadsheetId,
+                                includeGridData: true,
+                                ranges: []  // 空數組表示獲取所有工作表
+                            });
+                        })
+                        .then(response => {
+                            const sheets = response.result.sheets;
 
-                            if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
-                                console.warn(`工作表 "${sheetName}" 沒有數據`);
+                            // 檢查是否有工作表
+                            if (!sheets || sheets.length === 0) {
+                                reject(new Error('未找到工作表數據'));
                                 return;
                             }
 
-                            // 提取帶格式的數據
-                            const rowData = gridData.rowData;
-                            const formattedData = [];
+                            // 重置 excelSheets
+                            excelSheets = {};
 
-                            // 處理所有行
-                            rowData.forEach(row => {
-                                if (!row.values) return;
+                            // 處理所有工作表
+                            sheets.forEach(sheet => {
+                                const sheetName = sheet.properties.title;
+                                const gridData = sheet.data[0]; // 第一個數據網格
 
-                                const formattedRow = [];
-                                const values = row.values;
+                                if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
+                                    console.warn(`工作表 "${sheetName}" 沒有數據`);
+                                    return;
+                                }
 
-                                // 處理每個單元格
-                                values.forEach(cell => {
-                                    // 獲取單元格值和格式
-                                    const value = cell.formattedValue || '';
-                                    const textFormatRuns = cell.textFormatRuns || [];
-                                    const effectiveFormat = cell.effectiveFormat || {};
+                                // 提取帶格式的數據
+                                const rowData = gridData.rowData;
+                                const formattedData = [];
 
-                                    // 創建帶格式的單元格對象
-                                    const formattedCell = {
-                                        value: value,
-                                        textContent: value, // 純文本內容（用於搜索等）
-                                        format: {
-                                            bold: effectiveFormat.textFormat?.bold || false,
-                                            italic: effectiveFormat.textFormat?.italic || false,
-                                            underline: effectiveFormat.textFormat?.underline || false,
-                                            strikethrough: effectiveFormat.textFormat?.strikethrough || false,
-                                            fontSize: effectiveFormat.textFormat?.fontSize || 10,
-                                            foregroundColor: effectiveFormat.textFormat?.foregroundColor || null,
-                                            backgroundColor: effectiveFormat.backgroundColor || null
-                                        },
-                                        formatRuns: textFormatRuns,
-                                        // 轉換為 Quill Delta 格式
-                                        delta: convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat)
-                                    };
+                                // 處理所有行
+                                rowData.forEach(row => {
+                                    if (!row.values) return;
 
-                                    formattedRow.push(formattedCell);
+                                    const formattedRow = [];
+                                    const values = row.values;
+
+                                    // 處理每個單元格
+                                    values.forEach(cell => {
+                                        // 獲取單元格值和格式
+                                        const value = cell.formattedValue || '';
+                                        const textFormatRuns = cell.textFormatRuns || [];
+                                        const effectiveFormat = cell.effectiveFormat || {};
+
+                                        // 創建帶格式的單元格對象
+                                        const formattedCell = {
+                                            value: value,
+                                            textContent: value, // 純文本內容（用於搜索等）
+                                            format: {
+                                                bold: effectiveFormat.textFormat?.bold || false,
+                                                italic: effectiveFormat.textFormat?.italic || false,
+                                                underline: effectiveFormat.textFormat?.underline || false,
+                                                strikethrough: effectiveFormat.textFormat?.strikethrough || false,
+                                                fontSize: effectiveFormat.textFormat?.fontSize || 10,
+                                                foregroundColor: effectiveFormat.textFormat?.foregroundColor || null,
+                                                backgroundColor: effectiveFormat.backgroundColor || null
+                                            },
+                                            formatRuns: textFormatRuns,
+                                            // 轉換為 Quill Delta 格式
+                                            delta: convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat)
+                                        };
+
+                                        formattedRow.push(formattedCell);
+                                    });
+
+                                    formattedData.push(formattedRow);
                                 });
 
-                                formattedData.push(formattedRow);
+                                // 保存帶格式的工作表數據
+                                excelSheets[sheetName] = {
+                                    data: formattedData,
+                                    columns: formattedData[0].map(cell => cell.value),
+                                    hasFormatting: true // 標記為帶格式
+                                };
+
+                                // 設置默認卡組映射
+                                if (!sheetMappings[sheetName]) {
+                                    sheetMappings[sheetName] = {
+                                        deckOption: 'new',
+                                        deckId: '',
+                                        newDeckName: sheetName,
+                                        newDeckDescription: '從 Google Sheets 導入的字卡'
+                                    };
+                                }
+
+                                // 設置默認列選擇
+                                if (!sheetOptions[sheetName]) {
+                                    sheetOptions[sheetName] = {
+                                        frontColumn: 0,
+                                        backColumn: 1
+                                    };
+                                }
                             });
 
-                            // 保存帶格式的工作表數據
-                            excelSheets[sheetName] = {
-                                data: formattedData,
-                                columns: formattedData[0].map(cell => cell.value),
-                                hasFormatting: true // 標記為帶格式
-                            };
+                            // 設置第一個工作表為活動工作表
+                            activeSheetName = Object.keys(excelSheets)[0];
 
-                            // 設置默認卡組映射
-                            if (!sheetMappings[sheetName]) {
-                                sheetMappings[sheetName] = {
-                                    deckOption: 'new',
-                                    deckId: '',
-                                    newDeckName: sheetName,
-                                    newDeckDescription: '從 Google Sheets 導入的字卡'
+                            // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                            if (enableSync) {
+                                // 保存同步元數據
+                                window.gSheetsSyncData = {
+                                    url: gSheetsUrl,
+                                    spreadsheetId: spreadsheetId,
+                                    lastSync: Date.now(),
+                                    syncEnabled: true,
+                                    useFormatting: true // 標記為帶格式
                                 };
+
+                                // 設置定期同步
+                                setupGSheetsSync();
                             }
 
-                            // 設置默認列選擇
-                            if (!sheetOptions[sheetName]) {
-                                sheetOptions[sheetName] = {
-                                    frontColumn: 0,
-                                    backColumn: 1
-                                };
-                            }
+                            resolve();
+                        })
+                        .catch(error => {
+                            console.error('Google Sheets API 錯誤:', error);
+                            console.error('在Safari上使用Google API失敗，嘗試備選方案');
+                            // 如果API調用失敗，轉向備選方案
+                            loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                                .then(resolve)
+                                .catch(reject);
                         });
-
-                        // 設置第一個工作表為活動工作表
-                        activeSheetName = Object.keys(excelSheets)[0];
-
-                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                        if (enableSync) {
-                            // 保存同步元數據
-                            window.gSheetsSyncData = {
-                                url: gSheetsUrl,
-                                spreadsheetId: spreadsheetId,
-                                lastSync: Date.now(),
-                                syncEnabled: true,
-                                useFormatting: true // 標記為帶格式
-                            };
-
-                            // 設置定期同步
-                            setupGSheetsSync();
-                        }
-
-                        resolve();
-                    })
-                    .catch(error => {
-                        console.error('Google Sheets API 錯誤:', error);
-                        reject(error);
                     });
-                });
+                } catch (error) {
+                    clearTimeout(timeout);
+                    console.error('初始化Google API發生錯誤', error);
+                    // 異常情況下也使用備選方案
+                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                        .then(resolve)
+                        .catch(reject);
+                }
             });
         }
 
@@ -8451,6 +8488,10 @@
                                 } else {
                                     setupCardSubmitShortcut();
                                 }
+
+                                // 檢測瀏覽器環境
+                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                console.log('檢測到的瀏覽器：', isSafari ? 'Safari' : '其他瀏覽器');
 
                             </script>
                         </body>
