@@ -2169,6 +2169,12 @@
                 return;
             }
 
+            var googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            if (!googleApiKeyInput) {
+                console.warn('找不到 googleApiKeyInput 元素');
+                return; // 如果元素不存在，退出函數
+            }
+
             // 添加輸入事件監聽器，即時更新狀態顯示
             googleApiKeyInput.addEventListener('input', function() {
                 // 獲取當前輸入的值
