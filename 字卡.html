@@ -2033,26 +2033,31 @@
               });
             }
 
-            // 添加輸入事件監聽器，即時更新狀態顯示
-            googleApiKeyInput.addEventListener('input', function() {
-                // 獲取當前輸入的值
-                const currentInputValue = this.value.trim();
+            // 確保元素存在後再添加事件監聽器
+            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            if (googleApiKeyInput) {
+                googleApiKeyInput.addEventListener('input', function() {
+                    // 獲取當前輸入的值
+                    const currentInputValue = this.value.trim();
 
-                // 獲取狀態顯示元素
-                const apiKeyPresent = document.getElementById('apiKeyPresent');
-                const apiKeyMissing = document.getElementById('apiKeyMissing');
+                    // 獲取狀態顯示元素
+                    const apiKeyPresent = document.getElementById('apiKeyPresent');
+                    const apiKeyMissing = document.getElementById('apiKeyMissing');
 
-                // 根據輸入值更新顯示
-                if (currentInputValue) {
-                    apiKeyPresent.classList.remove('hidden');
-                    apiKeyMissing.classList.add('hidden');
-                    // 添加"未保存"提示
-                    apiKeyPresent.textContent = '已輸入 (尚未保存)';
-                } else {
-                    apiKeyPresent.classList.add('hidden');
-                    apiKeyMissing.classList.remove('hidden');
-                }
-            });
+                    if (apiKeyPresent && apiKeyMissing) {
+                        // 根據輸入值更新顯示
+                        if (currentInputValue) {
+                            apiKeyPresent.classList.remove('hidden');
+                            apiKeyMissing.classList.add('hidden');
+                            // 添加"未保存"提示
+                            apiKeyPresent.textContent = '已輸入 (尚未保存)';
+                        } else {
+                            apiKeyPresent.classList.add('hidden');
+                            apiKeyMissing.classList.remove('hidden');
+                        }
+                    }
+                });
+            }
 
             // 檢查必要的元素
             if (!apiSettingsModal || !closeApiSettingsBtn || !saveApiSettingsBtn || !googleApiKeyInput) {
@@ -2135,13 +2140,6 @@
             if (!GOOGLE_API_KEY) {
                 // 提示用戶設置API密鑰
                 showNotification('請先設置Google API密鑰');
-
-                // 在讀取Google Sheets數據時
-                if (value && typeof value === 'string') {
-                    // 保留換行符，不要去除
-                    const preservedValue = value;
-                    // 繼續處理 preservedValue...
-                }
 
                 // 自動打開API設置對話框
                 const apiSettingsModal = document.getElementById('apiSettingsModal');
@@ -2498,8 +2496,21 @@
 
         // 從 Google Sheets URL 提取 spreadsheetId
         function extractSpreadsheetId(url) {
-            const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-            return match ? match[1] : null;
+            if (!url) return null;
+
+            // 嘗試多種格式匹配
+            // 標準格式
+            let match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (match) return match[1];
+
+            // 移動格式或簡短URL
+            match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match) return match[1];
+
+            // 直接是ID的情況
+            if (/^[a-zA-Z0-9-_]+$/.test(url)) return url;
+
+            return null;
         }
 
         // 驗證 Google Sheets URL
