@@ -1971,7 +1971,7 @@
             const apiSettingsModal = document.getElementById('apiSettingsModal');
             const closeApiSettingsBtn = document.getElementById('closeApiSettingsBtn');
             const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
-            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            var googleApiKeyInput = document.getElementById('googleApiKeyInput');
             const showApiKey = document.getElementById('showApiKey');
 
             // 添加這個函數用於更新API密鑰狀態顯示
@@ -2147,7 +2147,7 @@
                     apiSettingsModal.classList.remove('hidden');
 
                     // 聚焦到API密鑰輸入框
-                    const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+                    var googleApiKeyInput = document.getElementById('googleApiKeyInput');
                     if (googleApiKeyInput) {
                         googleApiKeyInput.focus();
                     }
