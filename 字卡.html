@@ -2152,6 +2152,7 @@
                 return;
             }
                         const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+            const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
                 showNotification('請輸入 Google Sheets URL');
@@ -2444,6 +2445,17 @@
                     // 設置活動工作表
                     activeSheetName = sheetName;
 
+                    // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                    if (enableSync) {
+                        window.gSheetsSyncData = {
+                            url: gSheetsUrl,
+                            spreadsheetId: spreadsheetId,
+                            lastSync: Date.now(),
+                            syncEnabled: true,
+                            useFormatting: false
+                        };
+                    }
+
                     // 顯示預覽
                     showGSheetsStep(2);
                     preparePreviewData();
@@ -2628,6 +2640,21 @@
 
                         // 設置第一個工作表為活動工作表
                         activeSheetName = Object.keys(excelSheets)[0];
+
+                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
+                        if (enableSync) {
+                            // 保存同步元數據
+                            window.gSheetsSyncData = {
+                                url: gSheetsUrl,
+                                spreadsheetId: spreadsheetId,
+                                lastSync: Date.now(),
+                                syncEnabled: true,
+                                useFormatting: true // 標記為帶格式
+                            };
+
+                            // 設置定期同步
+                            setupGSheetsSync();
+                        }
 
                         resolve();
                     })
