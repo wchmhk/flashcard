@@ -1528,6 +1528,13 @@
                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
                         </div>
 
+                        <div class="flex items-center mt-4">
+                            <input type="checkbox" id="enableSyncGSheets" class="mr-2">
+                            <label for="enableSyncGSheets" class="text-sm">
+                                保持同步（當 Google Sheets 更新時自動更新字卡）
+                            </label>
+                        </div>
+
                         <div class="mt-6 flex justify-between">
                             <div>
                                 <a href="https://support.google.com/docs/answer/183965" target="_blank" class="text-primary hover:underline text-sm">
@@ -1876,7 +1883,6 @@
         const newDeckName = document.getElementById('newDeckName');
         const newDeckDescription = document.getElementById('newDeckDescription');
         const importResults = document.getElementById('importResults');
-
 
         // Google Sheets 相關函數 - 移至全局作用域
 
@@ -4512,8 +4518,6 @@
             // Add click outside to close functionality
             document.addEventListener('click', handleImportModalOutsideClick);
         }
-
-
 
         // Function to load import preview list
         function loadImportPreviewList(data) {
