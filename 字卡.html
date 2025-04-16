@@ -2589,24 +2589,7 @@
         function loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync) {
             return new Promise((resolve, reject) => {
 
-              // 检查是否是 base64 图片
-              const processedFront = processImportedContent(frontText);
-              if (processedFront.image) {
-                  frontText = ''; // 清空文本内容
-                  frontImage = processedFront.image; // 设置图片
-              } else {
-                  frontText = processedFront.text;
-                  frontImage = null;
-              }
 
-              const processedBack = processImportedContent(backText);
-              if (processedBack.image) {
-                  backText = ''; // 清空文本内容
-                  backImage = processedBack.image; // 设置图片
-              } else {
-                  backText = processedBack.text;
-                  backImage = null;
-              }
 
                 // 檢查gapi是否正確載入
                 if (typeof gapi === 'undefined') {
@@ -3110,17 +3093,29 @@
                 if (!frontCell && !backCell) continue;
 
                 // 準備卡片內容
-                let frontText, backText;
+                let rawFrontText, rawBackText;
 
                 if (hasFormatting) {
-                    // 處理帶格式的內容
-                    frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
-                    backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+                    // 處理帶格式的內容 (注意：processImportedContent 需要能處理 Quill Delta 或 HTML)
+                    // 這部分可能需要調整 processImportedContent 或在這裡轉換格式
+                    // 暫時假設 processImportedContent 可以處理 HTML
+                    rawFrontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                    rawBackText = convertDeltaToHTML(backCell?.delta || { ops: [] });
                 } else {
                     // 處理純文本內容
-                    frontText = frontCell || '';
-                    backText = backCell || '';
+                    rawFrontText = frontCell || '';
+                    rawBackText = backCell || '';
                 }
+
+                // -------- START: 添加圖片處理邏輯 --------
+                const processedFront = processImportedContent(rawFrontText);
+                const frontText = processedFront.text;
+                const frontImage = processedFront.image;
+
+                const processedBack = processImportedContent(rawBackText);
+                const backText = processedBack.text;
+                const backImage = processedBack.image;
+                // -------- END: 添加圖片處理邏輯 --------
 
                 // 生成一個用於識別這行的唯一鍵
                 const rowKey = `${frontText}_${backText}`;
@@ -3139,9 +3134,11 @@
                 }
 
                 if (existingCard) {
-                    // 更新現有卡片
+                    // 更新現有卡片 (使用處理後的值)
                     existingCard.frontText = frontText;
+                    existingCard.frontImage = frontImage; // 添加圖片更新
                     existingCard.backText = backText;
+                    existingCard.backImage = backImage;   // 添加圖片更新
                     cardRowMap.set(existingCard.id, i);
                 } else {
                     // 創建新卡片
@@ -3160,7 +3157,9 @@
                     const newCard = {
                         id: newCardId,
                         frontText: frontText,
+                        frontImage: frontImage, // 添加圖片
                         backText: backText,
+                        backImage: backImage,   // 添加圖片
                         nextReview: Date.now(),
                         repetitions: 0,
                         easeFactor: 2.0,
@@ -8316,34 +8315,36 @@
                                             for (let i = 1; i < sheetData.length; i++) {
                                                 const row = sheetData[i];
 
-                                                // 獲取正面和背面內容
-                                                const frontContent = row[options.frontColumn];
-                                                const backContent = row[options.backColumn];
+                                                // 獲取原始的正面和背面內容
+                                                const rawFrontContent = row[options.frontColumn];
+                                                const rawBackContent = row[options.backColumn];
 
                                                 // 跳过缺少必要内容的行
-                                                if (!frontContent && !backContent) {
+                                                if (!rawFrontContent && !rawBackContent) {
                                                     skippedCount++;
                                                     continue;
                                                 }
 
-                                                // 处理正面内容，检测 base64 图片
-                                                const processedFront = processImportedContent(frontContent);
+                                                // -------- START: 添加圖片處理邏輯 --------
+                                                // 處理正面內容，檢測 base64 圖片
+                                                const processedFront = processImportedContent(rawFrontContent);
                                                 const frontText = processedFront.text;
                                                 const frontImage = processedFront.image;
 
-                                                // 处理背面内容，检测 base64 图片
-                                                const processedBack = processImportedContent(backContent);
+                                                // 處理背面內容，檢測 base64 圖片
+                                                const processedBack = processImportedContent(rawBackContent);
                                                 const backText = processedBack.text;
                                                 const backImage = processedBack.image;
+                                                // -------- END: 添加圖片處理邏輯 --------
 
-                                                // 创建新字卡
+                                                // 創建新字卡 (使用處理後的 text 和 image)
                                                 const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                                                 const newCard = {
                                                     id: newCardId,
-                                                    frontText: frontText,
-                                                    frontImage: frontImage, // 设置正面图片
-                                                    backText: backText,
-                                                    backImage: backImage,   // 设置背面图片
+                                                    frontText: frontText,   // 使用處理後的 frontText
+                                                    frontImage: frontImage, // 使用處理後的 frontImage
+                                                    backText: backText,     // 使用處理後的 backText
+                                                    backImage: backImage,   // 使用處理後的 backImage
                                                     nextReview: Date.now(),
                                                     repetitions: 0,
                                                     easeFactor: 2.0,
