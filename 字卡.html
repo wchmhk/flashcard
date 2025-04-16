@@ -6620,15 +6620,25 @@
             }
         }
 
-        // 修改頁面切換函數，在切換時重置格式
-        const originalShowSection = showSection;
-        showSection = function(section) {
+        // 創建一個包裝函數，而不是直接覆蓋原始函數
+        function showSectionWithReset(section) {
             // 在切換頁面前重置格式
             resetEditorFormats();
 
             // 調用原始函數
-            originalShowSection(section);
-        };
+            showSection(section);
+        }
+
+        // 修改所有調用 showSection 的按鈕事件
+        document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
+            // 移除原來的事件處理
+            btn.removeEventListener('click', () => showSection(btn.id.replace('Btn', '').toLowerCase()));
+
+            // 添加新的事件處理
+            btn.addEventListener('click', () => {
+                showSectionWithReset(btn.id.replace('Btn', '').toLowerCase());
+            });
+        });
 
         // 添加監聽器以確保在切換頁面時重置格式
         document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
@@ -7380,14 +7390,23 @@
             adjustDeckEditModalHeight();
         });
 
-        // 修改原有的openDeckEditModal函數
-        const originalOpenDeckEditModal = openDeckEditModal;
-        openDeckEditModal = function(deckId) {
-            originalOpenDeckEditModal(deckId);
+        // 創建一個加強版函數
+        function enhancedOpenDeckEditModal(deckId) {
+            // 調用原始函數
+            openDeckEditModal(deckId);
 
             // 在對話框打開後調整高度
             setTimeout(adjustDeckEditModalHeight, 0);
-        };
+        }
+
+        // 找到所有調用 openDeckEditModal 的地方，替換為 enhancedOpenDeckEditModal
+        // 例如在 edit-deck-btn 按鈕的事件監聽器中：
+        document.querySelectorAll('.edit-deck-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const deckId = parseInt(e.currentTarget.dataset.id);
+                enhancedOpenDeckEditModal(deckId); // 改用加強版函數
+            });
+        });
 
         // Load cards in deck for editing
         // 修改卡片載入函數以支持搜尋
@@ -8494,8 +8513,11 @@
                                     // 初始觸發一次resize事件，以便在頁面加載時設置正確尺寸
                                     window.dispatchEvent(new Event('resize'));
 
-                                    // Initialize the app with the review section
-                                    showSection('review');
+                                    // 改為：
+                                    setTimeout(() => {
+                                        // 使用原始函數而非被包裝的函數
+                                        showSection('review');
+                                    }, 0);
                                 }
 
                                 // Initialize app when DOM is ready
