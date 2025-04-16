@@ -1966,6 +1966,56 @@
             }
         }
 
+        // Base64圖片檢測和處理函數
+        function isBase64Image(str) {
+          if (typeof str !== 'string') return false;
+          // 檢查是否符合base64圖片格式前綴
+          if (str.startsWith('data:image/')) {
+            return true;
+          }
+
+          // 檢查是否是沒有前綴的base64編碼
+          try {
+            // base64字符串通常有特定的模式和長度
+            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            // 要求base64字符串至少有一定長度才被視為圖片
+            return str.length > 100 && base64Regex.test(str);
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // 確保base64字符串有正確的數據頭
+        function ensureBase64Prefix(base64Str) {
+          if (base64Str.startsWith('data:image/')) {
+            return base64Str;
+          }
+
+          // 嘗試檢測圖片類型(簡單處理為JPEG)
+          return `data:image/jpeg;base64,${base64Str}`;
+        }
+
+        // 處理導入的內容，檢測並處理base64圖片
+        function processImportedContent(content) {
+          if (!content) return { text: '', image: null };
+
+          if (typeof content !== 'string') {
+            content = content.toString();
+          }
+
+          if (isBase64Image(content)) {
+            return {
+              text: '',
+              image: ensureBase64Prefix(content)
+            };
+          }
+
+          return {
+            text: content,
+            image: null
+          };
+        }
+
         function initApiSettings() {
             const apiSettingsBtn = document.getElementById('apiSettingsBtn');
             const apiSettingsModal = document.getElementById('apiSettingsModal');
@@ -3096,9 +3146,7 @@
                 let rawFrontText, rawBackText;
 
                 if (hasFormatting) {
-                    // 處理帶格式的內容 (注意：processImportedContent 需要能處理 Quill Delta 或 HTML)
-                    // 這部分可能需要調整 processImportedContent 或在這裡轉換格式
-                    // 暫時假設 processImportedContent 可以處理 HTML
+                    // 處理帶格式的內容
                     rawFrontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
                     rawBackText = convertDeltaToHTML(backCell?.delta || { ops: [] });
                 } else {
@@ -3107,15 +3155,15 @@
                     rawBackText = backCell || '';
                 }
 
-                // -------- START: 添加圖片處理邏輯 --------
+                // 處理正面內容，檢測base64圖片
                 const processedFront = processImportedContent(rawFrontText);
                 const frontText = processedFront.text;
                 const frontImage = processedFront.image;
 
+                // 處理背面內容，檢測base64圖片
                 const processedBack = processImportedContent(rawBackText);
                 const backText = processedBack.text;
                 const backImage = processedBack.image;
-                // -------- END: 添加圖片處理邏輯 --------
 
                 // 生成一個用於識別這行的唯一鍵
                 const rowKey = `${frontText}_${backText}`;
@@ -3134,32 +3182,21 @@
                 }
 
                 if (existingCard) {
-                    // 更新現有卡片 (使用處理後的值)
+                    // 更新現有卡片
                     existingCard.frontText = frontText;
-                    existingCard.frontImage = frontImage; // 添加圖片更新
+                    existingCard.frontImage = frontImage;
                     existingCard.backText = backText;
-                    existingCard.backImage = backImage;   // 添加圖片更新
+                    existingCard.backImage = backImage;
                     cardRowMap.set(existingCard.id, i);
                 } else {
                     // 創建新卡片
-                    // 創建新字卡
-                    // 創建一個基於整個工作表名稱的更可靠哈希值
-                    const getSheetHash = (str) => {
-                        let hash = 0;
-                        for (let i = 0; i < str.length; i++) {
-                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                            hash |= 0; // 轉換為32位整數
-                        }
-                        return Math.abs(hash);
-                    };
-                    const sheetHash = getSheetHash(sheetName) * 1000;
-                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
+                    const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                     const newCard = {
                         id: newCardId,
                         frontText: frontText,
-                        frontImage: frontImage, // 添加圖片
+                        frontImage: frontImage,
                         backText: backText,
-                        backImage: backImage,   // 添加圖片
+                        backImage: backImage,
                         nextReview: Date.now(),
                         repetitions: 0,
                         easeFactor: 2.0,
@@ -6631,21 +6668,41 @@
             showSection(section);
         }
 
-        // 修改所有調用 showSection 的按鈕事件
-        document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
-            // 移除原來的事件處理
-            btn.removeEventListener('click', () => showSection(btn.id.replace('Btn', '').toLowerCase()));
+        // 為每個按鈕設置專用的事件處理函數
+        function setupNavigationButtons() {
+            // 清除現有的事件綁定（如果有）
+            reviewBtn.removeEventListener('click', reviewBtnHandler);
+            createCardBtn.removeEventListener('click', createCardBtnHandler);
+            manageCardBtn.removeEventListener('click', manageCardBtnHandler);
+            manageDeckBtn.removeEventListener('click', manageDeckBtnHandler);
 
-            // 添加新的事件處理
-            btn.addEventListener('click', () => {
-                showSectionWithReset(btn.id.replace('Btn', '').toLowerCase());
-            });
-        });
+            // 重新添加事件監聽器
+            reviewBtn.addEventListener('click', reviewBtnHandler);
+            createCardBtn.addEventListener('click', createCardBtnHandler);
+            manageCardBtn.addEventListener('click', manageCardBtnHandler);
+            manageDeckBtn.addEventListener('click', manageDeckBtnHandler);
+        }
 
-        // 添加監聽器以確保在切換頁面時重置格式
-        document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
-            btn.addEventListener('click', resetEditorFormats);
-        });
+        // 定義每個按鈕的處理函數
+        function reviewBtnHandler() {
+            resetEditorFormats();
+            showSection('review');
+        }
+
+        function createCardBtnHandler() {
+            resetEditorFormats();
+            showSection('createCard');
+        }
+
+        function manageCardBtnHandler() {
+            resetEditorFormats();
+            showSection('manageCard');
+        }
+
+        function manageDeckBtnHandler() {
+            resetEditorFormats();
+            showSection('manageDeck');
+        }
 
         // 確保字體大小在字卡顯示時正確呈現
         function fixFontSizeDisplay() {
@@ -8325,26 +8382,24 @@
                                                     continue;
                                                 }
 
-                                                // -------- START: 添加圖片處理邏輯 --------
-                                                // 處理正面內容，檢測 base64 圖片
+                                                // 處理正面內容，檢測base64圖片
                                                 const processedFront = processImportedContent(rawFrontContent);
                                                 const frontText = processedFront.text;
                                                 const frontImage = processedFront.image;
 
-                                                // 處理背面內容，檢測 base64 圖片
+                                                // 處理背面內容，檢測base64圖片
                                                 const processedBack = processImportedContent(rawBackContent);
                                                 const backText = processedBack.text;
                                                 const backImage = processedBack.image;
-                                                // -------- END: 添加圖片處理邏輯 --------
 
-                                                // 創建新字卡 (使用處理後的 text 和 image)
+                                                // 創建新字卡
                                                 const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                                                 const newCard = {
                                                     id: newCardId,
-                                                    frontText: frontText,   // 使用處理後的 frontText
-                                                    frontImage: frontImage, // 使用處理後的 frontImage
-                                                    backText: backText,     // 使用處理後的 backText
-                                                    backImage: backImage,   // 使用處理後的 backImage
+                                                    frontText: frontText,
+                                                    frontImage: frontImage,
+                                                    backText: backText,
+                                                    backImage: backImage,
                                                     nextReview: Date.now(),
                                                     repetitions: 0,
                                                     easeFactor: 2.0,
@@ -8489,6 +8544,8 @@
 
                                     // 初始化Excel導入功能
                                     initExcelImport();
+
+                                    setupNavigationButtons();
 
                                     // 初始化Excel導出功能
                                     exportExcelBtn.addEventListener('click', openExportExcelModal);
