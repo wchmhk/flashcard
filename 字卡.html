@@ -2681,32 +2681,32 @@
                                         const value = cell.formattedValue || '';
 
                                         // 創建深拷貝以避免修改唯讀屬性
-                                        const textFormatRuns = cell.textFormatRuns ?
-                                            JSON.parse(JSON.stringify(cell.textFormatRuns)) : [];
+                                        const textFormatRunsCopyCopy = cell.textFormatRunsCopyCopy ?
+                                            JSON.parse(JSON.stringify(cell.textFormatRunsCopyCopy)) : [];
 
-                                        const effectiveFormat = cell.effectiveFormat ?
-                                            JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
+                                        const effectiveFormatCopyCopy = cell.effectiveFormatCopyCopy ?
+                                            JSON.parse(JSON.stringify(cell.effectiveFormatCopyCopy)) : {};
 
                                         // 安全地創建帶格式的單元格對象
                                         const formattedCell = {
                                             value: value,
                                             textContent: value,
                                             format: {
-                                                bold: effectiveFormat.textFormat?.bold || false,
-                                                italic: effectiveFormat.textFormat?.italic || false,
-                                                underline: effectiveFormat.textFormat?.underline || false,
-                                                strikethrough: effectiveFormat.textFormat?.strikethrough || false,
-                                                fontSize: effectiveFormat.textFormat?.fontSize || 10,
-                                                foregroundColor: effectiveFormat.textFormat?.foregroundColor ?
-                                                    {...effectiveFormat.textFormat.foregroundColor} : null,
-                                                backgroundColor: effectiveFormat.backgroundColor ?
-                                                    {...effectiveFormat.backgroundColor} : null
+                                                bold: effectiveFormatCopyCopy.textFormat?.bold || false,
+                                                italic: effectiveFormatCopyCopy.textFormat?.italic || false,
+                                                underline: effectiveFormatCopyCopy.textFormat?.underline || false,
+                                                strikethrough: effectiveFormatCopyCopy.textFormat?.strikethrough || false,
+                                                fontSize: effectiveFormatCopyCopy.textFormat?.fontSize || 10,
+                                                foregroundColor: effectiveFormatCopyCopy.textFormat?.foregroundColor ?
+                                                    {...effectiveFormatCopyCopy.textFormat.foregroundColor} : null,
+                                                backgroundColor: effectiveFormatCopyCopy.backgroundColor ?
+                                                    {...effectiveFormatCopyCopy.backgroundColor} : null
                                             },
-                                            formatRuns: textFormatRuns,
+                                            formatRuns: textFormatRunsCopyCopy,
                                             delta: convertGSheetsCellToQuillDelta(
                                                 value,
-                                                textFormatRuns,
-                                                effectiveFormat
+                                                textFormatRunsCopyCopy,
+                                                effectiveFormatCopyCopy
                                             )
                                         };
 
@@ -2877,10 +2877,11 @@
             }
         }
 
-        function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-          // 創建參數的深拷貝以避免修改唯讀屬性
-          textFormatRuns = textFormatRuns ? JSON.parse(JSON.stringify(textFormatRuns)) : [];
-          effectiveFormat = effectiveFormat ? JSON.parse(JSON.stringify(effectiveFormat)) : {};
+        function convertGSheetsCellToQuillDelta(value, textFormatRunsCopy, effectiveFormatCopy) {
+          // 創建參數的深拷貝以避免修改唯讀屬性 - 使用本地副本而不是修改參數
+          const textFormatRunsCopyCopy = textFormatRunsCopy ? JSON.parse(JSON.stringify(textFormatRunsCopy)) : [];
+          const effectiveFormatCopyCopy = effectiveFormatCopy ? JSON.parse(JSON.stringify(effectiveFormatCopy)) : {};
+
             // 如果沒有文本，返回空 Delta
             if (!value) {
                 return { ops: [] };
@@ -2888,18 +2889,18 @@
 
             const format = {};
 
-            // 從 effectiveFormat 提取全局格式
-            if (effectiveFormat) {
+            // 從 effectiveFormatCopyCopy 提取全局格式
+            if (effectiveFormatCopyCopy) {
                 // 原有的格式處理（粗體、斜體等）
-                if (effectiveFormat.textFormat) {
-                    if (effectiveFormat.textFormat.bold) format.bold = true;
-                    if (effectiveFormat.textFormat.italic) format.italic = true;
-                    if (effectiveFormat.textFormat.underline) format.underline = true;
-                    if (effectiveFormat.textFormat.strikethrough) format.strike = true;
+                if (effectiveFormatCopyCopy.textFormat) {
+                    if (effectiveFormatCopyCopy.textFormat.bold) format.bold = true;
+                    if (effectiveFormatCopyCopy.textFormat.italic) format.italic = true;
+                    if (effectiveFormatCopyCopy.textFormat.underline) format.underline = true;
+                    if (effectiveFormatCopyCopy.textFormat.strikethrough) format.strike = true;
 
                     // 處理前景色 - 增強顏色處理邏輯
-                    if (effectiveFormat.textFormat.foregroundColor) {
-                        const color = effectiveFormat.textFormat.foregroundColor;
+                    if (effectiveFormatCopyCopy.textFormat.foregroundColor) {
+                        const color = effectiveFormatCopyCopy.textFormat.foregroundColor;
                         if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
                             // 使用更精確的RGB值
                             const r = Math.round(color.red * 255);
@@ -2917,8 +2918,8 @@
                     }
 
                     // 處理背景色
-                    if (effectiveFormat.backgroundColor) {
-                        const bgColor = effectiveFormat.backgroundColor;
+                    if (effectiveFormatCopyCopy.backgroundColor) {
+                        const bgColor = effectiveFormatCopyCopy.backgroundColor;
                         // 檢查是否不是默認白色
                         const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
                         if (!isDefaultWhite) {
@@ -2931,8 +2932,8 @@
                 }
 
                 // 處理對齊方式
-                if (effectiveFormat.horizontalAlignment) {
-                    const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
+                if (effectiveFormatCopyCopy.horizontalAlignment) {
+                    const alignment = effectiveFormatCopyCopy.horizontalAlignment.toLowerCase();
                     if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
                         format.align = alignment;
                     }
@@ -2940,15 +2941,15 @@
             }
             // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
             // 這可能是蘋果和其他水果表現不同的原因
-            if (effectiveFormat && effectiveFormat.horizontalAlignment) {
-                const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
+            if (effectiveFormatCopyCopy && effectiveFormatCopyCopy.horizontalAlignment) {
+                const alignment = effectiveFormatCopyCopy.horizontalAlignment.toLowerCase();
                 if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
                     // 確保這個對齊格式被應用到每個操作中
                     format.align = alignment;
                 }
             }
             // 如果沒有格式運行，使用整體格式
-            if (!textFormatRuns || textFormatRuns.length === 0) {
+            if (!textFormatRunsCopyCopyCopy || textFormatRunsCopyCopy.length === 0) {
                 // 創建帶格式的 Delta
                 return {
                     ops: [
@@ -2965,7 +2966,7 @@
             let lastIndex = 0;
 
             // 按順序處理每個格式段
-            textFormatRuns.forEach(run => {
+            textFormatRunsCopyCopy.forEach(run => {
                 const startIndex = run.startIndex || 0;
 
                 // 添加前一段文本（如果有）
@@ -2977,7 +2978,7 @@
                 }
 
                 // 獲取此格式段的結束索引
-                const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
+                const nextRun = textFormatRunsCopyCopy.find(r => r.startIndex > startIndex);
                 const endIndex = nextRun ? nextRun.startIndex : value.length;
 
                 // 提取文本
