@@ -2641,7 +2641,9 @@
                             });
                         })
                         .then(response => {
-                            const sheets = response.result.sheets;
+                            // 創建深拷貝避免修改原始響應
+                            const responseData = JSON.parse(JSON.stringify(response.result));
+                            const sheets = responseData.sheets;
 
                             // 檢查是否有工作表
                             if (!sheets || sheets.length === 0) {
@@ -2677,25 +2679,35 @@
                                     values.forEach(cell => {
                                         // 獲取單元格值和格式
                                         const value = cell.formattedValue || '';
-                                        const textFormatRuns = cell.textFormatRuns || [];
-                                        const effectiveFormat = cell.effectiveFormat || {};
 
-                                        // 創建帶格式的單元格對象
+                                        // 創建深拷貝以避免修改唯讀屬性
+                                        const textFormatRuns = cell.textFormatRuns ?
+                                            JSON.parse(JSON.stringify(cell.textFormatRuns)) : [];
+
+                                        const effectiveFormat = cell.effectiveFormat ?
+                                            JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
+
+                                        // 安全地創建帶格式的單元格對象
                                         const formattedCell = {
                                             value: value,
-                                            textContent: value, // 純文本內容（用於搜索等）
+                                            textContent: value,
                                             format: {
                                                 bold: effectiveFormat.textFormat?.bold || false,
                                                 italic: effectiveFormat.textFormat?.italic || false,
                                                 underline: effectiveFormat.textFormat?.underline || false,
                                                 strikethrough: effectiveFormat.textFormat?.strikethrough || false,
                                                 fontSize: effectiveFormat.textFormat?.fontSize || 10,
-                                                foregroundColor: effectiveFormat.textFormat?.foregroundColor || null,
-                                                backgroundColor: effectiveFormat.backgroundColor || null
+                                                foregroundColor: effectiveFormat.textFormat?.foregroundColor ?
+                                                    {...effectiveFormat.textFormat.foregroundColor} : null,
+                                                backgroundColor: effectiveFormat.backgroundColor ?
+                                                    {...effectiveFormat.backgroundColor} : null
                                             },
                                             formatRuns: textFormatRuns,
-                                            // 轉換為 Quill Delta 格式
-                                            delta: convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat)
+                                            delta: convertGSheetsCellToQuillDelta(
+                                                value,
+                                                textFormatRuns,
+                                                effectiveFormat
+                                            )
                                         };
 
                                         formattedRow.push(formattedCell);
@@ -2708,7 +2720,7 @@
                                 excelSheets[sheetName] = {
                                     data: formattedData,
                                     columns: formattedData[0].map(cell => cell.value),
-                                    hasFormatting: true // 標記為帶格式
+                                    hasFormatting: true
                                 };
 
                                 // 設置默認卡組映射
@@ -2733,23 +2745,9 @@
                             // 設置第一個工作表為活動工作表
                             activeSheetName = Object.keys(excelSheets)[0];
 
-                            // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                            if (enableSync) {
-                                // 保存同步元數據
-                                window.gSheetsSyncData = {
-                                    url: gSheetsUrl,
-                                    spreadsheetId: spreadsheetId,
-                                    lastSync: Date.now(),
-                                    syncEnabled: true,
-                                    useFormatting: true // 標記為帶格式
-                                };
-
-                                // 設置定期同步
-                                setupGSheetsSync();
-                            }
-
                             resolve();
                         })
+
                         .catch(error => {
                             console.error('Google Sheets API 錯誤:', error);
                             console.error('在Safari上使用Google API失敗，嘗試備選方案');
@@ -2880,6 +2878,9 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
+          // 創建參數的深拷貝以避免修改唯讀屬性
+          textFormatRuns = textFormatRuns ? JSON.parse(JSON.stringify(textFormatRuns)) : [];
+          effectiveFormat = effectiveFormat ? JSON.parse(JSON.stringify(effectiveFormat)) : {};
             // 如果沒有文本，返回空 Delta
             if (!value) {
                 return { ops: [] };
