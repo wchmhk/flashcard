@@ -2898,20 +2898,17 @@
               if (effectiveFormatCopy.textFormat.underline) format.underline = true;
               if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
 
-              // 處理前景色 - 增強顏色處理邏輯
+              // 處理前景色
               if (effectiveFormatCopy.textFormat.foregroundColor) {
                 const color = effectiveFormatCopy.textFormat.foregroundColor;
                 if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                  // 使用更精確的RGB值
                   const r = Math.round(color.red * 255);
                   const g = Math.round(color.green * 255);
                   const b = Math.round(color.blue * 255);
 
-                  // 檢查是否為默認黑色
                   const isDefaultBlack = (r === 0 && g === 0 && b === 0);
                   if (!isDefaultBlack) {
                     format.color = `rgb(${r}, ${g}, ${b})`;
-                    // 保存原始顏色值以備在暗模式下使用
                     format.originalColor = [r, g, b];
                   }
                 }
@@ -2920,7 +2917,6 @@
               // 處理背景色
               if (effectiveFormatCopy.backgroundColor) {
                 const bgColor = effectiveFormatCopy.backgroundColor;
-                // 檢查是否不是默認白色
                 const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
                 if (!isDefaultWhite) {
                   const r = Math.round(bgColor.red * 255);
@@ -2937,15 +2933,6 @@
               if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
                 format.align = alignment;
               }
-            }
-          }
-
-          // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
-          if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
-            const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
-            if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-              // 確保這個對齊格式被應用到每個操作中
-              format.align = alignment;
             }
           }
 
@@ -2985,7 +2972,7 @@
             // 提取文本
             const text = value.substring(startIndex, endIndex);
 
-            // 提取格式 - 增強顏色處理
+            // 提取格式
             const segmentFormat = {};
             if (run.format) {
               if (run.format.bold) segmentFormat.bold = true;
@@ -2993,7 +2980,7 @@
               if (run.format.underline) segmentFormat.underline = true;
               if (run.format.strikethrough) segmentFormat.strike = true;
 
-              // 處理前景色 - 加強顏色轉換
+              // 處理前景色
               if (run.format.foregroundColor) {
                 const color = run.format.foregroundColor;
                 if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
@@ -3001,11 +2988,9 @@
                   const g = Math.round(color.green * 255);
                   const b = Math.round(color.blue * 255);
 
-                  // 檢查顏色是否為默認黑色
                   const isDefaultBlack = r === 0 && g === 0 && b === 0;
                   if (!isDefaultBlack) {
                     segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
-                    // 保存原始顏色值
                     segmentFormat.originalColor = [r, g, b];
                   }
                 }
