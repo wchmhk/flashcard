@@ -840,18 +840,6 @@
                   </div>
                 </div>
 
-                <!-- 並排的圖片選擇按鈕 -->
-                <div class="image-buttons grid grid-cols-2 gap-2">
-                  <button type="button" id="frontImageBtn" class="image-btn">
-                    選擇正面圖片
-                  </button>
-                  <button type="button" id="backImageBtn" class="image-btn">
-                    選擇背面圖片
-                  </button>
-                  <input type="file" id="cardFrontImage" accept="image/*" class="hidden" />
-                  <input type="file" id="cardBackImage" accept="image/*" class="hidden" />
-                </div>
-
                 <!-- 拖放區域 -->
                 <div class="flex space-x-2">
                   <div class="flex-1 drag-area" id="frontDragArea">
@@ -3145,10 +3133,20 @@
                 // 準備卡片內容
                 let rawFrontText, rawBackText;
 
+                // 在处理格式化内容时
                 if (hasFormatting) {
-                    // 處理帶格式的內容
-                    rawFrontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
-                    rawBackText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+                    // 处理带格式的内容后再检测base64
+                    let rawFrontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                    let rawBackText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+
+                    // 处理base64图片检测
+                    const processedFront = processImportedContent(rawFrontText);
+                    const processedBack = processImportedContent(rawBackText);
+
+                    frontText = processedFront.text;
+                    frontImage = processedFront.image;
+                    backText = processedBack.text;
+                    backImage = processedBack.image;
                 } else {
                     // 處理純文本內容
                     rawFrontText = frontCell || '';
@@ -3495,25 +3493,18 @@
                 editBackQuill = new Quill('#editBackEditor', {
                   theme: 'snow',
                   modules: {
-                    toolbar: standardToolbarOptions
-                  },
-                  placeholder: '輸入卡片背面內容...'
-                });
-
-
-                editBackQuill = new Quill('#editBackEditor', {
-                  theme: 'snow',
-                  modules: {
                     toolbar: [
                       ['bold', 'italic', 'underline', 'strike'],
                       ['blockquote'],
                       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'align': ['', 'center', 'right', 'justify'] }], // 添加這一行
                       [{ 'color': [] }, { 'background': [] }],
                       [{ 'size': ['small', false, 'large', 'huge'] }]
                     ]
                   },
                   placeholder: '輸入卡片背面內容...'
                 });
+
               } else {
                 console.log("編輯模式編輯器容器不存在，跳過初始化");
               }
@@ -3940,179 +3931,188 @@
 
         // 設置圖片壓縮功能
         function setupImageCompression() {
-            // 前面圖片處理
-            cardFrontImageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+            // 確保元素存在再添加事件監聽器
+            if (cardFrontImageInput) {
+                // 前面圖片處理
+                cardFrontImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                frontImageName.textContent = file.name;
-                frontImagePreview.classList.remove('hidden');
+                    frontImageName.textContent = file.name;
+                    frontImagePreview.classList.remove('hidden');
 
-                // 顯示載入中狀態
-                frontPreviewImg.src = ''; // 清空之前的圖片
-                frontPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                frontImagePreview.appendChild(loadingIndicator);
+                    // 顯示載入中狀態
+                    frontPreviewImg.src = ''; // 清空之前的圖片
+                    frontPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    frontImagePreview.appendChild(loadingIndicator);
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                        // 更新圖片數據和預覽
-                        frontImageData = compressedDataUrl;
+                            // 更新圖片數據和預覽
+                            frontImageData = compressedDataUrl;
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
+
+                            // 顯示圖片預覽
+                            frontPreviewImg.src = compressedDataUrl;
+                            frontPreviewImg.style.display = 'block';
+
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            frontImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        frontPreviewImg.src = compressedDataUrl;
-                        frontPreviewImg.style.display = 'block';
+            if (cardBackImageInput) {
+                // 背面圖片處理
+                cardBackImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        frontImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    backImageName.textContent = file.name;
+                    backImagePreview.classList.remove('hidden');
 
-            // 背面圖片處理
-            cardBackImageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    backPreviewImg.src = '';
+                    backPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    backImagePreview.appendChild(loadingIndicator);
 
-                backImageName.textContent = file.name;
-                backImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                backPreviewImg.src = '';
-                backPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                backImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            backImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        backImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            backPreviewImg.src = compressedDataUrl;
+                            backPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            backImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        backPreviewImg.src = compressedDataUrl;
-                        backPreviewImg.style.display = 'block';
+            if (editCardFrontImage) {
+                // 編輯正面圖片處理
+                editCardFrontImage.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        backImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    editFrontImagePreview.classList.remove('hidden');
 
-            // 編輯正面圖片處理
-            editCardFrontImage.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    editFrontPreviewImg.src = '';
+                    editFrontPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    editFrontImagePreview.appendChild(loadingIndicator);
 
-                editFrontImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                editFrontPreviewImg.src = '';
-                editFrontPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                editFrontImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            editFrontImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        editFrontImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            editFrontPreviewImg.src = compressedDataUrl;
+                            editFrontPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            editFrontImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        editFrontPreviewImg.src = compressedDataUrl;
-                        editFrontPreviewImg.style.display = 'block';
+            if (editCardBackImage) {
+                // 編輯背面圖片處理
+                editCardBackImage.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        editFrontImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    editBackImagePreview.classList.remove('hidden');
 
-            // 編輯背面圖片處理
-            editCardBackImage.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    editBackPreviewImg.src = '';
+                    editBackPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    editBackImagePreview.appendChild(loadingIndicator);
 
-                editBackImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                editBackPreviewImg.src = '';
-                editBackPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                editBackImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            editBackImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        editBackImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            editBackPreviewImg.src = compressedDataUrl;
+                            editBackPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            editBackImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
-
-                        // 顯示圖片預覽
-                        editBackPreviewImg.src = compressedDataUrl;
-                        editBackPreviewImg.style.display = 'block';
-
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        editBackImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
         }
 
         // 設置拖放上傳功能
@@ -4121,11 +4121,11 @@
             const frontDragArea = document.getElementById('frontDragArea');
             const backDragArea = document.getElementById('backDragArea');
 
-            if (frontDragArea) {
+            if (frontDragArea && cardFrontImageInput) {
                 setupDragArea(frontDragArea, cardFrontImageInput);
             }
 
-            if (backDragArea) {
+            if (backDragArea && cardBackImageInput) {
                 setupDragArea(backDragArea, cardBackImageInput);
             }
 
@@ -4133,11 +4133,11 @@
             const editFrontDragArea = document.getElementById('editFrontDragArea');
             const editBackDragArea = document.getElementById('editBackDragArea');
 
-            if (editFrontDragArea) {
+            if (editFrontDragArea && editCardFrontImage) {
                 setupDragArea(editFrontDragArea, editCardFrontImage);
             }
 
-            if (editBackDragArea) {
+            if (editBackDragArea && editCardBackImage) {
                 setupDragArea(editBackDragArea, editCardBackImage);
             }
         }
@@ -5296,31 +5296,6 @@
             showCurrentCard();
         });
 
-        // Image upload button handlers
-        frontImageBtn.addEventListener('click', () => {
-            cardFrontImageInput.click();
-        });
-
-        backImageBtn.addEventListener('click', () => {
-            cardBackImageInput.click();
-        });
-
-        // Remove front image
-        removeFrontImage.addEventListener('click', () => {
-            frontImageData = null;
-            cardFrontImageInput.value = '';
-            frontImageName.textContent = '';
-            frontImagePreview.classList.add('hidden');
-        });
-
-        // Remove back image
-        removeBackImage.addEventListener('click', () => {
-            backImageData = null;
-            cardBackImageInput.value = '';
-            backImageName.textContent = '';
-            backImagePreview.classList.add('hidden');
-        });
-
         // Edit card image handlers
         editFrontImageBtn.addEventListener('click', () => {
             editCardFrontImage.click();
@@ -5347,17 +5322,24 @@
         // Toggle deck dropdown for create card
         // 讓整個選擇區都可以點擊
         const selectedDecksBar = document.querySelector('.multiselect-dropdown .flex.items-center.border');
-        selectedDecksBar.addEventListener('click', (e) => {
-            // 阻止事件冒泡，防止觸發外部點擊事件
-            e.stopPropagation();
+        if (selectedDecksBar) {
+            selectedDecksBar.addEventListener('click', (e) => {
+                // 如果點擊的是搜索框本身，不要觸發下拉菜單切換
+                if (e.target.id === 'deckSearchForCard') {
+                    return;
+                }
 
-            deckOptions.classList.toggle('hidden');
+                // 阻止事件冒泡，防止觸發外部點擊事件
+                e.stopPropagation();
 
-            // 加載卡組選項
-            if (!deckOptions.classList.contains('hidden')) {
-                loadDeckOptionsForCard();
-            }
-        });
+                deckOptions.classList.toggle('hidden');
+
+                // 加載卡組選項
+                if (!deckOptions.classList.contains('hidden')) {
+                    loadDeckOptionsForCard();
+                }
+            });
+        }
 
         // 添加點擊其他地方時關閉下拉菜單
         document.addEventListener('click', (e) => {
@@ -5374,25 +5356,30 @@
 
         // 为卡組选择添加搜索功能
         function initSearchableDeckSelector() {
-            // 获取相关元素
+            // 獲取相關元素
             const selectedDecksContainer = document.getElementById('selectedDecks');
             const selectedDecksPlaceholder = document.getElementById('selectedDecksPlaceholder');
-            const deckDropdownToggle = document.getElementById('toggleDeckDropdown');
-            const deckOptions = document.getElementById('deckOptions');
 
-            // 创建搜索输入框
+            // 清除所有已存在的搜尋框，防止重複
+            const existingSearch = document.getElementById('deckSearchForCard');
+            if (existingSearch) {
+                existingSearch.remove();
+            }
+
+            // 創建搜索輸入框
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
             searchInput.id = 'deckSearchForCard';
             searchInput.placeholder = '搜尋卡組...';
             searchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
 
-            // 替换占位符为搜索框
-            if (selectedDecksPlaceholder) {
-                selectedDecksPlaceholder.replaceWith(searchInput);
-            } else {
-                // 如果占位符不存在，就添加到选择区容器开头
-                selectedDecksContainer.prepend(searchInput);
+            // 確保只替換佔位符而不是整個容器內容
+            if (selectedDecksPlaceholder && selectedDecksPlaceholder.parentNode) {
+                selectedDecksPlaceholder.parentNode.replaceChild(searchInput, selectedDecksPlaceholder);
+            } else if (selectedDecksContainer) {
+                // 如果找不到佔位符，但容器存在，先清空再添加
+                selectedDecksContainer.innerHTML = '';
+                selectedDecksContainer.appendChild(searchInput);
             }
 
             // 点击整个选择区域时打开下拉菜单
@@ -5595,16 +5582,38 @@
         // Update selected decks display
         function updateSelectedDecksDisplay() {
             if (selectedDeckIds.length === 0) {
-                // 创建搜索输入框
-                const searchInput = document.createElement('input');
-                searchInput.type = 'text';
-                searchInput.id = 'deckSearchForCard';
-                searchInput.placeholder = '搜尋卡組...';
-                searchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
-
+                // 清空容器，但保留可能存在的搜索框
+                const searchInput = document.getElementById('deckSearchForCard');
                 selectedDecks.innerHTML = '';
-                selectedDecks.appendChild(searchInput);
+
+                // 如果搜索框不存在，則創建一個新的
+                if (!searchInput) {
+                    const newSearchInput = document.createElement('input');
+                    newSearchInput.type = 'text';
+                    newSearchInput.id = 'deckSearchForCard';
+                    newSearchInput.placeholder = '搜尋卡組...';
+                    newSearchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
+                    selectedDecks.appendChild(newSearchInput);
+
+                    // 設置搜索框事件...
+                } else {
+                    // 如果搜索框存在但不在容器中，則將其添加回容器
+                    if (!selectedDecks.contains(searchInput)) {
+                        selectedDecks.appendChild(searchInput);
+                    }
+                }
                 return;
+            }
+
+            // 保存現有的搜索框（如果有的話）
+            const searchInput = document.getElementById('deckSearchForCard');
+
+            // 清空容器
+            selectedDecks.innerHTML = '';
+
+            // 如果存在搜索框，先將其添加回去
+            if (searchInput) {
+                selectedDecks.appendChild(searchInput);
             }
 
             selectedDecks.innerHTML = '';
@@ -7067,6 +7076,18 @@
             editFrontQuill.root.innerHTML = card.frontText || '';
             editBackQuill.root.innerHTML = card.backText || '';
 
+            // 編輯器初始化前清理可能的重複工具列
+            const editBackEditorElement = document.getElementById('editBackEditor');
+            if (editBackEditorElement) {
+              // 移除所有可能存在的重複工具列
+              const toolbars = editBackEditorElement.parentElement.querySelectorAll('.ql-toolbar');
+              if (toolbars.length > 1) {
+                for (let i = 1; i < toolbars.length; i++) {
+                  toolbars[i].remove();
+                }
+              }
+            }
+
             // Reset image data
             editFrontImageData = card.frontImage;
             editBackImageData = card.backImage;
@@ -8392,8 +8413,7 @@
                                                 const backText = processedBack.text;
                                                 const backImage = processedBack.image;
 
-                                                // 創建新字卡
-                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
+                                                // 創建新卡片時設置圖片內容
                                                 const newCard = {
                                                     id: newCardId,
                                                     frontText: frontText,
