@@ -2658,56 +2658,49 @@
                                     const formattedRow = [];
                                     const values = row.values;
 
-                                    // 處理每個單元格
-                                    values.forEach(cell => {
-                                        // 獲取單元格值
-                                        const value = cell.formattedValue || '';
-                                        let base64Image = null;
-                                        let cellDelta = { ops: [] }; // 預設為空的 Delta
+                                    // Inside loadFormattedGSheetsData, within the values.forEach loop:
+                                            values.forEach(cell => {
+                                                // 獲取單元格值
+                                                const value = cell.formattedValue || '';
+                                                let base64Image = null; // <--- NEW: Variable to hold image data
+                                                let cellDelta = { ops: [] }; // 預設為空的 Delta
+                                                let textContent = value; // <--- NEW: Default text content
 
-                                        // *** 新增：在轉換 Delta 之前，檢查是否為 Base64 圖片 ***
-                                        if (isBase64Image(value)) {
-                                            base64Image = ensureBase64Prefix(value); // 存儲圖片數據
-                                            // 如果是圖片，文字部分留空，Delta 也留空
-                                        } else {
-                                            // *** 如果不是圖片，才進行 Delta 轉換 ***
-                                            const textFormatRunsCopy = cell.textFormatRuns ?
-                                                JSON.parse(JSON.stringify(cell.textFormatRuns)) : [];
-                                            const effectiveFormatCopy = cell.effectiveFormat ?
-                                                JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
-                                            cellDelta = convertGSheetsCellToQuillDelta(
-                                                value,
-                                                textFormatRunsCopy,
-                                                effectiveFormatCopy
-                                            );
-                                        }
+                                                // *** START: ADD BASE64 IMAGE CHECK ***
+                                                if (isBase64Image(value)) {
+                                                    base64Image = ensureBase64Prefix(value); // Store image data
+                                                    textContent = '[圖片]'; // Set placeholder text for preview if needed
+                                                    // If it's an image, keep the delta empty or minimal
+                                                    cellDelta = { ops: [] }; // Or maybe { ops: [{ insert: '[圖片]' }] } if you want placeholder text
+                                                } else {
+                                                    // *** If not an image, proceed with existing Delta conversion ***
+                                                    const textFormatRunsCopy = cell.textFormatRuns ?
+                                                        JSON.parse(JSON.stringify(cell.textFormatRuns)) : [];
+                                                    const effectiveFormatCopy = cell.effectiveFormat ?
+                                                        JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
+                                                    cellDelta = convertGSheetsCellToQuillDelta(
+                                                        value,
+                                                        textFormatRunsCopy,
+                                                        effectiveFormatCopy
+                                                    );
+                                                }
+                                                // *** END: ADD BASE64 IMAGE CHECK ***
 
-                                        // 創建深拷貝的格式信息 (如果需要的話，例如顏色)
-                                        const effectiveFormatCopyCopy = cell.effectiveFormat ?
-                                            JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
+                                                // 創建深拷貝的格式信息 (如果需要的話，例如顏色)
+                                                const effectiveFormatCopyCopy = cell.effectiveFormat ?
+                                                    JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
 
-                                        // 安全地創建帶格式的單元格對象
-                                        const formattedCell = {
-                                            value: base64Image ? '' : value, // 如果是圖片，值為空；否則為原始值
-                                            textContent: base64Image ? '[圖片]' : value, // 用於預覽或搜尋的文字
-                                            base64Image: base64Image,       // *** 新增：存儲 Base64 圖片數據 ***
-                                            delta: cellDelta,               // 存儲文字的 Delta (如果是圖片則為空)
-                                            format: { // 保留其他可能的格式信息
-                                                bold: effectiveFormatCopyCopy.textFormat?.bold || false,
-                                                italic: effectiveFormatCopyCopy.textFormat?.italic || false,
-                                                underline: effectiveFormatCopyCopy.textFormat?.underline || false,
-                                                strikethrough: effectiveFormatCopyCopy.textFormat?.strikethrough || false,
-                                                fontSize: effectiveFormatCopyCopy.textFormat?.fontSize || 10,
-                                                foregroundColor: effectiveFormatCopyCopy.textFormat?.foregroundColor ?
-                                                    {...effectiveFormatCopyCopy.textFormat.foregroundColor} : null,
-                                                backgroundColor: effectiveFormatCopyCopy.backgroundColor ?
-                                                    {...effectiveFormatCopyCopy.backgroundColor} : null
-                                            },
-                                            // formatRuns: textFormatRunsCopyCopy, // formatRuns 通常用於生成 delta，可以考慮是否仍需保留
-                                        };
+                                                // 安全地創建帶格式的單元格對象
+                                                const formattedCell = {
+                                                    value: base64Image ? '' : value,     // Keep original value if not image
+                                                    textContent: textContent,            // Text for preview/search
+                                                    base64Image: base64Image,          // *** NEW: Store Base64 image data ***
+                                                    delta: cellDelta,                  // Store text Delta (empty if image)
+                                                    format: { /* ... existing format extraction ... */ },
+                                                };
 
-                                        formattedRow.push(formattedCell);
-                                    });
+                                                formattedRow.push(formattedCell);
+                                            });
 
                                     formattedData.push(formattedRow);
                                 });
@@ -3109,35 +3102,41 @@
                 let rawFrontText, rawBackText;
 
                 let frontText = '', backText = '';
-                                let frontImage = null, backImage = null;
+                let frontImage = null, backImage = null;
 
-                                if (hasFormatting) {
-                                    // *** 修改：優先檢查 base64Image 屬性 ***
-                                    if (frontCell?.base64Image) {
-                                        frontImage = frontCell.base64Image;
-                                        frontText = ''; // 確保文本為空
-                                    } else {
-                                        // 如果不是圖片，才從 Delta 轉換 HTML
-                                        frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
-                                    }
+                if (hasFormatting) {
+                    // *** START: MODIFIED LOGIC for formatted data ***
+                    // Process Front Cell
+                    if (frontCell?.base64Image) { // Check if it was identified as an image
+                        frontImage = frontCell.base64Image;
+                        frontText = ''; // Ensure text is empty if there's an image
+                    } else {
+                        // If not an image, convert Delta to HTML for text
+                        frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                        frontImage = null; // Ensure image is null if there's text
+                    }
 
-                                    if (backCell?.base64Image) {
-                                        backImage = backCell.base64Image;
-                                        backText = ''; // 確保文本為空
-                                    } else {
-                                        backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
-                                    }
-                                } else {
-                                    // *** 對於無格式導入 (CSV)，繼續使用 processImportedContent ***
-                                    const processedFront = processImportedContent(frontCell || '');
-                                    frontText = processedFront.text;
-                                    frontImage = processedFront.image;
+                    // Process Back Cell
+                    if (backCell?.base64Image) { // Check if it was identified as an image
+                        backImage = backCell.base64Image;
+                        backText = ''; // Ensure text is empty if there's an image
+                    } else {
+                        // If not an image, convert Delta to HTML for text
+                        backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
+                        backImage = null; // Ensure image is null if there's text
+                    }
+                    // *** END: MODIFIED LOGIC for formatted data ***
 
-                                    const processedBack = processImportedContent(backCell || '');
-                                    backText = processedBack.text;
-                                    backImage = processedBack.image;
-                                }
+                } else {
+                    // This part for CSV/Excel import already uses processImportedContent, which is correct.
+                    const processedFront = processImportedContent(frontCell || '');
+                    frontText = processedFront.text;
+                    frontImage = processedFront.image;
 
+                    const processedBack = processImportedContent(backCell || '');
+                    backText = processedBack.text;
+                    backImage = processedBack.image;
+                }
                                 // *** 注意：後續的 processImportedContent 調用已包含在此處，無需重複 ***
 
                                 // 生成一個用於識別這行的唯一內容鍵 (使用處理後的值)
@@ -3157,38 +3156,26 @@
                 }
 
                 if (existingCard) {
-                    // 更新現有卡片 (使用處理後的值)
+                    // Update existing card
                     existingCard.frontText = frontText;
-                    existingCard.frontImage = frontImage; // 添加圖片更新
+                    existingCard.frontImage = frontImage; // Use the determined image
                     existingCard.backText = backText;
-                    existingCard.backImage = backImage;   // 添加圖片更新
+                    existingCard.backImage = backImage;   // Use the determined image
                     cardRowMap.set(existingCard.id, i);
                 } else {
-                    // 創建新卡片
-                    // 創建新字卡
-                    // 創建一個基於整個工作表名稱的更可靠哈希值
-                    const getSheetHash = (str) => {
-                        let hash = 0;
-                        for (let i = 0; i < str.length; i++) {
-                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                            hash |= 0; // 轉換為32位整數
-                        }
-                        return Math.abs(hash);
-                    };
-                    const sheetHash = getSheetHash(sheetName) * 1000;
-                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
+                    // Create new card
+                    const newCardId = Date.now() + i + Math.floor(Math.random() * 10000); // Use a more robust ID generation
                     const newCard = {
                         id: newCardId,
                         frontText: frontText,
-                        frontImage: frontImage, // 添加圖片
+                        frontImage: frontImage, // Use the determined image
                         backText: backText,
-                        backImage: backImage,   // 添加圖片
+                        backImage: backImage,   // Use the determined image
                         nextReview: Date.now(),
                         repetitions: 0,
                         easeFactor: 2.0,
                         interval: 1.0
                     };
-
                     cardsData.push(newCard);
                     targetDeck.cardIds.push(newCardId);
                     cardRowMap.set(newCardId, i);
