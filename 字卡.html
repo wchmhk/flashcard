@@ -2877,174 +2877,175 @@
             }
         }
 
-        function convertGSheetsCellToQuillDelta(value, textFormatRunsCopy, effectiveFormatCopy) {
+        function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
           // 創建參數的深拷貝以避免修改唯讀屬性 - 使用本地副本而不是修改參數
-          const textFormatRunsCopyCopy = textFormatRunsCopy ? JSON.parse(JSON.stringify(textFormatRunsCopy)) : [];
-          const effectiveFormatCopyCopy = effectiveFormatCopy ? JSON.parse(JSON.stringify(effectiveFormatCopy)) : {};
+          const textFormatRunsCopy = textFormatRuns ? JSON.parse(JSON.stringify(textFormatRuns)) : [];
+          const effectiveFormatCopy = effectiveFormat ? JSON.parse(JSON.stringify(effectiveFormat)) : {};
 
-            // 如果沒有文本，返回空 Delta
-            if (!value) {
-                return { ops: [] };
+          // 如果沒有文本，返回空 Delta
+          if (!value) {
+            return { ops: [] };
+          }
+
+          const format = {};
+
+          // 從 effectiveFormatCopy 提取全局格式
+          if (effectiveFormatCopy) {
+            // 原有的格式處理（粗體、斜體等）
+            if (effectiveFormatCopy.textFormat) {
+              if (effectiveFormatCopy.textFormat.bold) format.bold = true;
+              if (effectiveFormatCopy.textFormat.italic) format.italic = true;
+              if (effectiveFormatCopy.textFormat.underline) format.underline = true;
+              if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
+
+              // 處理前景色 - 增強顏色處理邏輯
+              if (effectiveFormatCopy.textFormat.foregroundColor) {
+                const color = effectiveFormatCopy.textFormat.foregroundColor;
+                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                  // 使用更精確的RGB值
+                  const r = Math.round(color.red * 255);
+                  const g = Math.round(color.green * 255);
+                  const b = Math.round(color.blue * 255);
+
+                  // 檢查是否為默認黑色
+                  const isDefaultBlack = (r === 0 && g === 0 && b === 0);
+                  if (!isDefaultBlack) {
+                    format.color = `rgb(${r}, ${g}, ${b})`;
+                    // 保存原始顏色值以備在暗模式下使用
+                    format.originalColor = [r, g, b];
+                  }
+                }
+              }
+
+              // 處理背景色
+              if (effectiveFormatCopy.backgroundColor) {
+                const bgColor = effectiveFormatCopy.backgroundColor;
+                // 檢查是否不是默認白色
+                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                if (!isDefaultWhite) {
+                  const r = Math.round(bgColor.red * 255);
+                  const g = Math.round(bgColor.green * 255);
+                  const b = Math.round(bgColor.blue * 255);
+                  format.background = `rgb(${r}, ${g}, ${b})`;
+                }
+              }
             }
 
-            const format = {};
-
-            // 從 effectiveFormatCopyCopy 提取全局格式
-            if (effectiveFormatCopyCopy) {
-                // 原有的格式處理（粗體、斜體等）
-                if (effectiveFormatCopyCopy.textFormat) {
-                    if (effectiveFormatCopyCopy.textFormat.bold) format.bold = true;
-                    if (effectiveFormatCopyCopy.textFormat.italic) format.italic = true;
-                    if (effectiveFormatCopyCopy.textFormat.underline) format.underline = true;
-                    if (effectiveFormatCopyCopy.textFormat.strikethrough) format.strike = true;
-
-                    // 處理前景色 - 增強顏色處理邏輯
-                    if (effectiveFormatCopyCopy.textFormat.foregroundColor) {
-                        const color = effectiveFormatCopyCopy.textFormat.foregroundColor;
-                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                            // 使用更精確的RGB值
-                            const r = Math.round(color.red * 255);
-                            const g = Math.round(color.green * 255);
-                            const b = Math.round(color.blue * 255);
-
-                            // 檢查是否為默認黑色
-                            const isDefaultBlack = (r === 0 && g === 0 && b === 0);
-                            if (!isDefaultBlack) {
-                                format.color = `rgb(${r}, ${g}, ${b})`;
-                                // 保存原始顏色值以備在暗模式下使用
-                                format.originalColor = [r, g, b];
-                            }
-                        }
-                    }
-
-                    // 處理背景色
-                    if (effectiveFormatCopyCopy.backgroundColor) {
-                        const bgColor = effectiveFormatCopyCopy.backgroundColor;
-                        // 檢查是否不是默認白色
-                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                        if (!isDefaultWhite) {
-                            const r = Math.round(bgColor.red * 255);
-                            const g = Math.round(bgColor.green * 255);
-                            const b = Math.round(bgColor.blue * 255);
-                            format.background = `rgb(${r}, ${g}, ${b})`;
-                        }
-                    }
-                }
-
-                // 處理對齊方式
-                if (effectiveFormatCopyCopy.horizontalAlignment) {
-                    const alignment = effectiveFormatCopyCopy.horizontalAlignment.toLowerCase();
-                    if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                        format.align = alignment;
-                    }
-                }
+            // 處理對齊方式
+            if (effectiveFormatCopy.horizontalAlignment) {
+              const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
+              if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+                format.align = alignment;
+              }
             }
-            // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
-            // 這可能是蘋果和其他水果表現不同的原因
-            if (effectiveFormatCopyCopy && effectiveFormatCopyCopy.horizontalAlignment) {
-                const alignment = effectiveFormatCopyCopy.horizontalAlignment.toLowerCase();
-                if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                    // 確保這個對齊格式被應用到每個操作中
-                    format.align = alignment;
-                }
+          }
+
+          // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
+          if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
+            const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
+            if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+              // 確保這個對齊格式被應用到每個操作中
+              format.align = alignment;
             }
-            // 如果沒有格式運行，使用整體格式
-            if (!textFormatRunsCopyCopyCopy || textFormatRunsCopyCopy.length === 0) {
-                // 創建帶格式的 Delta
-                return {
-                    ops: [
-                        {
-                            insert: value,
-                            attributes: Object.keys(format).length > 0 ? format : undefined
-                        }
-                    ]
-                };
+          }
+
+          // 如果沒有格式運行，使用整體格式
+          if (!textFormatRunsCopy || textFormatRunsCopy.length === 0) {
+            // 創建帶格式的 Delta
+            return {
+              ops: [
+                {
+                  insert: value,
+                  attributes: Object.keys(format).length > 0 ? format : undefined
+                }
+              ]
+            };
+          }
+
+          // 如果有格式運行，處理每一段
+          const ops = [];
+          let lastIndex = 0;
+
+          // 按順序處理每個格式段
+          textFormatRunsCopy.forEach(run => {
+            const startIndex = run.startIndex || 0;
+
+            // 添加前一段文本（如果有）
+            if (startIndex > lastIndex) {
+              const text = value.substring(lastIndex, startIndex);
+              if (text) {
+                ops.push({ insert: text });
+              }
             }
 
-            // 如果有格式運行，處理每一段
-            const ops = [];
-            let lastIndex = 0;
+            // 獲取此格式段的結束索引
+            const nextRun = textFormatRunsCopy.find(r => r.startIndex > startIndex);
+            const endIndex = nextRun ? nextRun.startIndex : value.length;
 
-            // 按順序處理每個格式段
-            textFormatRunsCopyCopy.forEach(run => {
-                const startIndex = run.startIndex || 0;
+            // 提取文本
+            const text = value.substring(startIndex, endIndex);
 
-                // 添加前一段文本（如果有）
-                if (startIndex > lastIndex) {
-                    const text = value.substring(lastIndex, startIndex);
-                    if (text) {
-                        ops.push({ insert: text });
-                    }
+            // 提取格式 - 增強顏色處理
+            const segmentFormat = {};
+            if (run.format) {
+              if (run.format.bold) segmentFormat.bold = true;
+              if (run.format.italic) segmentFormat.italic = true;
+              if (run.format.underline) segmentFormat.underline = true;
+              if (run.format.strikethrough) segmentFormat.strike = true;
+
+              // 處理前景色 - 加強顏色轉換
+              if (run.format.foregroundColor) {
+                const color = run.format.foregroundColor;
+                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                  const r = Math.round(color.red * 255);
+                  const g = Math.round(color.green * 255);
+                  const b = Math.round(color.blue * 255);
+
+                  // 檢查顏色是否為默認黑色
+                  const isDefaultBlack = r === 0 && g === 0 && b === 0;
+                  if (!isDefaultBlack) {
+                    segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
+                    // 保存原始顏色值
+                    segmentFormat.originalColor = [r, g, b];
+                  }
                 }
+              }
 
-                // 獲取此格式段的結束索引
-                const nextRun = textFormatRunsCopyCopy.find(r => r.startIndex > startIndex);
-                const endIndex = nextRun ? nextRun.startIndex : value.length;
-
-                // 提取文本
-                const text = value.substring(startIndex, endIndex);
-
-                // 提取格式 - 增強顏色處理
-                const segmentFormat = {};
-                if (run.format) {
-                    if (run.format.bold) segmentFormat.bold = true;
-                    if (run.format.italic) segmentFormat.italic = true;
-                    if (run.format.underline) segmentFormat.underline = true;
-                    if (run.format.strikethrough) segmentFormat.strike = true;
-
-                    // 處理前景色 - 加強顏色轉換
-                    if (run.format.foregroundColor) {
-                        const color = run.format.foregroundColor;
-                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                            const r = Math.round(color.red * 255);
-                            const g = Math.round(color.green * 255);
-                            const b = Math.round(color.blue * 255);
-
-                            // 檢查顏色是否為默認黑色
-                            const isDefaultBlack = r === 0 && g === 0 && b === 0;
-                            if (!isDefaultBlack) {
-                                segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
-                                // 保存原始顏色值
-                                segmentFormat.originalColor = [r, g, b];
-                            }
-                        }
-                    }
-
-                    // 處理背景色
-                    if (run.format.backgroundColor) {
-                        const bgColor = run.format.backgroundColor;
-                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                        if (!isDefaultWhite) {
-                            const r = Math.round(bgColor.red * 255);
-                            const g = Math.round(bgColor.green * 255);
-                            const b = Math.round(bgColor.blue * 255);
-                            segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
-                        }
-                    }
+              // 處理背景色
+              if (run.format.backgroundColor) {
+                const bgColor = run.format.backgroundColor;
+                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                if (!isDefaultWhite) {
+                  const r = Math.round(bgColor.red * 255);
+                  const g = Math.round(bgColor.green * 255);
+                  const b = Math.round(bgColor.blue * 255);
+                  segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
                 }
+              }
+            }
 
-                // 添加對齊格式（如果全局有設定）
-                if (format.align) {
-                    segmentFormat.align = format.align;
-                }
+            // 添加對齊格式（如果全局有設定）
+            if (format.align) {
+              segmentFormat.align = format.align;
+            }
 
-                // 添加帶格式的文本
-                ops.push({
-                    insert: text,
-                    attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
-                });
-
-                // 更新處理索引
-                lastIndex = endIndex;
+            // 添加帶格式的文本
+            ops.push({
+              insert: text,
+              attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
             });
 
-            // 添加剩餘的文本（如果有）
-            if (lastIndex < value.length) {
-                const remainingText = value.substring(lastIndex);
-                ops.push({ insert: remainingText });
-            }
+            // 更新處理索引
+            lastIndex = endIndex;
+          });
 
-            return { ops: ops };
+          // 添加剩餘的文本（如果有）
+          if (lastIndex < value.length) {
+            const remainingText = value.substring(lastIndex);
+            ops.push({ insert: remainingText });
+          }
+
+          return { ops: ops };
         }
 
         // 根據 Google Sheets 數據更新字卡
