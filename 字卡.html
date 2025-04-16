@@ -3139,47 +3139,52 @@
                 }
                                 // *** 注意：後續的 processImportedContent 調用已包含在此處，無需重複 ***
 
-                                // 生成一個用於識別這行的唯一內容鍵 (使用處理後的值)
-                                const rowContentKey = `${frontText}_${frontImage || ''}_${backText}_${backImage || ''}`;
+                                // --- 修改開始：使用更穩定的比對鍵 ---
+                                // 建立只基於「文字」內容的比對鍵，忽略圖片資料差異
+                                const rowMatchKey = `${frontText}_${backText}`; // 來自 Google Sheet 的文字
 
-                // 查找是否已存在相同內容的卡片
-                let existingCard = null;
-                for (const cardId of targetDeck.cardIds) {
-                    const card = cardsData.find(c => c.id === cardId);
-                    if (card) {
-                        const cardKey = `${card.frontText}_${card.backText}`;
-                        if (cardKey === rowKey) {
-                            existingCard = card;
-                            break;
-                        }
-                    }
-                }
+                                // 查找現有卡片時，也只用文字內容比對
+                                let existingCard = null;
+                                for (const cardId of targetDeck.cardIds) {
+                                    const card = cardsData.find(c => c.id === cardId);
+                                    if (card) {
+                                        // 建立現有卡片的文字比對鍵
+                                        const cardMatchKey = `${card.frontText || ''}_${card.backText || ''}`;
+                                        // 比對文字鍵，並且確保不是比對兩個完全空白的卡片
+                                        if (cardMatchKey === rowMatchKey && cardMatchKey !== '_') {
+                                            existingCard = card;
+                                            break;
+                                        }
+                                    }
+                                }
 
-                if (existingCard) {
-                    // Update existing card
-                    existingCard.frontText = frontText;
-                    existingCard.frontImage = frontImage; // Use the determined image
-                    existingCard.backText = backText;
-                    existingCard.backImage = backImage;   // Use the determined image
-                    cardRowMap.set(existingCard.id, i);
-                } else {
-                    // Create new card
-                    const newCardId = Date.now() + i + Math.floor(Math.random() * 10000); // Use a more robust ID generation
-                    const newCard = {
-                        id: newCardId,
-                        frontText: frontText,
-                        frontImage: frontImage, // Use the determined image
-                        backText: backText,
-                        backImage: backImage,   // Use the determined image
-                        nextReview: Date.now(),
-                        repetitions: 0,
-                        easeFactor: 2.0,
-                        interval: 1.0
-                    };
-                    cardsData.push(newCard);
-                    targetDeck.cardIds.push(newCardId);
-                    cardRowMap.set(newCardId, i);
-                }
+                                if (existingCard) {
+                                    // 更新現有卡片 (現在應該能正確找到舊卡片了)
+                                    existingCard.frontText = frontText;
+                                    existingCard.frontImage = frontImage; // 正確存入圖片
+                                    existingCard.backText = backText;     // 正確清空或存入文字
+                                    existingCard.backImage = backImage;   // 正確存入圖片
+                                    // 可選：更新卡片的複習計劃等...
+                                    // existingCard.nextReview = Date.now(); // 例如，更新後重設複習時間
+                                    cardRowMap.set(existingCard.id, i); // 確保 cardRowMap 仍然更新
+                                } else {
+                                    // 創建新卡片 (這部分邏輯不變)
+                                    const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
+                                    const newCard = {
+                                        id: newCardId,
+                                        frontText: frontText,
+                                        frontImage: frontImage,
+                                        backText: backText,
+                                        backImage: backImage,
+                                        nextReview: Date.now(),
+                                        repetitions: 0,
+                                        easeFactor: 2.0,
+                                        interval: 1.0
+                                    };
+                                    cardsData.push(newCard);
+                                    targetDeck.cardIds.push(newCardId);
+                                    cardRowMap.set(newCard.id, i);
+                                }
             }
 
             // 可選：移除不再存在於表格中的卡片
