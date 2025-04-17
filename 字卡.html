@@ -1954,139 +1954,48 @@
             }
         }
 
+        // Base64圖片檢測和處理函數
         function isBase64Image(str) {
           if (typeof str !== 'string') return false;
-
-          // 清理字符串
-          const trimmed = str.trim();
-
-          // 檢查是否有標準 data:image 前綴
-          if (trimmed.startsWith('data:image/')) return true;
-
-          // 檢查是否是純 Base64 字符串 (通常以 /9j/ 開頭的是JPEG圖片)
-          if (trimmed.startsWith('/9j/')) return true;
-
-          // 檢查是否有其他常見圖片格式的 Base64 特徵
-          if (trimmed.match(/^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$/)) {
-            // 進一步檢查開頭部分是否符合常見圖片格式的特徵
-            const firstChars = trimmed.substring(0, 20).toLowerCase();
-            if (firstChars.includes('png') ||
-                firstChars.includes('jpg') ||
-                firstChars.includes('jpeg') ||
-                firstChars.includes('gif') ||
-                firstChars.includes('svg') ||
-                firstChars.includes('webp')) {
-              return true;
-            }
+          // 檢查是否符合base64圖片格式前綴
+          if (str.startsWith('data:image/')) {
+            return true;
           }
 
-          return false;
-        }
-
-        function renderCardContent(container, content) {
-          console.log("DEBUG 渲染內容：", content);
-          if (isBase64Image(content)) {
-            // 移除換行與空白，避免 base64 失效
-            const cleanContent = content.replace(/[\r\n\s]+/g, '');
-            console.log('DEBUG: 是 base64 圖片，準備插入 <img>');
-            // 確保使用處理過的 base64 前綴
-            const imgSrc = ensureBase64Prefix(cleanContent);
-            container.innerHTML = `<img src="${imgSrc}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-          } else {
-            container.innerHTML = content || '';
-          }
-        }
-
-        // 確保 base64 字符串有正確的數據頭 - 改進版本
-        function ensureBase64Prefix(base64Str) {
-          if (!base64Str) return '';
-
-          // 清理字符串
-          const cleanStr = base64Str.trim().replace(/[\r\n\s]/g, '');
-
-          // 已經有數據頭的情況
-          if (cleanStr.startsWith('data:image/')) {
-            return cleanStr;
-          }
-
-          // 嘗試檢測圖片類型
-          let imgType = 'jpeg'; // 默認類型
-
+          // 檢查是否是沒有前綴的base64編碼
           try {
-            // 檢查前幾個字符嘗試識別圖片類型
-            const prefix = cleanStr.substring(0, 20).toLowerCase();
-
-            if (prefix.includes('png')) {
-              imgType = 'png';
-            } else if (prefix.includes('gif')) {
-              imgType = 'gif';
-            } else if (prefix.includes('svg')) {
-              imgType = 'svg+xml';
-            } else if (prefix.includes('webp')) {
-              imgType = 'webp';
-            }
+            // base64字符串通常有特定的模式和長度
+            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            // 要求base64字符串至少有一定長度才被視為圖片
+            return str.length > 100 && base64Regex.test(str);
           } catch (e) {
-            console.log("圖片類型檢測錯誤，使用默認類型");
+            return false;
           }
-
-          return `data:image/${imgType};base64,${cleanStr}`;
         }
 
-        // 處理導入的內容，檢測並處理 base64 圖片 - 強化版
+        // 確保base64字符串有正確的數據頭
+        function ensureBase64Prefix(base64Str) {
+          if (base64Str.startsWith('data:image/')) {
+            return base64Str;
+          }
+
+          // 嘗試檢測圖片類型(簡單處理為JPEG)
+          return `data:image/jpeg;base64,${base64Str}`;
+        }
+
+        // 處理導入的內容，檢測並處理base64圖片
         function processImportedContent(content) {
           if (!content) return { text: '', image: null };
 
-          // 確保內容是字符串
           if (typeof content !== 'string') {
             content = content.toString();
           }
 
-          // 移除開頭和結尾的引號（Google Sheets可能會添加）
-          content = content.trim().replace(/^["']|["']$/g, '');
-
-          // 檢查是否為 HTML，可能含有<img>標籤
-          if (content.includes('<') && content.includes('>')) {
-            try {
-              const temp = document.createElement('div');
-              temp.innerHTML = content;
-
-              // 檢查是否包含圖片元素
-              const img = temp.querySelector('img');
-              if (img && img.src && (img.src.startsWith('data:image/') || isBase64Image(img.src))) {
-                return {
-                  text: '',
-                  image: img.src
-                };
-              }
-
-              // 沒有找到圖片，返回純文本
-              content = temp.textContent || temp.innerText || content;
-            } catch (e) {
-              console.log("HTML處理錯誤，使用原始內容");
-            }
-          }
-
-          // 檢查是否是 base64 圖片
           if (isBase64Image(content)) {
-            console.log("檢測到 Base64 圖片，長度:", content.length);
-            try {
-              const cleanedContent = content.replace(/[\r\n\s]+/g, '');
-              const img = new Image();
-              img.src = ensureBase64Prefix(cleanedContent);
-              console.log("圖片加載成功:", img.src.substring(0, 50) + "...");
-
-              return {
-                text: '',
-                image: img.src
-              };
-            } catch (e) {
-              console.error("圖片加載失敗:", e);
-              // 儘管失敗，仍然嘗試返回圖片
-              return {
-                text: '',
-                image: ensureBase64Prefix(content.replace(/[\r\n\s]+/g, ''))
-              };
-            }
+            return {
+              text: '',
+              image: ensureBase64Prefix(content)
+            };
           }
 
           return {
@@ -3923,6 +3832,25 @@
         }
 
         // 添加到脚本开头部分的函数
+
+        // base64 图片检测和处理函数
+        function isBase64Image(str) {
+          if (typeof str !== 'string') return false;
+          // 检查是否符合 base64 图片格式前缀
+          if (str.startsWith('data:image/')) {
+            return true;
+          }
+
+          // 检查是否是没有前缀的 base64 编码
+          try {
+            // base64 字符串通常有特定的模式和长度
+            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            // 要求 base64 字符串至少有一定长度才被视为图片
+            return str.length > 100 && base64Regex.test(str);
+          } catch (e) {
+            return false;
+          }
+        }
 
         // 确保 base64 字符串有正确的数据头
         function ensureBase64Prefix(base64Str) {
@@ -6525,31 +6453,70 @@
             }
         }
 
+        // Show current card to review
         function showCurrentCard() {
+            // 重置卡片狀態
             cardFront.classList.remove('hidden');
             cardBack.classList.add('hidden');
             ratingButtons.classList.add('hidden');
-            frontText.className = "mb-6 px-2";
-            backText.className = "mb-6 px-2";
+
+            // 设置卡片布局样式
+            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
+            cardBack.className = "flex flex-col w-full h-full justify-between hidden";
+
+            // 确保文字区域有最小高度
             frontText.style.minHeight = "80px";
             backText.style.minHeight = "80px";
 
+            // 增加文字区域的边距
+            frontText.className = "mb-6 px-2";
+            backText.className = "mb-6 px-2";
+
+            // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
 
-            frontImage.innerHTML = '';
-            backImage.innerHTML = '';
+            // 根據sidesFlipped決定顯示方式
+            if (sidesFlipped) {
+                // 正反面互換
+                frontText.innerHTML = card.backText || '';
+                backText.innerHTML = card.frontText || '';
 
-            if (!sidesFlipped) {
-                if (card.frontImage) frontImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-                if (card.backImage) backImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-                renderCardContent(frontText, card.frontText);
-                renderCardContent(backText, card.backText);
+                // 處理圖片顯示
+                frontImage.innerHTML = '';
+                backImage.innerHTML = '';
+
+                if (card.backImage) {
+                    const imgContainer = createZoomableImage(card.backImage);
+                    frontImage.appendChild(imgContainer);
+                }
+
+                if (card.frontImage) {
+                    const imgContainer = createZoomableImage(card.frontImage);
+                    backImage.appendChild(imgContainer);
+                }
             } else {
-                if (card.backImage) frontImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-                if (card.frontImage) backImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-                renderCardContent(frontText, card.backText);
-                renderCardContent(backText, card.frontText);
+                // 正常顯示
+                frontText.innerHTML = card.frontText || '';
+                backText.innerHTML = card.backText || '';
+
+                // 增加間距類
+                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
+                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
+
+                // 處理圖片顯示
+                frontImage.innerHTML = '';
+                backImage.innerHTML = '';
+
+                if (card.frontImage) {
+                    const imgContainer = createZoomableImage(card.frontImage);
+                    frontImage.appendChild(imgContainer);
+                }
+
+                if (card.backImage) {
+                    const imgContainer = createZoomableImage(card.backImage);
+                    backImage.appendChild(imgContainer);
+                }
             }
         }
 
@@ -8432,8 +8399,8 @@
 
                                                 // 跳过缺少必要内容的行
                                                 if (!rawFrontContent && !rawBackContent) {
-                                                  skippedCount++;
-                                                  continue;
+                                                    skippedCount++;
+                                                    continue;
                                                 }
 
                                                 // 處理正面內容，檢測base64圖片
@@ -8447,17 +8414,16 @@
                                                 const backImage = processedBack.image;
 
                                                 // 創建新卡片時設置圖片內容
-                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                                                 const newCard = {
-                                                  id: newCardId,
-                                                  frontText: frontText,
-                                                  frontImage: frontImage,
-                                                  backText: backText,
-                                                  backImage: backImage,
-                                                  nextReview: Date.now(),
-                                                  repetitions: 0,
-                                                  easeFactor: 2.0,
-                                                  interval: 1.0
+                                                    id: newCardId,
+                                                    frontText: frontText,
+                                                    frontImage: frontImage,
+                                                    backText: backText,
+                                                    backImage: backImage,
+                                                    nextReview: Date.now(),
+                                                    repetitions: 0,
+                                                    easeFactor: 2.0,
+                                                    interval: 1.0
                                                 };
 
                                                 // 添加新字卡
