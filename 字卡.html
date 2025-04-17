@@ -2983,7 +2983,8 @@
             if (!activeSheetName || !excelSheets[activeSheetName]) return;
 
             const sheetData = excelSheets[activeSheetName].data;
-            const hasFormatting = excelSheets[activeSheetName].hasFormatting;
+            // 關鍵修復：正確獲取格式狀態
+            const hasFormatting = excelSheets[activeSheetName].hasFormatting || false;
             const options = sheetOptions[activeSheetName];
             const mapping = sheetMappings[activeSheetName];
 
@@ -3040,40 +3041,38 @@
                 if (!frontCell && !backCell) continue;
 
                 // 準備卡片內容
-                let rawFrontText, rawBackText;
+                let frontText, backText;
 
-                // 在处理格式化内容时
                 if (hasFormatting) {
-                    // 处理带格式的内容后再检测base64
-                    let rawFrontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
-                    let rawBackText = convertDeltaToHTML(backCell?.delta || { ops: [] });
-
-                    // 处理base64图片检测
-                    const processedFront = processImportedContent(rawFrontText);
-                    const processedBack = processImportedContent(rawBackText);
-
-                    frontText = processedFront.text;
-                    frontImage = processedFront.image;
-                    backText = processedBack.text;
-                    backImage = processedBack.image;
+                    // 處理帶格式的內容
+                    frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
+                    backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
                 } else {
                     // 處理純文本內容
-                    rawFrontText = frontCell || '';
-                    rawBackText = backCell || '';
+                    frontText = frontCell || '';
+                    backText = backCell || '';
+
+                    // 將純文本中的換行符轉換為<br>標籤
+                    if (typeof frontText === 'string') {
+                        frontText = frontText.replace(/\n/g, '<br>');
+                    }
+                    if (typeof backText === 'string') {
+                        backText = backText.replace(/\n/g, '<br>');
+                    }
                 }
 
                 // 處理正面內容，檢測base64圖片
-                const processedFront = processImportedContent(rawFrontText);
-                const frontText = processedFront.text;
+                const processedFront = processImportedContent(frontText);
+                const processedFrontText = processedFront.text;
                 const frontImage = processedFront.image;
 
                 // 處理背面內容，檢測base64圖片
-                const processedBack = processImportedContent(rawBackText);
-                const backText = processedBack.text;
+                const processedBack = processImportedContent(backText);
+                const processedBackText = processedBack.text;
                 const backImage = processedBack.image;
 
                 // 生成一個用於識別這行的唯一鍵
-                const rowKey = `${frontText}_${backText}`;
+                const rowKey = `${processedFrontText}_${processedBackText}`;
 
                 // 查找是否已存在相同內容的卡片
                 let existingCard = null;
@@ -3090,9 +3089,9 @@
 
                 if (existingCard) {
                     // 更新現有卡片
-                    existingCard.frontText = frontText;
+                    existingCard.frontText = processedFrontText;
                     existingCard.frontImage = frontImage;
-                    existingCard.backText = backText;
+                    existingCard.backText = processedBackText;
                     existingCard.backImage = backImage;
                     cardRowMap.set(existingCard.id, i);
                 } else {
@@ -3100,9 +3099,9 @@
                     const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                     const newCard = {
                         id: newCardId,
-                        frontText: frontText,
+                        frontText: processedFrontText,
                         frontImage: frontImage,
-                        backText: backText,
+                        backText: processedBackText,
                         backImage: backImage,
                         nextReview: Date.now(),
                         repetitions: 0,
