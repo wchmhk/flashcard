@@ -2310,12 +2310,15 @@
                                     const frontContent = row[frontCol];
                                     const backContent = row[backCol];
 
-                                    // 處理內容，支持格式化和純文本
-                                    // 處理前面和背面內容
+                                    // 獲取正面和背面內容
+                                    const frontCell = row[options.frontColumn];
+                                    const backCell = row[options.backColumn];
+
+                                    // 準備卡片內容
                                     let frontText, backText;
 
-                                    // 檢查是否有格式化支援
-                                    const hasFormatting = excelSheets[sheetName]?.hasFormatting || false;
+                                    // 關鍵修復：正確獲取格式狀態
+                                    const hasFormatting = excelSheets[activeSheetName].hasFormatting || false;
 
                                     if (hasFormatting) {
                                         // 處理帶格式的內容
@@ -3043,12 +3046,15 @@
                 // 跳過空行
                 if (!frontCell && !backCell) continue;
 
-                // 處理內容，支持格式化和純文本
-                // 處理前面和背面內容
+                // 獲取正面和背面內容
+                const frontCell = row[options.frontColumn];
+                const backCell = row[options.backColumn];
+
+                // 準備卡片內容
                 let frontText, backText;
 
-                // 檢查是否有格式化支援
-                const hasFormatting = excelSheets[sheetName]?.hasFormatting || false;
+                // 關鍵修復：正確獲取格式狀態
+                const hasFormatting = excelSheets[activeSheetName].hasFormatting || false;
 
                 if (hasFormatting) {
                     // 處理帶格式的內容
