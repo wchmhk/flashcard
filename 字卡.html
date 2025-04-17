@@ -3885,25 +3885,6 @@
 
         // 添加到脚本开头部分的函数
 
-        // base64 图片检测和处理函数
-        function isBase64Image(str) {
-          if (typeof str !== 'string') return false;
-          // 检查是否符合 base64 图片格式前缀
-          if (str.startsWith('data:image/')) {
-            return true;
-          }
-
-          // 检查是否是没有前缀的 base64 编码
-          try {
-            // base64 字符串通常有特定的模式和长度
-            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-            // 要求 base64 字符串至少有一定长度才被视为图片
-            return str.length > 100 && base64Regex.test(str);
-          } catch (e) {
-            return false;
-          }
-        }
-
         // 确保 base64 字符串有正确的数据头
         function ensureBase64Prefix(base64Str) {
           if (base64Str.startsWith('data:image/')) {
@@ -6505,84 +6486,31 @@
             }
         }
 
-        // Show current card to review
         function showCurrentCard() {
-            // 重置卡片狀態
             cardFront.classList.remove('hidden');
             cardBack.classList.add('hidden');
             ratingButtons.classList.add('hidden');
-
-            // 设置卡片布局样式
-            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
-            cardBack.className = "flex flex-col w-full h-full justify-between hidden";
-
-            // 确保文字区域有最小高度
+            frontText.className = "mb-6 px-2";
+            backText.className = "mb-6 px-2";
             frontText.style.minHeight = "80px";
             backText.style.minHeight = "80px";
 
-            // 增加文字区域的边距
-            frontText.className = "mb-6 px-2";
-            backText.className = "mb-6 px-2";
-
-            // 顯示圖片
-            frontImage.innerHTML = '';
-            if (card.frontImage) {
-              frontImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-            }
-            // 顯示文字（如果有）
-            renderCardContent(frontText, card.frontText);
-
-            backImage.innerHTML = '';
-            if (card.backImage) {
-              backImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
-            }
-            renderCardContent(backText, card.backText);
-
-            // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
 
-            // 根據sidesFlipped決定顯示方式
-            if (sidesFlipped) {
-                // 正反面互換
-                frontText.innerHTML = card.backText || '';
-                backText.innerHTML = card.frontText || '';
+            frontImage.innerHTML = '';
+            backImage.innerHTML = '';
 
-                // 處理圖片顯示
-                frontImage.innerHTML = '';
-                backImage.innerHTML = '';
-
-                if (card.backImage) {
-                    const imgContainer = createZoomableImage(card.backImage);
-                    frontImage.appendChild(imgContainer);
-                }
-
-                if (card.frontImage) {
-                    const imgContainer = createZoomableImage(card.frontImage);
-                    backImage.appendChild(imgContainer);
-                }
-            } else {
-                // 正常顯示
+            if (!sidesFlipped) {
+                if (card.frontImage) frontImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+                if (card.backImage) backImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
                 renderCardContent(frontText, card.frontText);
                 renderCardContent(backText, card.backText);
-
-                // 增加間距類
-                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
-                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
-
-                // 處理圖片顯示
-                frontImage.innerHTML = '';
-                backImage.innerHTML = '';
-
-                if (card.frontImage) {
-                    const imgContainer = createZoomableImage(card.frontImage);
-                    frontImage.appendChild(imgContainer);
-                }
-
-                if (card.backImage) {
-                    const imgContainer = createZoomableImage(card.backImage);
-                    backImage.appendChild(imgContainer);
-                }
+            } else {
+                if (card.backImage) frontImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+                if (card.frontImage) backImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+                renderCardContent(frontText, card.backText);
+                renderCardContent(backText, card.frontText);
             }
         }
 
