@@ -1955,15 +1955,43 @@
         }
 
         function isBase64Image(str) {
-          return typeof str === 'string' && str.trim().startsWith('data:image/');
+          if (typeof str !== 'string') return false;
+
+          // 清理字符串
+          const trimmed = str.trim();
+
+          // 檢查是否有標準 data:image 前綴
+          if (trimmed.startsWith('data:image/')) return true;
+
+          // 檢查是否是純 Base64 字符串 (通常以 /9j/ 開頭的是JPEG圖片)
+          if (trimmed.startsWith('/9j/')) return true;
+
+          // 檢查是否有其他常見圖片格式的 Base64 特徵
+          if (trimmed.match(/^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$/)) {
+            // 進一步檢查開頭部分是否符合常見圖片格式的特徵
+            const firstChars = trimmed.substring(0, 20).toLowerCase();
+            if (firstChars.includes('png') ||
+                firstChars.includes('jpg') ||
+                firstChars.includes('jpeg') ||
+                firstChars.includes('gif') ||
+                firstChars.includes('svg') ||
+                firstChars.includes('webp')) {
+              return true;
+            }
+          }
+
+          return false;
         }
+
         function renderCardContent(container, content) {
           console.log("DEBUG 渲染內容：", content);
           if (isBase64Image(content)) {
             // 移除換行與空白，避免 base64 失效
             const cleanContent = content.replace(/[\r\n\s]+/g, '');
             console.log('DEBUG: 是 base64 圖片，準備插入 <img>');
-            container.innerHTML = `<img src="${cleanContent}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+            // 確保使用處理過的 base64 前綴
+            const imgSrc = ensureBase64Prefix(cleanContent);
+            container.innerHTML = `<img src="${imgSrc}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
           } else {
             container.innerHTML = content || '';
           }
@@ -2013,11 +2041,12 @@
             content = content.toString();
           }
 
-          // 我們需要檢測一下是不是 Excel 或其他程序複製過來的富文本內容
-          if (content.includes('<') && content.includes('>') &&
-              (content.includes('<div') || content.includes('<span') || content.includes('<p'))) {
+          // 移除開頭和結尾的引號（Google Sheets可能會添加）
+          content = content.trim().replace(/^["']|["']$/g, '');
+
+          // 檢查是否為 HTML，可能含有<img>標籤
+          if (content.includes('<') && content.includes('>')) {
             try {
-              // 創建臨時元素進行HTML解析
               const temp = document.createElement('div');
               temp.innerHTML = content;
 
@@ -2030,28 +2059,34 @@
                 };
               }
 
-              // 如果沒有找到圖片，返回純文本
+              // 沒有找到圖片，返回純文本
               content = temp.textContent || temp.innerText || content;
             } catch (e) {
               console.log("HTML處理錯誤，使用原始內容");
             }
           }
 
-          console.log("檢測到 Base64 圖片，長度:", content.length);
-          try {
-            const img = new Image();
-            img.src = ensureBase64Prefix(content);
-            console.log("圖片加載成功:", img.src.substring(0, 50) + "...");
-          } catch (e) {
-            console.error("圖片加載失敗:", e);
-          }
-
-          // 檢測是否是 base64 圖片
+          // 檢查是否是 base64 圖片
           if (isBase64Image(content)) {
-            return {
-              text: '',
-              image: ensureBase64Prefix(content)
-            };
+            console.log("檢測到 Base64 圖片，長度:", content.length);
+            try {
+              const cleanedContent = content.replace(/[\r\n\s]+/g, '');
+              const img = new Image();
+              img.src = ensureBase64Prefix(cleanedContent);
+              console.log("圖片加載成功:", img.src.substring(0, 50) + "...");
+
+              return {
+                text: '',
+                image: img.src
+              };
+            } catch (e) {
+              console.error("圖片加載失敗:", e);
+              // 儘管失敗，仍然嘗試返回圖片
+              return {
+                text: '',
+                image: ensureBase64Prefix(content.replace(/[\r\n\s]+/g, ''))
+              };
+            }
           }
 
           return {
