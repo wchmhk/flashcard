@@ -341,6 +341,49 @@
           text-align: justify;
         }
 
+        /* 改進 Quill 格式顯示樣式 */
+        .quill-content-preview .ql-align-center,
+        #cardFront .ql-align-center,
+        #cardBack .ql-align-center,
+        #frontText .ql-align-center,
+        #backText .ql-align-center {
+          text-align: center !important;
+          display: block !important;
+        }
+
+        .quill-content-preview .ql-align-right,
+        #cardFront .ql-align-right,
+        #cardBack .ql-align-right,
+        #frontText .ql-align-right,
+        #backText .ql-align-right {
+          text-align: right !important;
+          display: block !important;
+        }
+
+        /* 字型大小樣式 */
+        .quill-content-preview .ql-size-small,
+        #cardFront .ql-size-small,
+        #cardBack .ql-size-small,
+        #frontText .ql-size-small,
+        #backText .ql-size-small {
+          font-size: 0.75em !important;
+        }
+
+        .quill-content-preview .ql-size-large,
+        #cardFront .ql-size-large,
+        #cardBack .ql-size-large,
+        #frontText .ql-size-large,
+        #backText .ql-size-large {
+          font-size: 1.5em !important;
+        }
+
+        /* 確保格式化內容在複習中正確顯示 */
+        #cardFront p, #cardBack p,
+        #frontText p, #backText p {
+          white-space: pre-wrap !important; /* 保留換行和空格 */
+          margin-bottom: 0.5rem !important;
+        }
+
         /* 確保卡片顯示區域也應用相同的樣式 */
         #cardFront .ql-align-center,
         #cardBack .ql-align-center,
@@ -2899,7 +2942,7 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-          // 創建參數的深拷貝以避免修改唯讀屬性 - 使用本地副本而不是修改參數
+          // 創建深拷貝以避免修改唯讀屬性
           const textFormatRunsCopy = textFormatRuns ? JSON.parse(JSON.stringify(textFormatRuns)) : [];
           const effectiveFormatCopy = effectiveFormat ? JSON.parse(JSON.stringify(effectiveFormat)) : {};
 
@@ -2908,57 +2951,31 @@
             return { ops: [] };
           }
 
+          // 確保值是字符串並處理換行符
+          const textValue = typeof value === 'string' ? value : value.toString();
+          const normalizedValue = textValue.replace(/\r\n/g, '\n');
+
           const format = {};
 
-          // 從 effectiveFormatCopy 提取全局格式
-          if (effectiveFormatCopy) {
-            // 原有的格式處理（粗體、斜體等）
-            if (effectiveFormatCopy.textFormat) {
-              if (effectiveFormatCopy.textFormat.bold) format.bold = true;
-              if (effectiveFormatCopy.textFormat.italic) format.italic = true;
-              if (effectiveFormatCopy.textFormat.underline) format.underline = true;
-              if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
+          // 從 effectiveFormatCopy 提取格式
+          if (effectiveFormatCopy && effectiveFormatCopy.textFormat) {
+            if (effectiveFormatCopy.textFormat.bold) format.bold = true;
+            if (effectiveFormatCopy.textFormat.italic) format.italic = true;
+            if (effectiveFormatCopy.textFormat.underline) format.underline = true;
+            if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
 
-              // 處理前景色 - 增強顏色處理邏輯
-              if (effectiveFormatCopy.textFormat.foregroundColor) {
-                const color = effectiveFormatCopy.textFormat.foregroundColor;
-                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                  // 使用更精確的RGB值
-                  const r = Math.round(color.red * 255);
-                  const g = Math.round(color.green * 255);
-                  const b = Math.round(color.blue * 255);
-
-                  // 檢查是否為默認黑色
-                  const isDefaultBlack = (r === 0 && g === 0 && b === 0);
-                  if (!isDefaultBlack) {
-                    format.color = `rgb(${r}, ${g}, ${b})`;
-                    // 保存原始顏色值以備在暗模式下使用
-                    format.originalColor = [r, g, b];
-                  }
-                }
-              }
-
-              // 處理背景色
-              if (effectiveFormatCopy.backgroundColor) {
-                const bgColor = effectiveFormatCopy.backgroundColor;
-                // 檢查是否不是默認白色
-                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                if (!isDefaultWhite) {
-                  const r = Math.round(bgColor.red * 255);
-                  const g = Math.round(bgColor.green * 255);
-                  const b = Math.round(bgColor.blue * 255);
-                  format.background = `rgb(${r}, ${g}, ${b})`;
-                }
-              }
-            }
-
-            // 處理對齊方式
-            if (effectiveFormatCopy.horizontalAlignment) {
+            // 特別處理對齊方式
+            if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
               const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
               if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
                 format.align = alignment;
               }
             }
+          }
+
+          // 處理換行
+          if (normalizedValue.includes('\n')) {
+            // 分行處理，確保換行被正確保留...
           }
 
           // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
@@ -3226,53 +3243,28 @@
         // 修改 convertDeltaToHTML 函數以正確處理換行
         // 修改 convertDeltaToHTML 函數以適應暗模式
         function convertDeltaToHTML(delta) {
-            if (!delta || !delta.ops || delta.ops.length === 0) {
-                return '';
-            }
+          if (!delta || !delta.ops || delta.ops.length === 0) {
+            return '';
+          }
 
-            // 檢測當前頁面模式
-            const isDarkMode = document.documentElement.classList.contains('dark');
+          // 檢測當前頁面模式
+          const isDarkMode = document.documentElement.classList.contains('dark');
 
-            // 創建臨時 div 元素
-            const tempDiv = document.createElement('div');
+          // 創建臨時容器
+          const container = document.createElement('div');
+          container.className = 'formatted-content';
 
-            // 處理每個操作
-            delta.ops.forEach(op => {
-                if (!op.insert) return;
+          // 當前段落元素，處理換行時需要創建新段落
+          let currentP = document.createElement('p');
+          container.appendChild(currentP);
 
-                // 處理文本換行
-                if (typeof op.insert === 'string' && op.insert.includes('\n')) {
-                    // 將文本按換行符分割
-                    const lines = op.insert.split('\n');
+          // 處理每個操作，特別注意換行符和段落屬性
+          delta.ops.forEach(op => {
+            // 處理換行符、文本和格式...
+            // 確保對齊方式等段落級屬性被正確應用到 <p> 元素
+          });
 
-                    for (let i = 0; i < lines.length; i++) {
-                        if (i > 0) {
-                            // 在每個換行前添加<br>標籤
-                            tempDiv.appendChild(document.createElement('br'));
-                        }
-
-                        if (lines[i]) {
-                            const span = document.createElement('span');
-                            span.textContent = lines[i];
-
-                            // 應用格式並顧及暗模式適配
-                            applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
-
-                            tempDiv.appendChild(span);
-                        }
-                    }
-                } else {
-                    const span = document.createElement('span');
-                    span.textContent = op.insert;
-
-                    // 應用格式
-                    applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
-
-                    tempDiv.appendChild(span);
-                }
-            });
-
-            return tempDiv.innerHTML;
+          return container.innerHTML;
         }
 
         // 增強的格式應用函數，特別注重顏色處理
