@@ -1954,34 +1954,14 @@
             }
         }
 
-        // 改進的 base64 圖片檢測函數
         function isBase64Image(str) {
-          if (typeof str !== 'string') return false;
-
-          // 移除可能的空格和換行符，處理剪貼時可能添加的格式問題
-          const cleanStr = str.trim().replace(/[\r\n\s]/g, '');
-
-          // 檢查是否符合 base64 圖片格式前綴
-          if (cleanStr.startsWith('data:image/')) {
-            return true;
-          }
-
-          // 檢查是否是沒有前綴的 base64 編碼
-          try {
-            // 使用更寬鬆的 base64 檢測方式
-            const base64Chars = /^[A-Za-z0-9+/=]+$/;
-            const minLength = 60;
-            const validPadding = /=*$/;
-            const lengthValid = (cleanStr.length % 4 === 0) ||
-                                (cleanStr.replace(/=+$/, '').length % 4 === 0);
-
-            return cleanStr.length > minLength &&
-                   base64Chars.test(cleanStr) &&
-                   validPadding.test(cleanStr) &&
-                   lengthValid;
-          } catch (e) {
-            console.error("Base64 檢測錯誤:", e);
-            return false;
+          return typeof str === 'string' && str.trim().startsWith('data:image/');
+        }
+        function renderCardContent(container, content) {
+          if (isBase64Image(content)) {
+            container.innerHTML = `<img src="${content}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+          } else {
+            container.innerHTML = content || '';
           }
         }
 
@@ -6544,6 +6524,20 @@
             frontText.className = "mb-6 px-2";
             backText.className = "mb-6 px-2";
 
+            // 顯示圖片
+            frontImage.innerHTML = '';
+            if (card.frontImage) {
+              frontImage.innerHTML = `<img src="${card.frontImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+            }
+            // 顯示文字（如果有）
+            renderCardContent(frontText, card.frontText);
+
+            backImage.innerHTML = '';
+            if (card.backImage) {
+              backImage.innerHTML = `<img src="${card.backImage}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+            }
+            renderCardContent(backText, card.backText);
+
             // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
@@ -6569,8 +6563,8 @@
                 }
             } else {
                 // 正常顯示
-                frontText.innerHTML = card.frontText || '';
-                backText.innerHTML = card.backText || '';
+                renderCardContent(frontText, card.frontText);
+                renderCardContent(backText, card.backText);
 
                 // 增加間距類
                 frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
