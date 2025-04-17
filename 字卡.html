@@ -2053,6 +2053,15 @@
             }
           }
 
+          console.log("檢測到 Base64 圖片，長度:", content.length);
+          try {
+            const img = new Image();
+            img.src = ensureBase64Prefix(content);
+            console.log("圖片加載成功:", img.src.substring(0, 50) + "...");
+          } catch (e) {
+            console.error("圖片加載失敗:", e);
+          }
+
           // 檢測是否是 base64 圖片
           if (isBase64Image(content)) {
             return {
