@@ -341,49 +341,6 @@
           text-align: justify;
         }
 
-        /* 改進 Quill 格式顯示樣式 */
-        .quill-content-preview .ql-align-center,
-        #cardFront .ql-align-center,
-        #cardBack .ql-align-center,
-        #frontText .ql-align-center,
-        #backText .ql-align-center {
-          text-align: center !important;
-          display: block !important;
-        }
-
-        .quill-content-preview .ql-align-right,
-        #cardFront .ql-align-right,
-        #cardBack .ql-align-right,
-        #frontText .ql-align-right,
-        #backText .ql-align-right {
-          text-align: right !important;
-          display: block !important;
-        }
-
-        /* 字型大小樣式 */
-        .quill-content-preview .ql-size-small,
-        #cardFront .ql-size-small,
-        #cardBack .ql-size-small,
-        #frontText .ql-size-small,
-        #backText .ql-size-small {
-          font-size: 0.75em !important;
-        }
-
-        .quill-content-preview .ql-size-large,
-        #cardFront .ql-size-large,
-        #cardBack .ql-size-large,
-        #frontText .ql-size-large,
-        #backText .ql-size-large {
-          font-size: 1.5em !important;
-        }
-
-        /* 確保格式化內容在複習中正確顯示 */
-        #cardFront p, #cardBack p,
-        #frontText p, #backText p {
-          white-space: pre-wrap !important; /* 保留換行和空格 */
-          margin-bottom: 0.5rem !important;
-        }
-
         /* 確保卡片顯示區域也應用相同的樣式 */
         #cardFront .ql-align-center,
         #cardBack .ql-align-center,
@@ -2964,126 +2921,45 @@
             if (effectiveFormatCopy.textFormat.underline) format.underline = true;
             if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
 
-            // 特別處理對齊方式
-            if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
-              const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
-              if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                format.align = alignment;
+            // 處理前景色和背景色
+            if (effectiveFormatCopy.textFormat.foregroundColor) {
+              const fgColor = effectiveFormatCopy.textFormat.foregroundColor;
+              if (fgColor.red !== undefined && fgColor.green !== undefined && fgColor.blue !== undefined) {
+                const r = Math.round(fgColor.red * 255);
+                const g = Math.round(fgColor.green * 255);
+                const b = Math.round(fgColor.blue * 255);
+                format.color = `rgb(${r}, ${g}, ${b})`;
+              }
+            }
+
+            if (effectiveFormatCopy.backgroundColor) {
+              const bgColor = effectiveFormatCopy.backgroundColor;
+              if (bgColor.red !== undefined && bgColor.green !== undefined && bgColor.blue !== undefined) {
+                const r = Math.round(bgColor.red * 255);
+                const g = Math.round(bgColor.green * 255);
+                const b = Math.round(bgColor.blue * 255);
+                format.background = `rgb(${r}, ${g}, ${b})`;
               }
             }
           }
 
-          // 處理換行
-          if (normalizedValue.includes('\n')) {
-            // 分行處理，確保換行被正確保留...
-          }
-
-          // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
+          // 特別處理對齊方式
           if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
             const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
             if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-              // 確保這個對齊格式被應用到每個操作中
               format.align = alignment;
             }
           }
 
-          // 如果沒有格式運行，使用整體格式
-          if (!textFormatRunsCopy || textFormatRunsCopy.length === 0) {
-            // 創建帶格式的 Delta
-            return {
-              ops: [
-                {
-                  insert: value,
-                  attributes: Object.keys(format).length > 0 ? format : undefined
-                }
-              ]
-            };
-          }
-
-          // 如果有格式運行，處理每一段
-          const ops = [];
-          let lastIndex = 0;
-
-          // 按順序處理每個格式段
-          textFormatRunsCopy.forEach(run => {
-            const startIndex = run.startIndex || 0;
-
-            // 添加前一段文本（如果有）
-            if (startIndex > lastIndex) {
-              const text = value.substring(lastIndex, startIndex);
-              if (text) {
-                ops.push({ insert: text });
+          // 如果只有一個格式，直接返回含有格式的Delta
+          return {
+            ops: [
+              {
+                insert: normalizedValue,
+                attributes: Object.keys(format).length > 0 ? format : undefined
               }
-            }
-
-            // 獲取此格式段的結束索引
-            const nextRun = textFormatRunsCopy.find(r => r.startIndex > startIndex);
-            const endIndex = nextRun ? nextRun.startIndex : value.length;
-
-            // 提取文本
-            const text = value.substring(startIndex, endIndex);
-
-            // 提取格式 - 增強顏色處理
-            const segmentFormat = {};
-            if (run.format) {
-              if (run.format.bold) segmentFormat.bold = true;
-              if (run.format.italic) segmentFormat.italic = true;
-              if (run.format.underline) segmentFormat.underline = true;
-              if (run.format.strikethrough) segmentFormat.strike = true;
-
-              // 處理前景色 - 加強顏色轉換
-              if (run.format.foregroundColor) {
-                const color = run.format.foregroundColor;
-                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                  const r = Math.round(color.red * 255);
-                  const g = Math.round(color.green * 255);
-                  const b = Math.round(color.blue * 255);
-
-                  // 檢查顏色是否為默認黑色
-                  const isDefaultBlack = r === 0 && g === 0 && b === 0;
-                  if (!isDefaultBlack) {
-                    segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
-                    // 保存原始顏色值
-                    segmentFormat.originalColor = [r, g, b];
-                  }
-                }
-              }
-
-              // 處理背景色
-              if (run.format.backgroundColor) {
-                const bgColor = run.format.backgroundColor;
-                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                if (!isDefaultWhite) {
-                  const r = Math.round(bgColor.red * 255);
-                  const g = Math.round(bgColor.green * 255);
-                  const b = Math.round(bgColor.blue * 255);
-                  segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
-                }
-              }
-            }
-
-            // 添加對齊格式（如果全局有設定）
-            if (format.align) {
-              segmentFormat.align = format.align;
-            }
-
-            // 添加帶格式的文本
-            ops.push({
-              insert: text,
-              attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
-            });
-
-            // 更新處理索引
-            lastIndex = endIndex;
-          });
-
-          // 添加剩餘的文本（如果有）
-          if (lastIndex < value.length) {
-            const remainingText = value.substring(lastIndex);
-            ops.push({ insert: remainingText });
-          }
-
-          return { ops: ops };
+            ]
+          };
         }
 
         // 根據 Google Sheets 數據更新字卡
@@ -3258,10 +3134,57 @@
           let currentP = document.createElement('p');
           container.appendChild(currentP);
 
-          // 處理每個操作，特別注意換行符和段落屬性
+          // 處理每個操作
           delta.ops.forEach(op => {
-            // 處理換行符、文本和格式...
-            // 確保對齊方式等段落級屬性被正確應用到 <p> 元素
+            if (typeof op.insert !== 'string') return;
+
+            // 處理換行符
+            const texts = op.insert.split('\n');
+
+            texts.forEach((text, i) => {
+              const isLast = i === texts.length - 1;
+
+              // 創建文本元素
+              if (text.length > 0) {
+                const span = document.createElement('span');
+                span.textContent = text;
+
+                // 應用格式
+                if (op.attributes) {
+                  if (op.attributes.bold) span.style.fontWeight = 'bold';
+                  if (op.attributes.italic) span.style.fontStyle = 'italic';
+                  if (op.attributes.underline) span.style.textDecoration = 'underline';
+                  if (op.attributes.strike) span.style.textDecoration = 'line-through';
+                  if (op.attributes.color) span.style.color = op.attributes.color;
+                  if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+
+                  // 添加格式相關的CSS類
+                  if (op.attributes.align) {
+                    currentP.classList.add(`ql-align-${op.attributes.align}`);
+                    currentP.style.textAlign = op.attributes.align;
+                  }
+
+                  if (op.attributes.size) {
+                    span.classList.add(`ql-size-${op.attributes.size}`);
+                  }
+                }
+
+                currentP.appendChild(span);
+              }
+
+              // 處理換行 - 創建新段落
+              if (!isLast) {
+                // 如果不是最後一部分，則創建新段落
+                currentP = document.createElement('p');
+                container.appendChild(currentP);
+
+                // 如果有對齊格式，應用到新段落
+                if (op.attributes && op.attributes.align) {
+                  currentP.classList.add(`ql-align-${op.attributes.align}`);
+                  currentP.style.textAlign = op.attributes.align;
+                }
+              }
+            });
           });
 
           return container.innerHTML;
