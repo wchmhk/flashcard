@@ -2899,7 +2899,7 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-          // 創建深拷貝以避免修改唯讀屬性
+          // 創建參數的深拷貝以避免修改唯讀屬性 - 使用本地副本而不是修改參數
           const textFormatRunsCopy = textFormatRuns ? JSON.parse(JSON.stringify(textFormatRuns)) : [];
           const effectiveFormatCopy = effectiveFormat ? JSON.parse(JSON.stringify(effectiveFormat)) : {};
 
@@ -2908,58 +2908,165 @@
             return { ops: [] };
           }
 
-          // 確保值是字符串並處理換行符
-          const textValue = typeof value === 'string' ? value : value.toString();
-          const normalizedValue = textValue.replace(/\r\n/g, '\n');
-
           const format = {};
 
-          // 從 effectiveFormatCopy 提取格式
-          if (effectiveFormatCopy && effectiveFormatCopy.textFormat) {
-            if (effectiveFormatCopy.textFormat.bold) format.bold = true;
-            if (effectiveFormatCopy.textFormat.italic) format.italic = true;
-            if (effectiveFormatCopy.textFormat.underline) format.underline = true;
-            if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
+          // 從 effectiveFormatCopy 提取全局格式
+          if (effectiveFormatCopy) {
+            // 原有的格式處理（粗體、斜體等）
+            if (effectiveFormatCopy.textFormat) {
+              if (effectiveFormatCopy.textFormat.bold) format.bold = true;
+              if (effectiveFormatCopy.textFormat.italic) format.italic = true;
+              if (effectiveFormatCopy.textFormat.underline) format.underline = true;
+              if (effectiveFormatCopy.textFormat.strikethrough) format.strike = true;
 
-            // 處理前景色和背景色
-            if (effectiveFormatCopy.textFormat.foregroundColor) {
-              const fgColor = effectiveFormatCopy.textFormat.foregroundColor;
-              if (fgColor.red !== undefined && fgColor.green !== undefined && fgColor.blue !== undefined) {
-                const r = Math.round(fgColor.red * 255);
-                const g = Math.round(fgColor.green * 255);
-                const b = Math.round(fgColor.blue * 255);
-                format.color = `rgb(${r}, ${g}, ${b})`;
+              // 處理前景色 - 增強顏色處理邏輯
+              if (effectiveFormatCopy.textFormat.foregroundColor) {
+                const color = effectiveFormatCopy.textFormat.foregroundColor;
+                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                  // 使用更精確的RGB值
+                  const r = Math.round(color.red * 255);
+                  const g = Math.round(color.green * 255);
+                  const b = Math.round(color.blue * 255);
+
+                  // 檢查是否為默認黑色
+                  const isDefaultBlack = (r === 0 && g === 0 && b === 0);
+                  if (!isDefaultBlack) {
+                    format.color = `rgb(${r}, ${g}, ${b})`;
+                    // 保存原始顏色值以備在暗模式下使用
+                    format.originalColor = [r, g, b];
+                  }
+                }
+              }
+
+              // 處理背景色
+              if (effectiveFormatCopy.backgroundColor) {
+                const bgColor = effectiveFormatCopy.backgroundColor;
+                // 檢查是否不是默認白色
+                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                if (!isDefaultWhite) {
+                  const r = Math.round(bgColor.red * 255);
+                  const g = Math.round(bgColor.green * 255);
+                  const b = Math.round(bgColor.blue * 255);
+                  format.background = `rgb(${r}, ${g}, ${b})`;
+                }
               }
             }
 
-            if (effectiveFormatCopy.backgroundColor) {
-              const bgColor = effectiveFormatCopy.backgroundColor;
-              if (bgColor.red !== undefined && bgColor.green !== undefined && bgColor.blue !== undefined) {
-                const r = Math.round(bgColor.red * 255);
-                const g = Math.round(bgColor.green * 255);
-                const b = Math.round(bgColor.blue * 255);
-                format.background = `rgb(${r}, ${g}, ${b})`;
+            // 處理對齊方式
+            if (effectiveFormatCopy.horizontalAlignment) {
+              const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
+              if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+                format.align = alignment;
               }
             }
           }
 
-          // 特別處理對齊方式
+          // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
           if (effectiveFormatCopy && effectiveFormatCopy.horizontalAlignment) {
             const alignment = effectiveFormatCopy.horizontalAlignment.toLowerCase();
             if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+              // 確保這個對齊格式被應用到每個操作中
               format.align = alignment;
             }
           }
 
-          // 如果只有一個格式，直接返回含有格式的Delta
-          return {
-            ops: [
-              {
-                insert: normalizedValue,
-                attributes: Object.keys(format).length > 0 ? format : undefined
+          // 如果沒有格式運行，使用整體格式
+          if (!textFormatRunsCopy || textFormatRunsCopy.length === 0) {
+            // 創建帶格式的 Delta
+            return {
+              ops: [
+                {
+                  insert: value,
+                  attributes: Object.keys(format).length > 0 ? format : undefined
+                }
+              ]
+            };
+          }
+
+          // 如果有格式運行，處理每一段
+          const ops = [];
+          let lastIndex = 0;
+
+          // 按順序處理每個格式段
+          textFormatRunsCopy.forEach(run => {
+            const startIndex = run.startIndex || 0;
+
+            // 添加前一段文本（如果有）
+            if (startIndex > lastIndex) {
+              const text = value.substring(lastIndex, startIndex);
+              if (text) {
+                ops.push({ insert: text });
               }
-            ]
-          };
+            }
+
+            // 獲取此格式段的結束索引
+            const nextRun = textFormatRunsCopy.find(r => r.startIndex > startIndex);
+            const endIndex = nextRun ? nextRun.startIndex : value.length;
+
+            // 提取文本
+            const text = value.substring(startIndex, endIndex);
+
+            // 提取格式 - 增強顏色處理
+            const segmentFormat = {};
+            if (run.format) {
+              if (run.format.bold) segmentFormat.bold = true;
+              if (run.format.italic) segmentFormat.italic = true;
+              if (run.format.underline) segmentFormat.underline = true;
+              if (run.format.strikethrough) segmentFormat.strike = true;
+
+              // 處理前景色 - 加強顏色轉換
+              if (run.format.foregroundColor) {
+                const color = run.format.foregroundColor;
+                if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                  const r = Math.round(color.red * 255);
+                  const g = Math.round(color.green * 255);
+                  const b = Math.round(color.blue * 255);
+
+                  // 檢查顏色是否為默認黑色
+                  const isDefaultBlack = r === 0 && g === 0 && b === 0;
+                  if (!isDefaultBlack) {
+                    segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
+                    // 保存原始顏色值
+                    segmentFormat.originalColor = [r, g, b];
+                  }
+                }
+              }
+
+              // 處理背景色
+              if (run.format.backgroundColor) {
+                const bgColor = run.format.backgroundColor;
+                const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                if (!isDefaultWhite) {
+                  const r = Math.round(bgColor.red * 255);
+                  const g = Math.round(bgColor.green * 255);
+                  const b = Math.round(bgColor.blue * 255);
+                  segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
+                }
+              }
+            }
+
+            // 添加對齊格式（如果全局有設定）
+            if (format.align) {
+              segmentFormat.align = format.align;
+            }
+
+            // 添加帶格式的文本
+            ops.push({
+              insert: text,
+              attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
+            });
+
+            // 更新處理索引
+            lastIndex = endIndex;
+          });
+
+          // 添加剩餘的文本（如果有）
+          if (lastIndex < value.length) {
+            const remainingText = value.substring(lastIndex);
+            ops.push({ insert: remainingText });
+          }
+
+          return { ops: ops };
         }
 
         // 根據 Google Sheets 數據更新字卡
@@ -3119,75 +3226,53 @@
         // 修改 convertDeltaToHTML 函數以正確處理換行
         // 修改 convertDeltaToHTML 函數以適應暗模式
         function convertDeltaToHTML(delta) {
-          if (!delta || !delta.ops || delta.ops.length === 0) {
-            return '';
-          }
+            if (!delta || !delta.ops || delta.ops.length === 0) {
+                return '';
+            }
 
-          // 檢測當前頁面模式
-          const isDarkMode = document.documentElement.classList.contains('dark');
+            // 檢測當前頁面模式
+            const isDarkMode = document.documentElement.classList.contains('dark');
 
-          // 創建臨時容器
-          const container = document.createElement('div');
-          container.className = 'formatted-content';
+            // 創建臨時 div 元素
+            const tempDiv = document.createElement('div');
 
-          // 當前段落元素，處理換行時需要創建新段落
-          let currentP = document.createElement('p');
-          container.appendChild(currentP);
+            // 處理每個操作
+            delta.ops.forEach(op => {
+                if (!op.insert) return;
 
-          // 處理每個操作
-          delta.ops.forEach(op => {
-            if (typeof op.insert !== 'string') return;
+                // 處理文本換行
+                if (typeof op.insert === 'string' && op.insert.includes('\n')) {
+                    // 將文本按換行符分割
+                    const lines = op.insert.split('\n');
 
-            // 處理換行符
-            const texts = op.insert.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        if (i > 0) {
+                            // 在每個換行前添加<br>標籤
+                            tempDiv.appendChild(document.createElement('br'));
+                        }
 
-            texts.forEach((text, i) => {
-              const isLast = i === texts.length - 1;
+                        if (lines[i]) {
+                            const span = document.createElement('span');
+                            span.textContent = lines[i];
 
-              // 創建文本元素
-              if (text.length > 0) {
-                const span = document.createElement('span');
-                span.textContent = text;
+                            // 應用格式並顧及暗模式適配
+                            applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
-                // 應用格式
-                if (op.attributes) {
-                  if (op.attributes.bold) span.style.fontWeight = 'bold';
-                  if (op.attributes.italic) span.style.fontStyle = 'italic';
-                  if (op.attributes.underline) span.style.textDecoration = 'underline';
-                  if (op.attributes.strike) span.style.textDecoration = 'line-through';
-                  if (op.attributes.color) span.style.color = op.attributes.color;
-                  if (op.attributes.background) span.style.backgroundColor = op.attributes.background;
+                            tempDiv.appendChild(span);
+                        }
+                    }
+                } else {
+                    const span = document.createElement('span');
+                    span.textContent = op.insert;
 
-                  // 添加格式相關的CSS類
-                  if (op.attributes.align) {
-                    currentP.classList.add(`ql-align-${op.attributes.align}`);
-                    currentP.style.textAlign = op.attributes.align;
-                  }
+                    // 應用格式
+                    applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
-                  if (op.attributes.size) {
-                    span.classList.add(`ql-size-${op.attributes.size}`);
-                  }
+                    tempDiv.appendChild(span);
                 }
-
-                currentP.appendChild(span);
-              }
-
-              // 處理換行 - 創建新段落
-              if (!isLast) {
-                // 如果不是最後一部分，則創建新段落
-                currentP = document.createElement('p');
-                container.appendChild(currentP);
-
-                // 如果有對齊格式，應用到新段落
-                if (op.attributes && op.attributes.align) {
-                  currentP.classList.add(`ql-align-${op.attributes.align}`);
-                  currentP.style.textAlign = op.attributes.align;
-                }
-              }
             });
-          });
 
-          return container.innerHTML;
+            return tempDiv.innerHTML;
         }
 
         // 增強的格式應用函數，特別注重顏色處理
@@ -6369,7 +6454,6 @@
         }
 
         // Show current card to review
-        // Show current card to review
         function showCurrentCard() {
             // 重置卡片狀態
             cardFront.classList.remove('hidden');
@@ -6377,20 +6461,16 @@
             ratingButtons.classList.add('hidden');
 
             // 设置卡片布局样式
-            cardFront.className = "flex flex-col w-full h-full justify-between";
+            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
             cardBack.className = "flex flex-col w-full h-full justify-between hidden";
 
             // 确保文字区域有最小高度
             frontText.style.minHeight = "80px";
             backText.style.minHeight = "80px";
 
-            // 清空類別但保留DOM結構
-            frontText.className = "";
-            backText.className = "";
-
-            // 添加邊距類別，但不覆蓋其他類別
-            frontText.classList.add("mb-6", "px-2");
-            backText.classList.add("mb-6", "px-2");
+            // 增加文字区域的边距
+            frontText.className = "mb-6 px-2";
+            backText.className = "mb-6 px-2";
 
             // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
@@ -6420,6 +6500,10 @@
                 frontText.innerHTML = card.frontText || '';
                 backText.innerHTML = card.backText || '';
 
+                // 增加間距類
+                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
+                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
+
                 // 處理圖片顯示
                 frontImage.innerHTML = '';
                 backImage.innerHTML = '';
@@ -6434,27 +6518,6 @@
                     backImage.appendChild(imgContainer);
                 }
             }
-
-            // 確保文本格式被正確應用
-            // 處理對齊方式
-            const alignCenterElements = frontText.querySelectorAll('.ql-align-center');
-            alignCenterElements.forEach(el => {
-                el.style.textAlign = 'center';
-            });
-            const backAlignCenterElements = backText.querySelectorAll('.ql-align-center');
-            backAlignCenterElements.forEach(el => {
-                el.style.textAlign = 'center';
-            });
-
-            // 處理斜體
-            const italicElements = frontText.querySelectorAll('em, .ql-italic');
-            italicElements.forEach(el => {
-                el.style.fontStyle = 'italic';
-            });
-            const backItalicElements = backText.querySelectorAll('em, .ql-italic');
-            backItalicElements.forEach(el => {
-                el.style.fontStyle = 'italic';
-            });
         }
 
         // Move to next card or finish review
