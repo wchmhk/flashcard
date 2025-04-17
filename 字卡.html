@@ -1958,6 +1958,7 @@
           return typeof str === 'string' && str.trim().startsWith('data:image/');
         }
         function renderCardContent(container, content) {
+          console.log("DEBUG 渲染內容：", content); // 加這行
           if (isBase64Image(content)) {
             container.innerHTML = `<img src="${content}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
           } else {
