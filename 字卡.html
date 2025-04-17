@@ -1954,43 +1954,106 @@
             }
         }
 
-        // Base64圖片檢測和處理函數
+        // 改進的 base64 圖片檢測函數
         function isBase64Image(str) {
           if (typeof str !== 'string') return false;
-          // 檢查是否符合base64圖片格式前綴
-          if (str.startsWith('data:image/')) {
+
+          // 移除可能的空格和換行符，處理剪貼時可能添加的格式問題
+          const cleanStr = str.trim().replace(/[\r\n\s]/g, '');
+
+          // 檢查是否符合 base64 圖片格式前綴
+          if (cleanStr.startsWith('data:image/')) {
             return true;
           }
 
-          // 檢查是否是沒有前綴的base64編碼
+          // 檢查是否是沒有前綴的 base64 編碼
           try {
-            // base64字符串通常有特定的模式和長度
-            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-            // 要求base64字符串至少有一定長度才被視為圖片
-            return str.length > 100 && base64Regex.test(str);
+            // 使用更寬鬆的 base64 檢測方式
+            const base64Chars = /^[A-Za-z0-9+/=]+$/;
+            const minLength = 60;
+            const validPadding = /=*$/;
+            const lengthValid = (cleanStr.length % 4 === 0) ||
+                                (cleanStr.replace(/=+$/, '').length % 4 === 0);
+
+            return cleanStr.length > minLength &&
+                   base64Chars.test(cleanStr) &&
+                   validPadding.test(cleanStr) &&
+                   lengthValid;
           } catch (e) {
+            console.error("Base64 檢測錯誤:", e);
             return false;
           }
         }
 
-        // 確保base64字符串有正確的數據頭
+        // 確保 base64 字符串有正確的數據頭 - 改進版本
         function ensureBase64Prefix(base64Str) {
-          if (base64Str.startsWith('data:image/')) {
-            return base64Str;
+          if (!base64Str) return '';
+
+          // 清理字符串
+          const cleanStr = base64Str.trim().replace(/[\r\n\s]/g, '');
+
+          // 已經有數據頭的情況
+          if (cleanStr.startsWith('data:image/')) {
+            return cleanStr;
           }
 
-          // 嘗試檢測圖片類型(簡單處理為JPEG)
-          return `data:image/jpeg;base64,${base64Str}`;
+          // 嘗試檢測圖片類型
+          let imgType = 'jpeg'; // 默認類型
+
+          try {
+            // 檢查前幾個字符嘗試識別圖片類型
+            const prefix = cleanStr.substring(0, 20).toLowerCase();
+
+            if (prefix.includes('png')) {
+              imgType = 'png';
+            } else if (prefix.includes('gif')) {
+              imgType = 'gif';
+            } else if (prefix.includes('svg')) {
+              imgType = 'svg+xml';
+            } else if (prefix.includes('webp')) {
+              imgType = 'webp';
+            }
+          } catch (e) {
+            console.log("圖片類型檢測錯誤，使用默認類型");
+          }
+
+          return `data:image/${imgType};base64,${cleanStr}`;
         }
 
-        // 處理導入的內容，檢測並處理base64圖片
+        // 處理導入的內容，檢測並處理 base64 圖片 - 強化版
         function processImportedContent(content) {
           if (!content) return { text: '', image: null };
 
+          // 確保內容是字符串
           if (typeof content !== 'string') {
             content = content.toString();
           }
 
+          // 我們需要檢測一下是不是 Excel 或其他程序複製過來的富文本內容
+          if (content.includes('<') && content.includes('>') &&
+              (content.includes('<div') || content.includes('<span') || content.includes('<p'))) {
+            try {
+              // 創建臨時元素進行HTML解析
+              const temp = document.createElement('div');
+              temp.innerHTML = content;
+
+              // 檢查是否包含圖片元素
+              const img = temp.querySelector('img');
+              if (img && img.src && (img.src.startsWith('data:image/') || isBase64Image(img.src))) {
+                return {
+                  text: '',
+                  image: img.src
+                };
+              }
+
+              // 如果沒有找到圖片，返回純文本
+              content = temp.textContent || temp.innerText || content;
+            } catch (e) {
+              console.log("HTML處理錯誤，使用原始內容");
+            }
+          }
+
+          // 檢測是否是 base64 圖片
           if (isBase64Image(content)) {
             return {
               text: '',
@@ -8399,8 +8462,8 @@
 
                                                 // 跳过缺少必要内容的行
                                                 if (!rawFrontContent && !rawBackContent) {
-                                                    skippedCount++;
-                                                    continue;
+                                                  skippedCount++;
+                                                  continue;
                                                 }
 
                                                 // 處理正面內容，檢測base64圖片
@@ -8414,16 +8477,17 @@
                                                 const backImage = processedBack.image;
 
                                                 // 創建新卡片時設置圖片內容
+                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                                                 const newCard = {
-                                                    id: newCardId,
-                                                    frontText: frontText,
-                                                    frontImage: frontImage,
-                                                    backText: backText,
-                                                    backImage: backImage,
-                                                    nextReview: Date.now(),
-                                                    repetitions: 0,
-                                                    easeFactor: 2.0,
-                                                    interval: 1.0
+                                                  id: newCardId,
+                                                  frontText: frontText,
+                                                  frontImage: frontImage,
+                                                  backText: backText,
+                                                  backImage: backImage,
+                                                  nextReview: Date.now(),
+                                                  repetitions: 0,
+                                                  easeFactor: 2.0,
+                                                  interval: 1.0
                                                 };
 
                                                 // 添加新字卡
