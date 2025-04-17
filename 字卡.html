@@ -1958,9 +1958,12 @@
           return typeof str === 'string' && str.trim().startsWith('data:image/');
         }
         function renderCardContent(container, content) {
-          console.log("DEBUG 渲染內容：", content); // 加這行
+          console.log("DEBUG 渲染內容：", content);
           if (isBase64Image(content)) {
-            container.innerHTML = `<img src="${content}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
+            // 移除換行與空白，避免 base64 失效
+            const cleanContent = content.replace(/[\r\n\s]+/g, '');
+            console.log('DEBUG: 是 base64 圖片，準備插入 <img>');
+            container.innerHTML = `<img src="${cleanContent}" style="max-width:60%;max-height:300px;border-radius:8px;display:block;margin:auto;" />`;
           } else {
             container.innerHTML = content || '';
           }
