@@ -2314,12 +2314,15 @@
                                     // 處理前面和背面內容
                                     let frontText, backText;
 
+                                    // 檢查是否有格式化支援
+                                    const hasFormatting = excelSheets[sheetName]?.hasFormatting || false;
+
                                     if (hasFormatting) {
                                         // 處理帶格式的內容
                                         frontText = convertDeltaToHTML(frontCell?.delta || { ops: [] });
                                         backText = convertDeltaToHTML(backCell?.delta || { ops: [] });
                                     } else {
-                                        // 處理純文本內容 - 添加這段關鍵代碼
+                                        // 處理純文本內容
                                         frontText = frontCell || '';
                                         backText = backCell || '';
 
@@ -3040,8 +3043,12 @@
                 // 跳過空行
                 if (!frontCell && !backCell) continue;
 
-                // 準備卡片內容
+                // 處理內容，支持格式化和純文本
+                // 處理前面和背面內容
                 let frontText, backText;
+
+                // 檢查是否有格式化支援
+                const hasFormatting = excelSheets[sheetName]?.hasFormatting || false;
 
                 if (hasFormatting) {
                     // 處理帶格式的內容
