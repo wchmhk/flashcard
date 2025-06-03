@@ -601,7 +601,20 @@
           transition: all 0.3s ease;
         }
 
-
+        .sortable-header {
+            cursor: pointer;
+            user-select: none; /* Prevent text selection on click */
+        }
+        .sortable-header.sort-asc::after {
+            content: " ▲";
+            font-size: 0.7em;
+            margin-left: 4px;
+        }
+        .sortable-header.sort-desc::after {
+            content: " ▼";
+            font-size: 0.7em;
+            margin-left: 4px;
+        }
 
     </style>
 </head>
@@ -840,18 +853,6 @@
                   </div>
                 </div>
 
-                <!-- 並排的圖片選擇按鈕 -->
-                <div class="image-buttons grid grid-cols-2 gap-2">
-                  <button type="button" id="frontImageBtn" class="image-btn">
-                    選擇正面圖片
-                  </button>
-                  <button type="button" id="backImageBtn" class="image-btn">
-                    選擇背面圖片
-                  </button>
-                  <input type="file" id="cardFrontImage" accept="image/*" class="hidden" />
-                  <input type="file" id="cardBackImage" accept="image/*" class="hidden" />
-                </div>
-
                 <!-- 拖放區域 -->
                 <div class="flex space-x-2">
                   <div class="flex-1 drag-area" id="frontDragArea">
@@ -935,11 +936,30 @@
                 <label for="selectAllCards" class="text-sm">全選</label>
             </div>
 
-            <div id="allCardsContainer" class="space-y-4">
-                <!-- Cards will be added here dynamically -->
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                    沒有可用的字卡。
-                </div>
+            <!-- MODIFIED: allCardsContainer to hold a table -->
+            <div id="allCardsContainer" class="overflow-x-auto shadow rounded-lg border border-gray-200 dark:border-gray-700">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead class="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-12">
+                              <!-- Checkbox -->
+                          </th>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="frontText">正面</th>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="backText">背面</th>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="decks">所屬卡組</th>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="difficulty">難度</th>
+                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-24">操作</th>
+                      </tr>
+                  </thead>
+                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- Table rows will be inserted here by JavaScript -->
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                沒有可用的字卡。
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -1687,6 +1707,10 @@
         // For storage reminder
         let reminderShown = false;
 
+        // Global variables for sorting in manage cards table
+        let cardSortKey = 'frontText'; // Default sort key
+        let cardSortOrder = 'asc';     // Default sort order ('asc' or 'desc')
+
         // DOM Elements - Sections
         const reviewSection = document.getElementById('reviewSection');
         const createCardSection = document.getElementById('createCardSection');
@@ -1966,12 +1990,62 @@
             }
         }
 
+        // Base64圖片檢測和處理函數
+        function isBase64Image(str) {
+          if (typeof str !== 'string') return false;
+          // 檢查是否符合base64圖片格式前綴
+          if (str.startsWith('data:image/')) {
+            return true;
+          }
+
+          // 檢查是否是沒有前綴的base64編碼
+          try {
+            // base64字符串通常有特定的模式和長度
+            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            // 要求base64字符串至少有一定長度才被視為圖片
+            return str.length > 100 && base64Regex.test(str);
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // 確保base64字符串有正確的數據頭
+        function ensureBase64Prefix(base64Str) {
+          if (base64Str.startsWith('data:image/')) {
+            return base64Str;
+          }
+
+          // 嘗試檢測圖片類型(簡單處理為JPEG)
+          return `data:image/jpeg;base64,${base64Str}`;
+        }
+
+        // 處理導入的內容，檢測並處理base64圖片
+        function processImportedContent(content) {
+          if (!content) return { text: '', image: null };
+
+          if (typeof content !== 'string') {
+            content = content.toString();
+          }
+
+          if (isBase64Image(content)) {
+            return {
+              text: '',
+              image: ensureBase64Prefix(content)
+            };
+          }
+
+          return {
+            text: content,
+            image: null
+          };
+        }
+
         function initApiSettings() {
             const apiSettingsBtn = document.getElementById('apiSettingsBtn');
             const apiSettingsModal = document.getElementById('apiSettingsModal');
             const closeApiSettingsBtn = document.getElementById('closeApiSettingsBtn');
             const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
-            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            var googleApiKeyInput = document.getElementById('googleApiKeyInput');
             const showApiKey = document.getElementById('showApiKey');
 
             // 添加這個函數用於更新API密鑰狀態顯示
@@ -2033,26 +2107,31 @@
               });
             }
 
-            // 添加輸入事件監聽器，即時更新狀態顯示
-            googleApiKeyInput.addEventListener('input', function() {
-                // 獲取當前輸入的值
-                const currentInputValue = this.value.trim();
+            // 確保元素存在後再添加事件監聽器
+            let tempGoogleApiKeyInput = document.getElementById('googleApiKeyInput');
+            if (tempGoogleApiKeyInput) {
+                tempGoogleApiKeyInput.addEventListener('input', function() {
+                    // 獲取當前輸入的值
+                    const currentInputValue = this.value.trim();
 
-                // 獲取狀態顯示元素
-                const apiKeyPresent = document.getElementById('apiKeyPresent');
-                const apiKeyMissing = document.getElementById('apiKeyMissing');
+                    // 獲取狀態顯示元素
+                    const apiKeyPresent = document.getElementById('apiKeyPresent');
+                    const apiKeyMissing = document.getElementById('apiKeyMissing');
 
-                // 根據輸入值更新顯示
-                if (currentInputValue) {
-                    apiKeyPresent.classList.remove('hidden');
-                    apiKeyMissing.classList.add('hidden');
-                    // 添加"未保存"提示
-                    apiKeyPresent.textContent = '已輸入 (尚未保存)';
-                } else {
-                    apiKeyPresent.classList.add('hidden');
-                    apiKeyMissing.classList.remove('hidden');
-                }
-            });
+                    if (apiKeyPresent && apiKeyMissing) {
+                        // 根據輸入值更新顯示
+                        if (currentInputValue) {
+                            apiKeyPresent.classList.remove('hidden');
+                            apiKeyMissing.classList.add('hidden');
+                            // 添加"未保存"提示
+                            apiKeyPresent.textContent = '已輸入 (尚未保存)';
+                        } else {
+                            apiKeyPresent.classList.add('hidden');
+                            apiKeyMissing.classList.remove('hidden');
+                        }
+                    }
+                });
+            }
 
             // 檢查必要的元素
             if (!apiSettingsModal || !closeApiSettingsBtn || !saveApiSettingsBtn || !googleApiKeyInput) {
@@ -2136,20 +2215,13 @@
                 // 提示用戶設置API密鑰
                 showNotification('請先設置Google API密鑰');
 
-                // 在讀取Google Sheets數據時
-                if (value && typeof value === 'string') {
-                    // 保留換行符，不要去除
-                    const preservedValue = value;
-                    // 繼續處理 preservedValue...
-                }
-
                 // 自動打開API設置對話框
                 const apiSettingsModal = document.getElementById('apiSettingsModal');
                 if (apiSettingsModal) {
                     apiSettingsModal.classList.remove('hidden');
 
                     // 聚焦到API密鑰輸入框
-                    const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+                    var googleApiKeyInput = document.getElementById('googleApiKeyInput');
                     if (googleApiKeyInput) {
                         googleApiKeyInput.focus();
                     }
@@ -2169,6 +2241,12 @@
             if (!isValidGSheetsUrl(gSheetsUrl)) {
                 showNotification('請輸入有效的 Google Sheets URL');
                 return;
+            }
+
+            var googleApiKeyInput = document.getElementById('googleApiKeyInput');
+            if (!googleApiKeyInput) {
+                console.warn('找不到 googleApiKeyInput 元素');
+                return; // 如果元素不存在，退出函數
             }
 
             // 添加輸入事件監聽器，即時更新狀態顯示
@@ -2385,50 +2463,56 @@
 
         // 使用 CSV 方式載入 Google Sheets 數據（無格式）
         function loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText) {
-            // 構建導出 CSV 的 URL
+          // 处理正面内容，检测 base64 图片
+          const processedFront = processImportedContent(frontCell);
+          const frontText = processedFront.text;
+          const frontImage = processedFront.image;
+
+          // 处理背面内容，检测 base64 图片
+          const processedBack = processImportedContent(backCell);
+          const backText = processedBack.text;
+          const backImage = processedBack.image;
+
+          // 创建新卡片时设置图片内容
+          const newCard = {
+              id: newCardId,
+              frontText: frontText,
+              frontImage: frontImage,
+              backText: backText,
+              backImage: backImage,
+              nextReview: Date.now(),
+              repetitions: 0,
+              easeFactor: 2.0,
+              interval: 1.0
+          };
+            // 構建直接導出 CSV 的 URL
             const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+            console.log('嘗試直接從 URL 載入數據:', exportUrl);
 
-            console.log('嘗試從 URL 載入數據:', exportUrl);
-
-            // 使用 JSONP 方式繞過 CORS 限制
-            const jsonpUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
-
-            fetch(jsonpUrl)
+            return new Promise((resolve, reject) => {
+                // 首先嘗試直接使用fetch獲取CSV
+                fetch(exportUrl, {
+                    method: 'GET',
+                    credentials: 'omit',  // 避免cookie問題
+                    mode: 'cors',         // 嘗試跨域請求
+                    cache: 'no-cache'     // 避免緩存問題
+                })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(`無法訪問 Google Sheets，狀態碼: ${response.status}`);
+                        throw new Error(`無法直接訪問Google Sheets，狀態碼: ${response.status}`);
                     }
                     return response.text();
                 })
-                .then(text => {
-                    // JSONP 回應需要處理，移除前缀和後缀
-                    const jsonStart = text.indexOf('{');
-                    const jsonEnd = text.lastIndexOf('}');
-                    if (jsonStart === -1 || jsonEnd === -1) {
-                        throw new Error('返回的數據格式不正確');
-                    }
-
-                    const jsonText = text.substring(jsonStart, jsonEnd + 1);
-                    const data = JSON.parse(jsonText);
-
-                    // 轉換為 CSV 格式的數據結構
-                    const rows = [];
-                    // 添加表頭
-                    const headers = data.table.cols.map(col => col.label || '');
-                    rows.push(headers);
-
-                    // 添加數據行
-                    data.table.rows.forEach(row => {
-                        const rowData = row.c.map(cell => (cell ? (cell.v || '') : ''));
-                        rows.push(rowData);
-                    });
+                .then(csvData => {
+                    // 處理CSV數據
+                    const parsedData = parseCSV(csvData);
 
                     // 保存 Google Sheets 數據
                     const sheetName = 'GoogleSheet';
                     excelSheets = {};
                     excelSheets[sheetName] = {
-                        data: rows,
-                        columns: headers,
+                        data: parsedData,
+                        columns: parsedData[0] || [],
                         hasFormatting: false
                     };
 
@@ -2464,42 +2548,64 @@
                         setupGSheetsSync();
                     }
 
-                    // 顯示預覽
-                    showGSheetsStep(2);
-                    preparePreviewData();
-
                     // 恢復按鈕狀態
                     if (loadBtn) {
                         loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
+                        loadBtn.textContent = originalText || '載入';
                     }
 
-                    showNotification('成功載入 Google Sheets 數據');
+                    showNotification('成功載入 Google Sheets 數據（純文本方式）');
+                    resolve();
                 })
                 .catch(error => {
                     console.error('Google Sheets 載入錯誤:', error);
 
-                    // 提供更詳細的錯誤說明和解決方案
-                    let errorMessage = `Google Sheets 載入失敗: ${error.message || '無法連接到Google Sheets'}`;
-                    errorMessage += '\n請確保：';
-                    errorMessage += '\n1. 您的Google Sheet已設為「任何人都可以查看」';
-                    errorMessage += '\n2. 已在「檔案 -> 發布到網路」中發布此表格';
-
-                    showNotification(errorMessage);
+                    if (isSafari) {
+                        // 為 Safari 提供手動下載的選項
+                        const manualDownloadUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
+                        showNotification(`
+                            Safari 無法自動載入 Google Sheets。請
+                            <a href="${manualDownloadUrl}" target="_blank" class="text-blue-500 underline">點擊此處下載</a>
+                            然後使用"導入Excel"功能上傳`, 10000);
+                    } else {
+                        showNotification(`載入失敗: ${error.message || '無法連接到Google Sheets'}`);
+                    }
 
                     // 恢復按鈕狀態
                     if (loadBtn) {
                         loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
+                        loadBtn.textContent = originalText || '載入';
                     }
-                });
 
+                    reject(error);
+                });
+            });
         }
 
         // 從 Google Sheets URL 提取 spreadsheetId
         function extractSpreadsheetId(url) {
-            const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-            return match ? match[1] : null;
+            if (!url) return null;
+
+            // 嘗試多種格式匹配
+            // 標準格式
+            let match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (match) return match[1];
+
+            // 移動格式或簡短URL
+            match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match) return match[1];
+
+            // 檢查其他可能的格式
+            match = url.match(/sheets\.google\.com.*[?&]id=([a-zA-Z0-9-_]+)/i);
+            if (match) return match[1];
+
+            match = url.match(/docs\.google\.com\/spreadsheets.*[?&]key=([a-zA-Z0-9-_]+)/i);
+            if (match) return match[1];
+
+            // 直接是ID的情況
+            if (/^[a-zA-Z0-9-_]+$/.test(url)) return url;
+
+            return null;
         }
 
         // 驗證 Google Sheets URL
@@ -2509,24 +2615,38 @@
 
         // 解析 CSV 數據為二維數組
         function parseCSV(text) {
-            const lines = text.split('\n');
+            if (!text) return [[]];
+
+            const lines = text.split(/\r?\n/);
             const result = [];
 
-            for (let line of lines) {
-                // 處理 CSV 行，支持引號括起的字段
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue;
+
                 const row = [];
                 let inQuotes = false;
                 let currentField = '';
 
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
 
                     if (char === '"') {
-                        inQuotes = !inQuotes;
+                        // 處理引號
+                        if (inQuotes && j < line.length - 1 && line[j + 1] === '"') {
+                            // 處理連續兩個引號（CSV中的轉義引號）
+                            currentField += '"';
+                            j++; // 跳過下一個引號
+                        } else {
+                            // 切換引號模式
+                            inQuotes = !inQuotes;
+                        }
                     } else if (char === ',' && !inQuotes) {
+                        // 非引號內的逗號表示字段分隔
                         row.push(currentField);
                         currentField = '';
                     } else {
+                        // 普通字符
                         currentField += char;
                     }
                 }
@@ -2542,135 +2662,166 @@
         // 帶格式的 Google Sheets 導入（使用 Google API）
         function loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync) {
             return new Promise((resolve, reject) => {
-                // 加載 Google API 客戶端
-                gapi.load('client', () => {
-                    gapi.client.init({
-                        apiKey: GOOGLE_API_KEY,
-                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                    })
-                    .then(() => {
-                        // 請求 Google Sheets 數據，包含格式信息
-                        return gapi.client.sheets.spreadsheets.get({
-                            spreadsheetId: spreadsheetId,
-                            includeGridData: true,
-                            ranges: []  // 空數組表示獲取所有工作表
-                        });
-                    })
-                    .then(response => {
-                        const sheets = response.result.sheets;
 
-                        // 檢查是否有工作表
-                        if (!sheets || sheets.length === 0) {
-                            reject(new Error('未找到工作表數據'));
-                            return;
-                        }
 
-                        // 重置 excelSheets
-                        excelSheets = {};
 
-                        // 處理所有工作表
-                        sheets.forEach(sheet => {
-                            const sheetName = sheet.properties.title;
-                            const gridData = sheet.data[0]; // 第一個數據網格
+                // 檢查gapi是否正確載入
+                if (typeof gapi === 'undefined') {
+                    console.error('Google API 未能正確載入，嘗試使用備選方案');
+                    // 降級到 CSV 方法
+                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                        .then(resolve)
+                        .catch(reject);
+                    return;
+                }
 
-                            if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
-                                console.warn(`工作表 "${sheetName}" 沒有數據`);
+                // 設置超時處理
+                const timeout = setTimeout(() => {
+                    reject(new Error('Google API 載入超時，嘗試使用備選方案'));
+                }, 10000); // 10秒超時
+
+                try {
+                    // 加載 Google API 客戶端
+                    gapi.load('client', () => {
+                        clearTimeout(timeout); // 清除超時計時器
+
+                        gapi.client.init({
+                            apiKey: GOOGLE_API_KEY,
+                            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                        })
+                        .then(() => {
+                            // 請求 Google Sheets 數據，包含格式信息
+                            return gapi.client.sheets.spreadsheets.get({
+                                spreadsheetId: spreadsheetId,
+                                includeGridData: true,
+                                ranges: []  // 空數組表示獲取所有工作表
+                            });
+                        })
+                        .then(response => {
+                            // 創建深拷貝避免修改原始響應
+                            const responseData = JSON.parse(JSON.stringify(response.result));
+                            const sheets = responseData.sheets;
+
+                            // 檢查是否有工作表
+                            if (!sheets || sheets.length === 0) {
+                                reject(new Error('未找到工作表數據'));
                                 return;
                             }
 
-                            // 提取帶格式的數據
-                            const rowData = gridData.rowData;
-                            const formattedData = [];
+                            // 重置 excelSheets
+                            excelSheets = {};
 
-                            // 處理所有行
-                            rowData.forEach(row => {
-                                if (!row.values) return;
+                            // 處理所有工作表
+                            sheets.forEach(sheet => {
+                                const sheetName = sheet.properties.title;
+                                const gridData = sheet.data[0]; // 第一個數據網格
 
-                                const formattedRow = [];
-                                const values = row.values;
+                                if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
+                                    console.warn(`工作表 "${sheetName}" 沒有數據`);
+                                    return;
+                                }
 
-                                // 處理每個單元格
-                                values.forEach(cell => {
-                                    // 獲取單元格值和格式
-                                    const value = cell.formattedValue || '';
-                                    const textFormatRuns = cell.textFormatRuns || [];
-                                    const effectiveFormat = cell.effectiveFormat || {};
+                                // 提取帶格式的數據
+                                const rowData = gridData.rowData;
+                                const formattedData = [];
 
-                                    // 創建帶格式的單元格對象
-                                    const formattedCell = {
-                                        value: value,
-                                        textContent: value, // 純文本內容（用於搜索等）
-                                        format: {
-                                            bold: effectiveFormat.textFormat?.bold || false,
-                                            italic: effectiveFormat.textFormat?.italic || false,
-                                            underline: effectiveFormat.textFormat?.underline || false,
-                                            strikethrough: effectiveFormat.textFormat?.strikethrough || false,
-                                            fontSize: effectiveFormat.textFormat?.fontSize || 10,
-                                            foregroundColor: effectiveFormat.textFormat?.foregroundColor || null,
-                                            backgroundColor: effectiveFormat.backgroundColor || null
-                                        },
-                                        formatRuns: textFormatRuns,
-                                        // 轉換為 Quill Delta 格式
-                                        delta: convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat)
-                                    };
+                                // 處理所有行
+                                rowData.forEach(row => {
+                                    if (!row.values) return;
 
-                                    formattedRow.push(formattedCell);
+                                    const formattedRow = [];
+                                    const values = row.values;
+
+                                    // 處理每個單元格
+                                    values.forEach(cell => {
+                                        // 獲取單元格值和格式
+                                        const value = cell.formattedValue || '';
+
+                                        // 創建深拷貝以避免修改唯讀屬性
+                                        const textFormatRunsCopyCopy = cell.textFormatRunsCopyCopy ?
+                                            JSON.parse(JSON.stringify(cell.textFormatRunsCopyCopy)) : [];
+
+                                        const effectiveFormatCopyCopy = cell.effectiveFormatCopyCopy ?
+                                            JSON.parse(JSON.stringify(cell.effectiveFormatCopyCopy)) : {};
+
+                                        // 安全地創建帶格式的單元格對象
+                                        const formattedCell = {
+                                            value: value,
+                                            textContent: value,
+                                            format: {
+                                                bold: effectiveFormatCopyCopy.textFormat?.bold || false,
+                                                italic: effectiveFormatCopyCopy.textFormat?.italic || false,
+                                                underline: effectiveFormatCopyCopy.textFormat?.underline || false,
+                                                strikethrough: effectiveFormatCopyCopy.textFormat?.strikethrough || false,
+                                                fontSize: effectiveFormatCopyCopy.textFormat?.fontSize || 10,
+                                                foregroundColor: effectiveFormatCopyCopy.textFormat?.foregroundColor ?
+                                                    {...effectiveFormatCopyCopy.textFormat.foregroundColor} : null,
+                                                backgroundColor: effectiveFormatCopyCopy.backgroundColor ?
+                                                    {...effectiveFormatCopyCopy.backgroundColor} : null
+                                            },
+                                            formatRuns: textFormatRunsCopyCopy,
+                                            delta: convertGSheetsCellToQuillDelta(
+                                                value,
+                                                textFormatRunsCopyCopy,
+                                                effectiveFormatCopyCopy
+                                            )
+                                        };
+
+                                        formattedRow.push(formattedCell);
+                                    });
+
+                                    formattedData.push(formattedRow);
                                 });
 
-                                formattedData.push(formattedRow);
+                                // 保存帶格式的工作表數據
+                                excelSheets[sheetName] = {
+                                    data: formattedData,
+                                    columns: formattedData[0].map(cell => cell.value),
+                                    hasFormatting: true
+                                };
+
+                                // 設置默認卡組映射
+                                if (!sheetMappings[sheetName]) {
+                                    sheetMappings[sheetName] = {
+                                        deckOption: 'new',
+                                        deckId: '',
+                                        newDeckName: sheetName,
+                                        newDeckDescription: '從 Google Sheets 導入的字卡'
+                                    };
+                                }
+
+                                // 設置默認列選擇
+                                if (!sheetOptions[sheetName]) {
+                                    sheetOptions[sheetName] = {
+                                        frontColumn: 0,
+                                        backColumn: 1
+                                    };
+                                }
                             });
 
-                            // 保存帶格式的工作表數據
-                            excelSheets[sheetName] = {
-                                data: formattedData,
-                                columns: formattedData[0].map(cell => cell.value),
-                                hasFormatting: true // 標記為帶格式
-                            };
+                            // 設置第一個工作表為活動工作表
+                            activeSheetName = Object.keys(excelSheets)[0];
 
-                            // 設置默認卡組映射
-                            if (!sheetMappings[sheetName]) {
-                                sheetMappings[sheetName] = {
-                                    deckOption: 'new',
-                                    deckId: '',
-                                    newDeckName: sheetName,
-                                    newDeckDescription: '從 Google Sheets 導入的字卡'
-                                };
-                            }
+                            resolve();
+                        })
 
-                            // 設置默認列選擇
-                            if (!sheetOptions[sheetName]) {
-                                sheetOptions[sheetName] = {
-                                    frontColumn: 0,
-                                    backColumn: 1
-                                };
-                            }
+                        .catch(error => {
+                            console.error('Google Sheets API 錯誤:', error);
+                            console.error('在Safari上使用Google API失敗，嘗試備選方案');
+                            // 如果API調用失敗，轉向備選方案
+                            loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                                .then(resolve)
+                                .catch(reject);
                         });
-
-                        // 設置第一個工作表為活動工作表
-                        activeSheetName = Object.keys(excelSheets)[0];
-
-                        // 如果啟用同步，保存 URL 和 sync 標記到元數據
-                        if (enableSync) {
-                            // 保存同步元數據
-                            window.gSheetsSyncData = {
-                                url: gSheetsUrl,
-                                spreadsheetId: spreadsheetId,
-                                lastSync: Date.now(),
-                                syncEnabled: true,
-                                useFormatting: true // 標記為帶格式
-                            };
-
-                            // 設置定期同步
-                            setupGSheetsSync();
-                        }
-
-                        resolve();
-                    })
-                    .catch(error => {
-                        console.error('Google Sheets API 錯誤:', error);
-                        reject(error);
                     });
-                });
+                } catch (error) {
+                    clearTimeout(timeout);
+                    console.error('初始化Google API發生錯誤', error);
+                    // 異常情況下也使用備選方案
+                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
+                        .then(resolve)
+                        .catch(reject);
+                }
             });
         }
 
@@ -2784,7 +2935,7 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-            // 如果沒有文本，返回空 Delta
+            // 如果沒有文本,返回空 Delta
             if (!value) {
                 return { ops: [] };
             }
@@ -2793,7 +2944,7 @@
 
             // 從 effectiveFormat 提取全局格式
             if (effectiveFormat) {
-                // 原有的格式處理（粗體、斜體等）
+                // 原有的格式處理(粗體、斜體等)
                 if (effectiveFormat.textFormat) {
                     if (effectiveFormat.textFormat.bold) format.bold = true;
                     if (effectiveFormat.textFormat.italic) format.italic = true;
@@ -2833,7 +2984,7 @@
                     }
                 }
 
-                // 處理對齊方式
+                // 處理對齊方式 - 重要部分,確保對齊格式被保留
                 if (effectiveFormat.horizontalAlignment) {
                     const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
                     if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
@@ -2841,16 +2992,8 @@
                     }
                 }
             }
-            // 確保為每個操作(ops)設置對齊屬性，而不僅僅是整體格式
-            // 這可能是蘋果和其他水果表現不同的原因
-            if (effectiveFormat && effectiveFormat.horizontalAlignment) {
-                const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
-                if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                    // 確保這個對齊格式被應用到每個操作中
-                    format.align = alignment;
-                }
-            }
-            // 如果沒有格式運行，使用整體格式
+
+            // 如果沒有格式運行,使用整體格式
             if (!textFormatRuns || textFormatRuns.length === 0) {
                 // 創建帶格式的 Delta
                 return {
@@ -2863,7 +3006,7 @@
                 };
             }
 
-            // 如果有格式運行，處理每一段
+            // 如果有格式運行,處理每一段
             const ops = [];
             let lastIndex = 0;
 
@@ -2871,11 +3014,14 @@
             textFormatRuns.forEach(run => {
                 const startIndex = run.startIndex || 0;
 
-                // 添加前一段文本（如果有）
+                // 添加前一段文本(如果有)
                 if (startIndex > lastIndex) {
                     const text = value.substring(lastIndex, startIndex);
                     if (text) {
-                        ops.push({ insert: text });
+                        ops.push({
+                            insert: text,
+                            attributes: Object.keys(format).length > 0 ? {...format} : undefined
+                        });
                     }
                 }
 
@@ -2887,7 +3033,7 @@
                 const text = value.substring(startIndex, endIndex);
 
                 // 提取格式 - 增強顏色處理
-                const segmentFormat = {};
+                const segmentFormat = {...format}; // 從全局格式繼承
                 if (run.format) {
                     if (run.format.bold) segmentFormat.bold = true;
                     if (run.format.italic) segmentFormat.italic = true;
@@ -2925,11 +3071,6 @@
                     }
                 }
 
-                // 添加對齊格式（如果全局有設定）
-                if (format.align) {
-                    segmentFormat.align = format.align;
-                }
-
                 // 添加帶格式的文本
                 ops.push({
                     insert: text,
@@ -2940,10 +3081,36 @@
                 lastIndex = endIndex;
             });
 
-            // 添加剩餘的文本（如果有）
+            // 添加剩餘的文本(如果有)
             if (lastIndex < value.length) {
                 const remainingText = value.substring(lastIndex);
-                ops.push({ insert: remainingText });
+                ops.push({
+                    insert: remainingText,
+                    attributes: Object.keys(format).length > 0 ? {...format} : undefined
+                });
+            }
+
+            // 如果是最後一個操作並且有換行，確保換行也有格式
+            if (ops.length > 0 && typeof ops[ops.length-1].insert === 'string' &&
+                ops[ops.length-1].insert.endsWith('\n')) {
+                // 確保最後一個換行也帶有格式
+                const lastOp = ops[ops.length-1];
+                if (lastOp.insert === '\n') {
+                    lastOp.attributes = format;
+                } else if (lastOp.insert.endsWith('\n')) {
+                    // 拆分最後的文本和換行
+                    const text = lastOp.insert.slice(0, -1);
+                    const attributes = lastOp.attributes || {};
+
+                    // 修改最後一個操作為不含換行的文本
+                    lastOp.insert = text;
+
+                    // 添加一個新的操作為換行
+                    ops.push({
+                        insert: '\n',
+                        attributes: format
+                    });
+                }
             }
 
             return { ops: ops };
@@ -2975,7 +3142,7 @@
                 if (existingDeck) {
                     targetDeckId = existingDeck.id;
                 } else {
-                    // 如果沒有找到卡組，創建一個新卡組
+                    // 如果沒有找到卡組,創建一個新卡組
                     const newDeck = {
                         id: Date.now(),
                         name: mapping.newDeckName,
@@ -2999,7 +3166,7 @@
             // 臨時存儲卡片 ID 與行索引的映射
             const cardRowMap = new Map();
 
-            // 處理每一行數據（跳過標題行）
+            // 處理每一行數據(跳過標題行)
             for (let i = 1; i < sheetData.length; i++) {
                 const row = sheetData[i];
 
@@ -3046,18 +3213,7 @@
                     cardRowMap.set(existingCard.id, i);
                 } else {
                     // 創建新卡片
-                    // 創建新字卡
-                    // 創建一個基於整個工作表名稱的更可靠哈希值
-                    const getSheetHash = (str) => {
-                        let hash = 0;
-                        for (let i = 0; i < str.length; i++) {
-                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                            hash |= 0; // 轉換為32位整數
-                        }
-                        return Math.abs(hash);
-                    };
-                    const sheetHash = getSheetHash(sheetName) * 1000;
-                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
+                    const newCardId = Date.now() + i + Math.floor(Math.random() * 1000);
                     const newCard = {
                         id: newCardId,
                         frontText: frontText,
@@ -3074,7 +3230,7 @@
                 }
             }
 
-            // 可選：移除不再存在於表格中的卡片
+            // 可選:移除不再存在於表格中的卡片
             targetDeck.cardIds = targetDeck.cardIds.filter(cardId => {
                 return cardRowMap.has(cardId);
             });
@@ -3103,9 +3259,23 @@
             // 創建臨時 div 元素
             const tempDiv = document.createElement('div');
 
+            // 追蹤當前的段落和格式
+            let currentP = document.createElement('p');
+            tempDiv.appendChild(currentP);
+            let blockAttributes = {};
+
             // 處理每個操作
             delta.ops.forEach(op => {
                 if (!op.insert) return;
+
+                // 檢查是否有區塊級屬性（如對齊方式）
+                if (op.attributes && (op.attributes.align || op.attributes.header || op.attributes.list)) {
+                    blockAttributes = {
+                        align: op.attributes.align,
+                        header: op.attributes.header,
+                        list: op.attributes.list
+                    };
+                }
 
                 // 處理文本換行
                 if (typeof op.insert === 'string' && op.insert.includes('\n')) {
@@ -3113,9 +3283,14 @@
                     const lines = op.insert.split('\n');
 
                     for (let i = 0; i < lines.length; i++) {
+                        // 如果不是第一行，創建新段落
                         if (i > 0) {
-                            // 在每個換行前添加<br>標籤
-                            tempDiv.appendChild(document.createElement('br'));
+                            // 結束上一個段落
+                            applyBlockAttributes(currentP, blockAttributes);
+
+                            // 創建新段落
+                            currentP = document.createElement('p');
+                            tempDiv.appendChild(currentP);
                         }
 
                         if (lines[i]) {
@@ -3125,24 +3300,82 @@
                             // 應用格式並顧及暗模式適配
                             applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
-                            tempDiv.appendChild(span);
+                            currentP.appendChild(span);
                         }
                     }
                 } else {
-                    const span = document.createElement('span');
-                    span.textContent = op.insert;
+                    // 處理普通文本或其他內容（如圖片）
+                    if (typeof op.insert === 'string') {
+                        const span = document.createElement('span');
+                        span.textContent = op.insert;
 
-                    // 應用格式
-                    applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
+                        // 應用格式
+                        applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
 
-                    tempDiv.appendChild(span);
+                        currentP.appendChild(span);
+                    } else if (op.insert.image) {
+                        // 處理圖片
+                        const img = document.createElement('img');
+                        img.src = op.insert.image;
+                        img.style.maxWidth = '100%';
+
+                        // 應用圖片格式
+                        if (op.attributes) {
+                            if (op.attributes.width) img.style.width = op.attributes.width + 'px';
+                            if (op.attributes.height) img.style.height = op.attributes.height + 'px';
+                            if (op.attributes.align) {
+                                if (op.attributes.align === 'center') {
+                                    img.style.display = 'block';
+                                    img.style.marginLeft = 'auto';
+                                    img.style.marginRight = 'auto';
+                                } else if (op.attributes.align === 'right') {
+                                    img.style.display = 'block';
+                                    img.style.marginLeft = 'auto';
+                                }
+                            }
+                        }
+
+                        currentP.appendChild(img);
+                    }
                 }
             });
+
+            // 確保最後一個段落也應用了區塊屬性
+            applyBlockAttributes(currentP, blockAttributes);
 
             return tempDiv.innerHTML;
         }
 
-        // 增強的格式應用函數，特別注重顏色處理
+        // 應用區塊級屬性（如對齊）到段落
+        function applyBlockAttributes(element, attributes) {
+            if (!attributes) return;
+
+            if (attributes.align) {
+                element.style.textAlign = attributes.align;
+                element.classList.add(`ql-align-${attributes.align}`);
+            }
+
+            if (attributes.header) {
+                // 將p元素替換為對應的標題元素
+                const header = document.createElement(`h${attributes.header}`);
+                while (element.firstChild) {
+                    header.appendChild(element.firstChild);
+                }
+                for (let attr of element.getAttributeNames()) {
+                    header.setAttribute(attr, element.getAttribute(attr));
+                }
+                if (element.parentNode) {
+                    element.parentNode.replaceChild(header, element);
+                }
+            }
+
+            if (attributes.list) {
+                // 處理列表格式
+                element.classList.add(`ql-list-${attributes.list}`);
+            }
+        }
+
+        // 增強的格式應用函數,特別注重顏色處理和對齊方式
         function applyFormattingWithColorEnhancement(element, attributes, isDarkMode) {
             if (!attributes) return;
 
@@ -3151,12 +3384,25 @@
             if (attributes.italic) element.style.fontStyle = 'italic';
             if (attributes.underline) element.style.textDecoration = 'underline';
             if (attributes.strike) element.style.textDecoration = 'line-through';
+            if (attributes.script === 'super') element.style.verticalAlign = 'super';
+            if (attributes.script === 'sub') element.style.verticalAlign = 'sub';
 
-            // 添加對齊屬性處理
-            if (attributes.align) {
-                element.style.textAlign = attributes.align;
-                // 添加對應的 CSS 類以增強支持
-                element.classList.add(`ql-align-${attributes.align}`);
+            // 字體大小處理
+            if (attributes.size) {
+                switch(attributes.size) {
+                    case 'small':
+                        element.style.fontSize = '0.75em';
+                        element.classList.add('ql-size-small');
+                        break;
+                    case 'large':
+                        element.style.fontSize = '1.5em';
+                        element.classList.add('ql-size-large');
+                        break;
+                    case 'huge':
+                        element.style.fontSize = '2em';
+                        element.classList.add('ql-size-huge');
+                        break;
+                }
             }
 
             // 前景色處理 - 優化暗模式下的顏色顯示
@@ -3167,7 +3413,7 @@
                 // 對特定顏色在暗模式下進行調整
                 if (isDarkMode) {
                     // 可能需要根據暗模式調整某些顏色的亮度/對比度
-                    // 例如：在暗模式下加亮深色文字
+                    // 例如:在暗模式下加亮深色文字
                     const colorMatch = attributes.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
                     if (colorMatch) {
                         const r = parseInt(colorMatch[1]);
@@ -3177,9 +3423,9 @@
                         // 計算顏色亮度 (0-255)
                         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
 
-                        // 如果顏色太暗，在暗模式下提亮
+                        // 如果顏色太暗,在暗模式下提亮
                         if (brightness < 128) {
-                            // 提亮顏色，但保持色調
+                            // 提亮顏色,但保持色調
                             element.style.color = `rgb(${Math.min(r + 100, 255)}, ${Math.min(g + 100, 255)}, ${Math.min(b + 100, 255)})`;
                             // 添加文字陰影增加可讀性
                             element.style.textShadow = '0 0 2px rgba(0,0,0,0.5)';
@@ -3205,10 +3451,10 @@
                         element.style.backgroundColor = attributes.background;
                     }
                 } else {
-                    // 其他背景色直接應用，可能還需按暗模式調整
+                    // 其他背景色直接應用,可能還需按暗模式調整
                     element.style.backgroundColor = attributes.background;
 
-                    // 在暗模式下，可能需要調整背景色的透明度
+                    // 在暗模式下,可能需要調整背景色的透明度
                     if (isDarkMode) {
                         const match = attributes.background.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
                         if (match) {
@@ -3257,292 +3503,187 @@
             }
         }
 
-        // 初始化Quill編輯器 - 使用直接HTML創建工具欄，並防止表單提交
-        // 初始化Quill編輯器 - 修復輸入問題
-        function initQuillEditors() {
-          console.log("初始化Quill編輯器...");
+        // 初始化Quill編輯器 - 修復輸入問題並統一工具欄
+                function initQuillEditors() {
+                  console.log("初始化Quill編輯器...");
 
-          // 確保之前的實例被清理
-          if (frontQuill) {
-            try {
-              frontQuill.off('selection-change');
-              frontQuill = null;
-            } catch (e) {
-              console.log("清理前面編輯器失敗:", e);
-            }
-          }
-
-          if (backQuill) {
-            try {
-              backQuill.off('selection-change');
-              backQuill = null;
-            } catch (e) {
-              console.log("清理背面編輯器失敗:", e);
-            }
-          }
-
-          // 定義 formatButtons 對象
-          formatButtons = {};
-
-          console.log("工具欄HTML已創建，正在創建編輯器...");
-
-          // 使用延遲初始化，確保DOM已完全加載
-          setTimeout(() => {
-            try {
-              // 檢查編輯器容器是否存在
-              const frontEditorContainer = document.getElementById('frontEditor');
-              const backEditorContainer = document.getElementById('backEditor');
-
-              if (!frontEditorContainer || !backEditorContainer) {
-                console.error("找不到編輯器容器元素");
-                return;
-              }
-
-              // 確保容器是空的並且能夠接收點擊
-              frontEditorContainer.innerHTML = '';
-              backEditorContainer.innerHTML = '';
-
-              // 確保編輯器容器可以接收事件
-              frontEditorContainer.style.pointerEvents = 'auto';
-              backEditorContainer.style.pointerEvents = 'auto';
-
-              // 定義共用的工具欄配置
-              const standardToolbarOptions = [
-                ['bold', 'italic', 'underline', 'strike'],
-                ['blockquote'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'align': ['', 'center', 'right', 'justify'] }],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }],
-                ['image'] // 添加圖片按鈕
-              ];
-
-              // 初始化Quill編輯器 - 使用擴展配置
-              frontQuill = new Quill('#frontEditor', {
-                theme: 'snow',
-                modules: {
-                  toolbar: {
-                    container: standardToolbarOptions,
-                    handlers: {
-                      // 可以添加自定義處理器
+                  // 確保之前的實例被清理
+                  if (frontQuill) {
+                    try {
+                      frontQuill.off('selection-change'); // 假設有這個事件，實際可能不需要
+                      // 更安全的做法是直接銷毀，但Quill 2.x RC可能沒有直接的destroy方法，或行為不同
+                      // 如果Quill實例的容器被移除或清空，下次創建新實例時舊的引用會失效
+                      const frontEditorContainer = document.getElementById('frontEditor');
+                      if (frontEditorContainer) frontEditorContainer.innerHTML = ''; // 清空容器
+                      frontQuill = null;
+                    } catch (e) {
+                      console.warn("清理前面編輯器時發生輕微錯誤:", e);
                     }
-                  },
-                  clipboard: {
-                    matchVisual: false // 改進粘貼行為
-                  }
-                },
-                placeholder: '輸入卡片正面內容...'
-              });
-
-              console.log("正在初始化背面編輯器...");
-              backQuill = new Quill('#backEditor', {
-                theme: 'snow',
-                modules: {
-                  toolbar: standardToolbarOptions
-                },
-                placeholder: '輸入卡片背面內容...'
-              });
-
-              // 編輯模式編輯器初始化 - 使用相同的工具欄配置確保一致性
-              const editFrontEditorContainer = document.getElementById('editFrontEditor');
-              const editBackEditorContainer = document.getElementById('editBackEditor');
-
-              if (editFrontEditorContainer && editBackEditorContainer) {
-                console.log("正在初始化編輯模式編輯器...");
-                editFrontQuill = new Quill('#editFrontEditor', {
-                  theme: 'snow',
-                  modules: {
-                    toolbar: standardToolbarOptions
-                  },
-                  placeholder: '輸入卡片正面內容...'
-                });
-
-                editBackQuill = new Quill('#editBackEditor', {
-                  theme: 'snow',
-                  modules: {
-                    toolbar: standardToolbarOptions
-                  },
-                  placeholder: '輸入卡片背面內容...'
-                });
-
-
-                editBackQuill = new Quill('#editBackEditor', {
-                  theme: 'snow',
-                  modules: {
-                    toolbar: [
-                      ['bold', 'italic', 'underline', 'strike'],
-                      ['blockquote'],
-                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                      [{ 'color': [] }, { 'background': [] }],
-                      [{ 'size': ['small', false, 'large', 'huge'] }]
-                    ]
-                  },
-                  placeholder: '輸入卡片背面內容...'
-                });
-              } else {
-                console.log("編輯模式編輯器容器不存在，跳過初始化");
-              }
-
-              // 移除編輯器內容區域的重複工具欄
-              document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
-                if (toolbar.parentNode) {
-                  toolbar.parentNode.removeChild(toolbar);
-                }
-              });
-
-              console.log("編輯器已創建，設置事件處理器...");
-
-              // 確保編輯器區域可點擊，能夠獲得焦點
-              document.querySelectorAll('.ql-editor').forEach(editor => {
-                editor.style.pointerEvents = 'auto';
-                editor.style.userSelect = 'text';
-              });
-
-              // 為每個按鈕添加獨立事件處理器，避免事件衝突
-              for (const [format, button] of Object.entries(formatButtons)) {
-                if (!button) {
-                  console.warn(`找不到按鈕: ${format}`);
-                  continue;
-                }
-
-                // 刪除任何現有的事件監聽器，避免重複
-                const newButton = button.cloneNode(true);
-                if (button.parentNode) {
-                  button.parentNode.replaceChild(newButton, button);
-                }
-
-                // 添加新的事件監聽器
-                newButton.addEventListener('click', (e) => {
-                  console.log(`點擊了 ${format} 按鈕`);
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  if (!activeQuill) {
-                    console.warn("沒有活動的編輯器");
-                    return false;
                   }
 
-                  try {
-                    const currentFormat = activeQuill.getFormat();
-
-                    if (format === 'orderedList') {
-                      const isOrdered = currentFormat.list === 'ordered';
-                      activeQuill.format('list', isOrdered ? false : 'ordered');
-                      newButton.classList.toggle('active', !isOrdered);
+                  if (backQuill) {
+                    try {
+                      backQuill.off('selection-change');
+                      const backEditorContainer = document.getElementById('backEditor');
+                      if (backEditorContainer) backEditorContainer.innerHTML = '';
+                      backQuill = null;
+                    } catch (e) {
+                      console.warn("清理背面編輯器時發生輕微錯誤:", e);
                     }
-                    else if (format === 'bulletList') {
-                      const isBullet = currentFormat.list === 'bullet';
-                      activeQuill.format('list', isBullet ? false : 'bullet');
-                      newButton.classList.toggle('active', !isBullet);
-                    }
-                    else {
-                      const formatKey = format === 'blockquote' ? 'blockquote' : format;
-                      const newValue = !currentFormat[formatKey];
-                      activeQuill.format(formatKey, newValue);
-                      newButton.classList.toggle('active', newValue);
-                    }
-
-                    activeQuill.focus();
-                  } catch (error) {
-                    console.error(`格式化錯誤 (${format}):`, error);
                   }
 
-                  return false;
-                });
-
-                // 更新引用
-                formatButtons[format] = newButton;
-              }
-
-              // 更新按鈕活動狀態的函數
-              function updateButtonStates() {
-                if (!activeQuill) return;
-
-                try {
-                  // 檢查編輯器選擇範圍是否存在
-                  const selection = activeQuill.getSelection();
-                  if (!selection) return;
-
-                  const format = activeQuill.getFormat(selection);
-
-                  Object.entries(formatButtons).forEach(([key, button]) => {
-                    if (!button) return;
-
-                    if (key === 'orderedList') {
-                      button.classList.toggle('active', format.list === 'ordered');
-                    } else if (key === 'bulletList') {
-                      button.classList.toggle('active', format.list === 'bullet');
-                    } else {
-                      const formatKey = key === 'blockquote' ? 'blockquote' : key;
-                      button.classList.toggle('active', !!format[formatKey]);
+                  if (editFrontQuill) {
+                    try {
+                      editFrontQuill.off('selection-change');
+                      const editFrontEditorContainer = document.getElementById('editFrontEditor');
+                      if (editFrontEditorContainer) editFrontEditorContainer.innerHTML = '';
+                      editFrontQuill = null;
+                    } catch (e) {
+                      console.warn("清理編輯正面編輯器時發生輕微錯誤:", e);
                     }
-                  });
-                } catch (error) {
-                  console.error("更新按鈕狀態時出錯:", error);
+                  }
+
+                  if (editBackQuill) {
+                    try {
+                      editBackQuill.off('selection-change');
+                      const editBackEditorContainer = document.getElementById('editBackEditor');
+                      if (editBackEditorContainer) editBackEditorContainer.innerHTML = '';
+                      editBackQuill = null;
+                    } catch (e) {
+                      console.warn("清理編輯背面編輯器時發生輕微錯誤:", e);
+                    }
+                  }
+
+
+                  // 使用延遲初始化，確保DOM已完全加載
+                  setTimeout(() => {
+                    try {
+                      // 檢查編輯器容器是否存在
+                      const frontEditorContainer = document.getElementById('frontEditor');
+                      const backEditorContainer = document.getElementById('backEditor');
+                      const editFrontEditorContainer = document.getElementById('editFrontEditor');
+                      const editBackEditorContainer = document.getElementById('editBackEditor');
+
+
+                      // 定義共用的工具欄配置
+                      const standardToolbarOptions = [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': ['', 'center', 'right', 'justify'] }], // Quill本身會處理空字符串為預設對齊
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }], // 'false' 代表預設字體大小
+                        ['image'] // <--- 確保圖片按鈕在此
+                      ];
+
+                      // 初始化創建卡片編輯器
+                      if (frontEditorContainer && backEditorContainer) {
+                          frontQuill = new Quill('#frontEditor', {
+                            theme: 'snow',
+                            modules: {
+                              toolbar: standardToolbarOptions,
+                              clipboard: { matchVisual: false }
+                            },
+                            placeholder: '輸入卡片正面內容...'
+                          });
+
+                          backQuill = new Quill('#backEditor', {
+                            theme: 'snow',
+                            modules: {
+                              toolbar: standardToolbarOptions,
+                              clipboard: { matchVisual: false }
+                            },
+                            placeholder: '輸入卡片背面內容...'
+                          });
+                      } else {
+                          console.warn("創建卡片用的編輯器容器(frontEditor/backEditor)不存在，跳過初始化");
+                      }
+
+
+                      // 初始化編輯模式編輯器
+                      if (editFrontEditorContainer && editBackEditorContainer) {
+                        console.log("正在初始化編輯模式編輯器...");
+                        editFrontQuill = new Quill('#editFrontEditor', {
+                          theme: 'snow',
+                          modules: {
+                            toolbar: standardToolbarOptions, // <-- 使用標準配置
+                            clipboard: { matchVisual: false }
+                          },
+                          placeholder: '輸入卡片正面內容...'
+                        });
+
+                        editBackQuill = new Quill('#editBackEditor', {
+                          theme: 'snow',
+                          modules: {
+                            toolbar: standardToolbarOptions, // <-- 使用標準配置 (確保這裡也是！)
+                            clipboard: { matchVisual: false }
+                          },
+                          placeholder: '輸入卡片背面內容...'
+                        });
+                      } else {
+                        console.log("編輯模式編輯器容器(editFrontEditor/editBackEditor)不存在，跳過初始化");
+                      }
+
+                      // 移除編輯器內容區域可能產生的重複工具欄 (以防萬一)
+                      document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
+                        if (toolbar.parentNode && toolbar.closest('.editor-content')) { // 確保是內容區域內的工具欄
+                          toolbar.parentNode.removeChild(toolbar);
+                        }
+                      });
+
+                      console.log("編輯器已創建，設置事件處理器...");
+
+                      // 確保編輯器區域可點擊，能夠獲得焦點
+                      document.querySelectorAll('.ql-editor').forEach(editor => {
+                        editor.style.pointerEvents = 'auto';
+                        editor.style.userSelect = 'text';
+                      });
+
+                      // 統一的事件處理和狀態更新函數
+                      function setupEditorEvents(editorInstance, editorName) {
+                        if (editorInstance && editorInstance.root) {
+                          editorInstance.root.addEventListener('focus', function() {
+                            console.log(`${editorName} 編輯器獲得焦點`);
+                            // activeQuill = editorInstance; // 如果需要追蹤當前活動編輯器
+                            // updateButtonStates(); // 如果有外部按鈕需要根據編輯器狀態更新
+                          });
+
+                          editorInstance.on('selection-change', function(range) {
+                            if (range && editorInstance.hasFocus()) { // 只有當編輯器有焦點時才更新
+                              // activeQuill = editorInstance;
+                              // updateButtonStates();
+                            }
+                          });
+                        }
+                      }
+
+                      setupEditorEvents(frontQuill, "前面");
+                      setupEditorEvents(backQuill, "背面");
+                      setupEditorEvents(editFrontQuill, "編輯正面");
+                      setupEditorEvents(editBackQuill, "編輯背面");
+
+
+                      // 調整Quill編輯器的深色模式 (如果需要)
+                      adjustQuillForDarkMode();
+
+                      // 初始化時設置焦點到創建卡片的正面編輯器 (如果該部分可見)
+                      if (frontQuill && !createCardSection.classList.contains('hidden')) {
+                        setTimeout(() => {
+                          try {
+                            frontQuill.focus();
+                            console.log("設置焦點到創建卡片的前面編輯器");
+                          } catch (error) {
+                            console.error("設置焦點時出錯:", error);
+                          }
+                        }, 200);
+                      }
+
+                      console.log("Quill編輯器初始化完成");
+                    } catch (error) {
+                      console.error("初始化Quill編輯器時發生錯誤:", error);
+                    }
+                  }, 100); // 稍微減少延遲，看是否能改善初始化時機
                 }
-              }
-
-              // 為編輯器添加焦點和選擇事件
-              if (frontQuill && frontQuill.root) {
-                frontQuill.root.addEventListener('focus', function() {
-                  console.log("前面編輯器獲得焦點");
-                  activeQuill = frontQuill;
-                  updateButtonStates();
-                });
-
-                frontQuill.on('selection-change', function() {
-                  if (frontQuill.hasFocus()) {
-                    activeQuill = frontQuill;
-                    updateButtonStates();
-                  }
-                });
-              }
-
-              if (backQuill && backQuill.root) {
-                backQuill.root.addEventListener('focus', function() {
-                  console.log("背面編輯器獲得焦點");
-                  activeQuill = backQuill;
-                  updateButtonStates();
-                });
-
-                backQuill.on('selection-change', function() {
-                  if (backQuill.hasFocus()) {
-                    activeQuill = backQuill;
-                    updateButtonStates();
-                  }
-                });
-              }
-
-              // 添加Tab鍵順序
-              if (frontQuill && frontQuill.root) {
-                frontQuill.root.setAttribute('tabindex', '1');
-              }
-
-              if (backQuill && backQuill.root) {
-                backQuill.root.setAttribute('tabindex', '2');
-              }
-
-              // 調整Quill編輯器的深色模式
-              adjustQuillForDarkMode();
-
-              // 初始化時設置焦點
-              setTimeout(() => {
-                if (frontQuill) {
-                  try {
-                    frontQuill.focus();
-                    console.log("設置焦點到前面編輯器");
-                  } catch (error) {
-                    console.error("設置焦點時出錯:", error);
-                  }
-                }
-              }, 200);
-
-              console.log("Quill編輯器初始化完成");
-            } catch (error) {
-              console.error("初始化Quill編輯器時發生錯誤:", error);
-            }
-          }, 300);  // 延遲初始化，確保DOM已完全加載
-        }
 
         // 處理圖片拖拽
         [frontQuill, backQuill, editFrontQuill, editBackQuill].forEach(editor => {
@@ -3705,6 +3846,58 @@
             });
         }
 
+        // 添加到脚本开头部分的函数
+
+        // base64 图片检测和处理函数
+        function isBase64Image(str) {
+          if (typeof str !== 'string') return false;
+          // 检查是否符合 base64 图片格式前缀
+          if (str.startsWith('data:image/')) {
+            return true;
+          }
+
+          // 检查是否是没有前缀的 base64 编码
+          try {
+            // base64 字符串通常有特定的模式和长度
+            const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            // 要求 base64 字符串至少有一定长度才被视为图片
+            return str.length > 100 && base64Regex.test(str);
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // 确保 base64 字符串有正确的数据头
+        function ensureBase64Prefix(base64Str) {
+          if (base64Str.startsWith('data:image/')) {
+            return base64Str;
+          }
+
+          // 尝试检测图片类型 (简单处理为 JPEG)
+          return `data:image/jpeg;base64,${base64Str}`;
+        }
+
+        // 处理导入的内容，检测并处理 base64 图片
+        function processImportedContent(content) {
+          if (!content) return { text: '', image: null };
+
+          if (typeof content !== 'string') {
+            content = content.toString();
+          }
+
+          if (isBase64Image(content)) {
+            return {
+              text: '',
+              image: ensureBase64Prefix(content)
+            };
+          }
+
+          return {
+            text: content,
+            image: null
+          };
+        }
+
         // 圖片壓縮核心功能
         async function compressImage(dataUrl, maxWidth = 1000, maxHeight = 800, quality = 0.85) {
             return new Promise((resolve) => {
@@ -3753,179 +3946,188 @@
 
         // 設置圖片壓縮功能
         function setupImageCompression() {
-            // 前面圖片處理
-            cardFrontImageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+            // 確保元素存在再添加事件監聽器
+            if (cardFrontImageInput) {
+                // 前面圖片處理
+                cardFrontImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                frontImageName.textContent = file.name;
-                frontImagePreview.classList.remove('hidden');
+                    frontImageName.textContent = file.name;
+                    frontImagePreview.classList.remove('hidden');
 
-                // 顯示載入中狀態
-                frontPreviewImg.src = ''; // 清空之前的圖片
-                frontPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                frontImagePreview.appendChild(loadingIndicator);
+                    // 顯示載入中狀態
+                    frontPreviewImg.src = ''; // 清空之前的圖片
+                    frontPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    frontImagePreview.appendChild(loadingIndicator);
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                        // 更新圖片數據和預覽
-                        frontImageData = compressedDataUrl;
+                            // 更新圖片數據和預覽
+                            frontImageData = compressedDataUrl;
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
+
+                            // 顯示圖片預覽
+                            frontPreviewImg.src = compressedDataUrl;
+                            frontPreviewImg.style.display = 'block';
+
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            frontImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        frontPreviewImg.src = compressedDataUrl;
-                        frontPreviewImg.style.display = 'block';
+            if (cardBackImageInput) {
+                // 背面圖片處理
+                cardBackImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        frontImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    backImageName.textContent = file.name;
+                    backImagePreview.classList.remove('hidden');
 
-            // 背面圖片處理
-            cardBackImageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    backPreviewImg.src = '';
+                    backPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    backImagePreview.appendChild(loadingIndicator);
 
-                backImageName.textContent = file.name;
-                backImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                backPreviewImg.src = '';
-                backPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                backImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            backImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        backImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            backPreviewImg.src = compressedDataUrl;
+                            backPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            backImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        backPreviewImg.src = compressedDataUrl;
-                        backPreviewImg.style.display = 'block';
+            if (editCardFrontImage) {
+                // 編輯正面圖片處理
+                editCardFrontImage.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        backImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    editFrontImagePreview.classList.remove('hidden');
 
-            // 編輯正面圖片處理
-            editCardFrontImage.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    editFrontPreviewImg.src = '';
+                    editFrontPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    editFrontImagePreview.appendChild(loadingIndicator);
 
-                editFrontImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                editFrontPreviewImg.src = '';
-                editFrontPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                editFrontImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            editFrontImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        editFrontImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            editFrontPreviewImg.src = compressedDataUrl;
+                            editFrontPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            editFrontImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                        // 顯示圖片預覽
-                        editFrontPreviewImg.src = compressedDataUrl;
-                        editFrontPreviewImg.style.display = 'block';
+            if (editCardBackImage) {
+                // 編輯背面圖片處理
+                editCardBackImage.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        editFrontImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    editBackImagePreview.classList.remove('hidden');
 
-            // 編輯背面圖片處理
-            editCardBackImage.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                    // 顯示載入中狀態
+                    editBackPreviewImg.src = '';
+                    editBackPreviewImg.style.display = 'none';
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'text-center py-2';
+                    loadingIndicator.textContent = '處理圖片中...';
+                    editBackImagePreview.appendChild(loadingIndicator);
 
-                editBackImagePreview.classList.remove('hidden');
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            // 進行智能壓縮
+                            const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
 
-                // 顯示載入中狀態
-                editBackPreviewImg.src = '';
-                editBackPreviewImg.style.display = 'none';
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center py-2';
-                loadingIndicator.textContent = '處理圖片中...';
-                editBackImagePreview.appendChild(loadingIndicator);
+                            // 更新圖片數據和預覽
+                            editBackImageData = compressedDataUrl;
 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        // 進行智能壓縮
-                        const compressedDataUrl = await analyzeAndCompressImage(e.target.result);
+                            // 移除載入指示器
+                            if (loadingIndicator.parentNode) {
+                                loadingIndicator.parentNode.removeChild(loadingIndicator);
+                            }
 
-                        // 更新圖片數據和預覽
-                        editBackImageData = compressedDataUrl;
+                            // 顯示圖片預覽
+                            editBackPreviewImg.src = compressedDataUrl;
+                            editBackPreviewImg.style.display = 'block';
 
-                        // 移除載入指示器
-                        if (loadingIndicator.parentNode) {
-                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        } catch (error) {
+                            console.error('圖片處理錯誤:', error);
+                            editBackImagePreview.innerHTML = `
+                                <div class="text-red-500">圖片處理失敗</div>
+                            `;
                         }
-
-                        // 顯示圖片預覽
-                        editBackPreviewImg.src = compressedDataUrl;
-                        editBackPreviewImg.style.display = 'block';
-
-                    } catch (error) {
-                        console.error('圖片處理錯誤:', error);
-                        editBackImagePreview.innerHTML = `
-                            <div class="text-red-500">圖片處理失敗</div>
-                        `;
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
         }
 
         // 設置拖放上傳功能
@@ -3934,11 +4136,11 @@
             const frontDragArea = document.getElementById('frontDragArea');
             const backDragArea = document.getElementById('backDragArea');
 
-            if (frontDragArea) {
+            if (frontDragArea && cardFrontImageInput) {
                 setupDragArea(frontDragArea, cardFrontImageInput);
             }
 
-            if (backDragArea) {
+            if (backDragArea && cardBackImageInput) {
                 setupDragArea(backDragArea, cardBackImageInput);
             }
 
@@ -3946,11 +4148,11 @@
             const editFrontDragArea = document.getElementById('editFrontDragArea');
             const editBackDragArea = document.getElementById('editBackDragArea');
 
-            if (editFrontDragArea) {
+            if (editFrontDragArea && editCardFrontImage) {
                 setupDragArea(editFrontDragArea, editCardFrontImage);
             }
 
-            if (editBackDragArea) {
+            if (editBackDragArea && editCardBackImage) {
                 setupDragArea(editBackDragArea, editCardBackImage);
             }
         }
@@ -5109,31 +5311,6 @@
             showCurrentCard();
         });
 
-        // Image upload button handlers
-        frontImageBtn.addEventListener('click', () => {
-            cardFrontImageInput.click();
-        });
-
-        backImageBtn.addEventListener('click', () => {
-            cardBackImageInput.click();
-        });
-
-        // Remove front image
-        removeFrontImage.addEventListener('click', () => {
-            frontImageData = null;
-            cardFrontImageInput.value = '';
-            frontImageName.textContent = '';
-            frontImagePreview.classList.add('hidden');
-        });
-
-        // Remove back image
-        removeBackImage.addEventListener('click', () => {
-            backImageData = null;
-            cardBackImageInput.value = '';
-            backImageName.textContent = '';
-            backImagePreview.classList.add('hidden');
-        });
-
         // Edit card image handlers
         editFrontImageBtn.addEventListener('click', () => {
             editCardFrontImage.click();
@@ -5160,17 +5337,24 @@
         // Toggle deck dropdown for create card
         // 讓整個選擇區都可以點擊
         const selectedDecksBar = document.querySelector('.multiselect-dropdown .flex.items-center.border');
-        selectedDecksBar.addEventListener('click', (e) => {
-            // 阻止事件冒泡，防止觸發外部點擊事件
-            e.stopPropagation();
+        if (selectedDecksBar) {
+            selectedDecksBar.addEventListener('click', (e) => {
+                // 如果點擊的是搜索框本身，不要觸發下拉菜單切換
+                if (e.target.id === 'deckSearchForCard') {
+                    return;
+                }
 
-            deckOptions.classList.toggle('hidden');
+                // 阻止事件冒泡，防止觸發外部點擊事件
+                e.stopPropagation();
 
-            // 加載卡組選項
-            if (!deckOptions.classList.contains('hidden')) {
-                loadDeckOptionsForCard();
-            }
-        });
+                deckOptions.classList.toggle('hidden');
+
+                // 加載卡組選項
+                if (!deckOptions.classList.contains('hidden')) {
+                    loadDeckOptionsForCard();
+                }
+            });
+        }
 
         // 添加點擊其他地方時關閉下拉菜單
         document.addEventListener('click', (e) => {
@@ -5187,25 +5371,30 @@
 
         // 为卡組选择添加搜索功能
         function initSearchableDeckSelector() {
-            // 获取相关元素
+            // 獲取相關元素
             const selectedDecksContainer = document.getElementById('selectedDecks');
             const selectedDecksPlaceholder = document.getElementById('selectedDecksPlaceholder');
-            const deckDropdownToggle = document.getElementById('toggleDeckDropdown');
-            const deckOptions = document.getElementById('deckOptions');
 
-            // 创建搜索输入框
+            // 清除所有已存在的搜尋框，防止重複
+            const existingSearch = document.getElementById('deckSearchForCard');
+            if (existingSearch) {
+                existingSearch.remove();
+            }
+
+            // 創建搜索輸入框
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
             searchInput.id = 'deckSearchForCard';
             searchInput.placeholder = '搜尋卡組...';
             searchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
 
-            // 替换占位符为搜索框
-            if (selectedDecksPlaceholder) {
-                selectedDecksPlaceholder.replaceWith(searchInput);
-            } else {
-                // 如果占位符不存在，就添加到选择区容器开头
-                selectedDecksContainer.prepend(searchInput);
+            // 確保只替換佔位符而不是整個容器內容
+            if (selectedDecksPlaceholder && selectedDecksPlaceholder.parentNode) {
+                selectedDecksPlaceholder.parentNode.replaceChild(searchInput, selectedDecksPlaceholder);
+            } else if (selectedDecksContainer) {
+                // 如果找不到佔位符，但容器存在，先清空再添加
+                selectedDecksContainer.innerHTML = '';
+                selectedDecksContainer.appendChild(searchInput);
             }
 
             // 点击整个选择区域时打开下拉菜单
@@ -5408,16 +5597,38 @@
         // Update selected decks display
         function updateSelectedDecksDisplay() {
             if (selectedDeckIds.length === 0) {
-                // 创建搜索输入框
-                const searchInput = document.createElement('input');
-                searchInput.type = 'text';
-                searchInput.id = 'deckSearchForCard';
-                searchInput.placeholder = '搜尋卡組...';
-                searchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
-
+                // 清空容器，但保留可能存在的搜索框
+                const searchInput = document.getElementById('deckSearchForCard');
                 selectedDecks.innerHTML = '';
-                selectedDecks.appendChild(searchInput);
+
+                // 如果搜索框不存在，則創建一個新的
+                if (!searchInput) {
+                    const newSearchInput = document.createElement('input');
+                    newSearchInput.type = 'text';
+                    newSearchInput.id = 'deckSearchForCard';
+                    newSearchInput.placeholder = '搜尋卡組...';
+                    newSearchInput.className = 'flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-base';
+                    selectedDecks.appendChild(newSearchInput);
+
+                    // 設置搜索框事件...
+                } else {
+                    // 如果搜索框存在但不在容器中，則將其添加回容器
+                    if (!selectedDecks.contains(searchInput)) {
+                        selectedDecks.appendChild(searchInput);
+                    }
+                }
                 return;
+            }
+
+            // 保存現有的搜索框（如果有的話）
+            const searchInput = document.getElementById('deckSearchForCard');
+
+            // 清空容器
+            selectedDecks.innerHTML = '';
+
+            // 如果存在搜索框，先將其添加回去
+            if (searchInput) {
+                selectedDecks.appendChild(searchInput);
             }
 
             selectedDecks.innerHTML = '';
@@ -6472,20 +6683,50 @@
             }
         }
 
-        // 修改頁面切換函數，在切換時重置格式
-        const originalShowSection = showSection;
-        showSection = function(section) {
+        // 創建一個包裝函數，而不是直接覆蓋原始函數
+        function showSectionWithReset(section) {
             // 在切換頁面前重置格式
             resetEditorFormats();
 
             // 調用原始函數
-            originalShowSection(section);
-        };
+            showSection(section);
+        }
 
-        // 添加監聽器以確保在切換頁面時重置格式
-        document.querySelectorAll('#reviewBtn, #createCardBtn, #manageCardBtn, #manageDeckBtn').forEach(btn => {
-            btn.addEventListener('click', resetEditorFormats);
-        });
+        // 為每個按鈕設置專用的事件處理函數
+        function setupNavigationButtons() {
+            // 清除現有的事件綁定（如果有）
+            reviewBtn.removeEventListener('click', reviewBtnHandler);
+            createCardBtn.removeEventListener('click', createCardBtnHandler);
+            manageCardBtn.removeEventListener('click', manageCardBtnHandler);
+            manageDeckBtn.removeEventListener('click', manageDeckBtnHandler);
+
+            // 重新添加事件監聽器
+            reviewBtn.addEventListener('click', reviewBtnHandler);
+            createCardBtn.addEventListener('click', createCardBtnHandler);
+            manageCardBtn.addEventListener('click', manageCardBtnHandler);
+            manageDeckBtn.addEventListener('click', manageDeckBtnHandler);
+        }
+
+        // 定義每個按鈕的處理函數
+        function reviewBtnHandler() {
+            resetEditorFormats();
+            showSection('review');
+        }
+
+        function createCardBtnHandler() {
+            resetEditorFormats();
+            showSection('createCard');
+        }
+
+        function manageCardBtnHandler() {
+            resetEditorFormats();
+            showSection('manageCard');
+        }
+
+        function manageDeckBtnHandler() {
+            resetEditorFormats();
+            showSection('manageDeck');
+        }
 
         // 確保字體大小在字卡顯示時正確呈現
         function fixFontSizeDisplay() {
@@ -6664,173 +6905,254 @@
           return newCardId;
         }
 
-        // Load all cards for management
-        function loadAllCards() {
-            allCardsContainer.innerHTML = '';
+        // Load all cards for management (Excel-like table)
+                function loadAllCards() {
+                    const tableContainer = document.getElementById('allCardsContainer');
+                    const tableBody = tableContainer.querySelector('tbody');
+                    if (!tableBody) {
+                        console.error("Table body not found in allCardsContainer");
+                        return;
+                    }
+                    tableBody.innerHTML = ''; // Clear existing rows
 
-            // Get search and filter values
-            const searchText = cardSearchInput.value.toLowerCase();
-            const selectedDeckId = deckFilterSelect.value;
+                    // Get search and filter values
+                    const searchText = cardSearchInput.value.toLowerCase();
+                    const selectedDeckId = deckFilterSelect.value;
 
-            // Filter cards
-            let filteredCards = cardsData;
+                    // Filter cards
+                    let filteredCards = [...cardsData]; // Create a copy for sorting
 
-            // Apply search filter
-            if (searchText) {
-                filteredCards = filteredCards.filter(card =>
-                    (card.frontText && stripHtml(card.frontText).toLowerCase().includes(searchText)) ||
-                    (card.backText && stripHtml(card.backText).toLowerCase().includes(searchText))
-                );
-            }
-
-            // Apply deck filter
-            if (selectedDeckId !== 'all') {
-                const deckId = parseInt(selectedDeckId);
-                const deck = decksData.find(d => d.id === deckId);
-                if (deck) {
-                    filteredCards = filteredCards.filter(card => deck.cardIds.includes(card.id));
-                }
-            }
-
-            if (filteredCards.length === 0) {
-                allCardsContainer.innerHTML = '<p class="text-center py-4">沒有符合條件的字卡</p>';
-                return;
-            }
-
-            // Reset select all checkbox
-            selectAllCards.checked = false;
-
-            filteredCards.forEach(card => {
-                const cardElement = document.createElement('div');
-                cardElement.className = 'bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-300 dark:border-gray-700';
-
-                // Determine if card has a difficulty rating
-                let difficultyBadge = '';
-                if (card.difficulty) {
-                    let difficultyLabel;
-                    let difficultyClass;
-
-                    switch (card.difficulty) {
-                        case 'easy':
-                            difficultyLabel = '簡單';
-                            difficultyClass = 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100';
-                            break;
-                        case 'medium':
-                            difficultyLabel = '中等';
-                            difficultyClass = 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100';
-                            break;
-                        case 'hard':
-                            difficultyLabel = '困難';
-                            difficultyClass = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100';
-                            break;
-                        default:
-                            difficultyLabel = '未知';
-                            difficultyClass = 'bg-gray-100 dark:bg-gray-800';
+                    // Apply search filter
+                    if (searchText) {
+                        filteredCards = filteredCards.filter(card =>
+                            (card.frontText && stripHtml(card.frontText).toLowerCase().includes(searchText)) ||
+                            (card.backText && stripHtml(card.backText).toLowerCase().includes(searchText))
+                        );
                     }
 
-                    difficultyBadge = `
-                        <span class="text-xs px-2 py-1 rounded-full ${difficultyClass}">
-                            ${difficultyLabel}
-                        </span>
-                    `;
-                }
-
-                // 查找哪些卡組包含這張卡片
-                const containingDecks = decksData.filter(deck => deck.cardIds.includes(card.id));
-                let deckBadges = '';
-
-                if (containingDecks.length > 0) {
-                    const deckList = containingDecks.map(deck =>
-                        `<span class="text-xs px-3 py-1.5 bg-primary bg-opacity-10 text-primary rounded-lg border border-primary border-opacity-20 shadow-sm flex items-center">
-                            <svg class="w-3 h-3 mr-1 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
-                            </svg>
-                            ${deck.name}
-                        </span>`
-                    ).join('');
-
-                    deckBadges = `
-                        <div class="mt-3 mb-1 flex flex-wrap gap-2">
-                            ${deckList}
-                        </div>
-                    `;
-                }
-
-                // Create front content preview
-                let frontContent = `<div class="font-medium quill-content-preview">${card.frontText || ""}</div>`;
-                if (card.frontImage) {
-                    frontContent += `<div class="mt-2"><img src="${card.frontImage}" class="h-12 rounded"></div>`;
-                }
-
-                // Create back content preview
-                let backContent = `<div class="text-gray-600 dark:text-gray-400 mt-1 quill-content-preview">${card.backText || ""}</div>`;
-                if (card.backImage) {
-                    backContent += `<div class="mt-2"><img src="${card.backImage}" class="h-12 rounded"></div>`;
-                }
-
-                // Check if card is selected
-                const isSelected = selectedCardIds.has(card.id);
-
-                cardElement.innerHTML = `
-                    <div class="flex items-start">
-                        <input type="checkbox" class="card-checkbox mt-1 mr-3" value="${card.id}" ${isSelected ? 'checked' : ''}>
-                        <div class="flex flex-1 justify-between items-start">
-                            <div class="flex-1 pr-4">
-                                ${frontContent}
-                                ${backContent}
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    ${difficultyBadge}
-                                </div>
-                                ${deckBadges}
-                            </div>
-                            <div class="flex space-x-2">
-                                <button class="edit-card-btn text-blue-500 hover:text-blue-700" data-id="${card.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                    </svg>
-                                </button>
-                                <button class="delete-card-btn text-red-500 hover:text-red-700" data-id="${card.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                allCardsContainer.appendChild(cardElement);
-            });
-
-            // Add card checkbox event listeners
-            document.querySelectorAll('.card-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const cardId = parseInt(this.value);
-                    if (this.checked) {
-                        selectedCardIds.add(cardId);
-                    } else {
-                        selectedCardIds.delete(cardId);
+                    // Apply deck filter
+                    if (selectedDeckId !== 'all') {
+                        const deckId = parseInt(selectedDeckId);
+                        const deck = decksData.find(d => d.id === deckId);
+                        if (deck) {
+                            filteredCards = filteredCards.filter(card => deck.cardIds.includes(card.id));
+                        }
                     }
-                    updateBatchDeleteButton();
-                });
-            });
 
-            // Add edit card event listeners
-            document.querySelectorAll('.edit-card-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const cardId = parseInt(e.currentTarget.dataset.id);
-                    openCardEditModal(cardId);
-                });
-            });
+                    // Apply sorting
+                    filteredCards.sort((a, b) => {
+                        let valA, valB;
 
-            // Add delete card event listeners
-            document.querySelectorAll('.delete-card-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const cardId = parseInt(e.currentTarget.dataset.id);
-                    deleteCard(cardId);
-                });
-            });
-        }
+                        function getSortableText(htmlContent) {
+                            return stripHtml(htmlContent || '').toLowerCase(); // 轉換為小寫進行不區分大小寫的排序
+                        }
+
+                        switch (cardSortKey) {
+                            case 'frontText':
+                                valA = getSortableText(a.frontText);
+                                valB = getSortableText(b.frontText);
+                                break;
+                            case 'backText':
+                                valA = getSortableText(a.backText);
+                                valB = getSortableText(b.backText);
+                                break;
+                            case 'decks':
+                                // 對於多個卡組的情況，先獲取卡組名稱列表，排序後再組合成字串進行比較
+                                const decksA = decksData.filter(d => d.cardIds.includes(a.id)).map(d => d.name).sort().join(', ');
+                                const decksB = decksData.filter(d => d.cardIds.includes(b.id)).map(d => d.name).sort().join(', ');
+                                valA = decksA.toLowerCase();
+                                valB = decksB.toLowerCase();
+                                break;
+                            case 'difficulty':
+                                // 為難度定義一個排序順序，方便比較
+                                const difficultyOrder = { 'unknown': 0, 'easy': 1, 'medium': 2, 'hard': 3 }; // 'unknown' 或未評分的排最前面
+                                valA = difficultyOrder[a.difficulty || 'unknown'] || 0;
+                                valB = difficultyOrder[b.difficulty || 'unknown'] || 0;
+                                break;
+                            default:
+                                valA = getSortableText(a.frontText); // 預設按正面內容排序
+                                valB = getSortableText(b.frontText);
+                        }
+
+                        // 比較並返回排序結果
+                        if (valA < valB) {
+                            return cardSortOrder === 'asc' ? -1 : 1;
+                        }
+                        if (valA > valB) {
+                            return cardSortOrder === 'asc' ? 1 : -1;
+                        }
+                        return 0; // 相等則不改變順序
+                    });
+
+
+                    if (filteredCards.length === 0) {
+                        const tr = tableBody.insertRow();
+                        const td = tr.insertCell();
+                        td.colSpan = 6; // Number of columns in your table (Checkbox, Front, Back, Decks, Difficulty, Actions)
+                        td.className = 'text-center py-8 text-gray-500 dark:text-gray-400';
+                        td.textContent = '沒有符合條件的字卡。';
+                        return;
+                    }
+
+                    selectAllCards.checked = false; // Reset global select all checkbox
+
+                    filteredCards.forEach(card => {
+                        const tr = tableBody.insertRow();
+                        tr.className = 'hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors';
+
+                        // 1. Checkbox cell
+                        const tdCheckbox = tr.insertCell();
+                        tdCheckbox.className = 'py-3 px-4'; // Tailwind classes
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'card-checkbox h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary focus:ring-primary dark:bg-gray-700 dark:focus:ring-offset-gray-800';
+                        checkbox.value = card.id;
+                        checkbox.checked = selectedCardIds.has(card.id);
+                        checkbox.addEventListener('change', function() {
+                            const cardId = parseInt(this.value);
+                            if (this.checked) {
+                                selectedCardIds.add(cardId);
+                            } else {
+                                selectedCardIds.delete(cardId);
+                            }
+                            updateBatchDeleteButton();
+                        });
+                        tdCheckbox.appendChild(checkbox);
+
+                        // 2. Front content cell
+                        const tdFront = tr.insertCell();
+                        tdFront.className = 'py-3 px-4';
+                        const frontPreviewDiv = document.createElement('div');
+                        frontPreviewDiv.className = 'quill-content-preview-table';
+                        let frontHTML = card.frontText || '<span class="text-gray-400 italic">無內容</span>';
+                        if (card.frontImage) {
+                            frontHTML = `<img src="${card.frontImage}" alt="正面圖片">` + frontHTML;
+                        }
+                        frontPreviewDiv.innerHTML = frontHTML;
+                        tdFront.appendChild(frontPreviewDiv);
+
+                        // 3. Back content cell
+                        const tdBack = tr.insertCell();
+                        tdBack.className = 'py-3 px-4';
+                        const backPreviewDiv = document.createElement('div');
+                        backPreviewDiv.className = 'quill-content-preview-table';
+                        let backHTML = card.backText || '<span class="text-gray-400 italic">無內容</span>';
+                        if (card.backImage) {
+                            backHTML = `<img src="${card.backImage}" alt="背面圖片">` + backHTML;
+                        }
+                        backPreviewDiv.innerHTML = backHTML;
+                        tdBack.appendChild(backPreviewDiv);
+
+                        // 4. Decks cell
+                        const tdDecks = tr.insertCell();
+                        tdDecks.className = 'py-3 px-4';
+                        const containingDecks = decksData.filter(deck => deck.cardIds.includes(card.id));
+                        if (containingDecks.length > 0) {
+                            const deckListContainer = document.createElement('div');
+                            deckListContainer.className = 'flex flex-wrap gap-1';
+                            containingDecks.forEach(deck => {
+                                const deckBadge = document.createElement('span');
+                                deckBadge.className = 'deck-badge-table bg-primary bg-opacity-10 text-primary dark:bg-primary/30 dark:text-primary-light';
+                                deckBadge.textContent = deck.name;
+                                deckListContainer.appendChild(deckBadge);
+                            });
+                            tdDecks.appendChild(deckListContainer);
+                        } else {
+                            tdDecks.innerHTML = '<span class="text-gray-400 italic">未分配</span>';
+                        }
+
+                        // 5. Difficulty cell
+                        const tdDifficulty = tr.insertCell();
+                        tdDifficulty.className = 'py-3 px-4';
+                        if (card.difficulty) {
+                            let difficultyLabel, difficultyClass;
+                            switch (card.difficulty) {
+                                case 'easy':
+                                    difficultyLabel = '簡單';
+                                    difficultyClass = 'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100';
+                                    break;
+                                case 'medium':
+                                    difficultyLabel = '中等';
+                                    difficultyClass = 'bg-yellow-100 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100';
+                                    break;
+                                case 'hard':
+                                    difficultyLabel = '困難';
+                                    difficultyClass = 'bg-red-100 dark:bg-red-700 text-red-800 dark:text-red-100';
+                                    break;
+                                default:
+                                    difficultyLabel = card.difficulty; // Should not happen with current values
+                                    difficultyClass = 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100';
+                            }
+                            tdDifficulty.innerHTML = `<span class="difficulty-badge-table ${difficultyClass}">${difficultyLabel}</span>`;
+                        } else {
+                            tdDifficulty.innerHTML = '<span class="text-gray-400 italic">未評分</span>';
+                        }
+
+                        // 6. Actions cell
+                        const tdActions = tr.insertCell();
+                        tdActions.className = 'py-3 px-4';
+                        const actionContainer = document.createElement('div');
+                        actionContainer.className = 'flex space-x-3 items-center'; // Increased space
+
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300';
+                        editBtn.title = "編輯字卡";
+                        editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
+                        editBtn.addEventListener('click', () => openCardEditModal(card.id));
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300';
+                        deleteBtn.title = "刪除字卡";
+                        deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>`;
+                        deleteBtn.addEventListener('click', () => deleteCard(card.id));
+
+                        actionContainer.appendChild(editBtn);
+                        actionContainer.appendChild(deleteBtn);
+                        tdActions.appendChild(actionContainer);
+                    });
+
+                    setupSortableTableHeaders(); // Call this after populating the table
+                }
+
+                // Helper function to setup sortable headers for the card table
+                        function setupSortableTableHeaders() {
+                            const headers = document.querySelectorAll('#manageCardSection .sortable-header');
+                            headers.forEach(header => {
+                                // Clone and replace to remove old listeners if any
+                                const newHeader = header.cloneNode(true);
+                                if (header.parentNode) { // Check if parentNode exists
+                                    header.parentNode.replaceChild(newHeader, header);
+                                } else {
+                                    // Fallback or error handling if parentNode is null
+                                    console.warn("Parent node for header not found, cannot replace:", header);
+                                    // Potentially re-attach to a default parent or skip if critical
+                                }
+
+
+                                newHeader.addEventListener('click', () => {
+                                    const sortKey = newHeader.dataset.sortKey;
+                                    if (cardSortKey === sortKey) {
+                                        cardSortOrder = cardSortOrder === 'asc' ? 'desc' : 'asc';
+                                    } else {
+                                        cardSortKey = sortKey;
+                                        cardSortOrder = 'asc';
+                                    }
+                                    // Update header classes for visual indicator
+                                    document.querySelectorAll('#manageCardSection .sortable-header').forEach(h => { // Query again for potentially replaced headers
+                                        h.classList.remove('sort-asc', 'sort-desc');
+                                        if (h.dataset.sortKey === cardSortKey) {
+                                            h.classList.add(cardSortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+                                        }
+                                    });
+                                    loadAllCards(); // Reload and re-render the table
+                                });
+
+                                // Set initial sort indicator if this header is the current sort key
+                                if (newHeader.dataset.sortKey === cardSortKey) {
+                                    newHeader.classList.add(cardSortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+                                }
+                            });
+                        }
 
         // 移除HTML標籤，用於搜索
         function stripHtml(html) {
@@ -6849,6 +7171,18 @@
             // 設置Quill編輯器內容
             editFrontQuill.root.innerHTML = card.frontText || '';
             editBackQuill.root.innerHTML = card.backText || '';
+
+            // 編輯器初始化前清理可能的重複工具列
+            const editBackEditorElement = document.getElementById('editBackEditor');
+            if (editBackEditorElement) {
+              // 移除所有可能存在的重複工具列
+              const toolbars = editBackEditorElement.parentElement.querySelectorAll('.ql-toolbar');
+              if (toolbars.length > 1) {
+                for (let i = 1; i < toolbars.length; i++) {
+                  toolbars[i].remove();
+                }
+              }
+            }
 
             // Reset image data
             editFrontImageData = card.frontImage;
@@ -7232,14 +7566,23 @@
             adjustDeckEditModalHeight();
         });
 
-        // 修改原有的openDeckEditModal函數
-        const originalOpenDeckEditModal = openDeckEditModal;
-        openDeckEditModal = function(deckId) {
-            originalOpenDeckEditModal(deckId);
+        // 創建一個加強版函數
+        function enhancedOpenDeckEditModal(deckId) {
+            // 調用原始函數
+            openDeckEditModal(deckId);
 
             // 在對話框打開後調整高度
             setTimeout(adjustDeckEditModalHeight, 0);
-        };
+        }
+
+        // 找到所有調用 openDeckEditModal 的地方，替換為 enhancedOpenDeckEditModal
+        // 例如在 edit-deck-btn 按鈕的事件監聽器中：
+        document.querySelectorAll('.edit-deck-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const deckId = parseInt(e.currentTarget.dataset.id);
+                enhancedOpenDeckEditModal(deckId); // 改用加強版函數
+            });
+        });
 
         // Load cards in deck for editing
         // 修改卡片載入函數以支持搜尋
@@ -8146,51 +8489,33 @@
                                             for (let i = 1; i < sheetData.length; i++) {
                                                 const row = sheetData[i];
 
-                                                // 獲取正面和背面內容
-                                                const frontContent = row[options.frontColumn];
-                                                const backContent = row[options.backColumn];
+                                                // 獲取原始的正面和背面內容
+                                                const rawFrontContent = row[options.frontColumn];
+                                                const rawBackContent = row[options.backColumn];
 
-                                                // 跳過缺少必要內容的行
-                                                if (!frontContent && !backContent) {
+                                                // 跳过缺少必要内容的行
+                                                if (!rawFrontContent && !rawBackContent) {
                                                     skippedCount++;
                                                     continue;
                                                 }
 
-                                                // 創建新字卡
-                                                // 創建新字卡
-                                                // 創建一個基於整個工作表名稱的更可靠哈希值
-                                                const getSheetHash = (str) => {
-                                                    let hash = 0;
-                                                    for (let i = 0; i < str.length; i++) {
-                                                        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                                                        hash |= 0; // 轉換為32位整數
-                                                    }
-                                                    return Math.abs(hash);
-                                                };
-                                                const sheetHash = getSheetHash(sheetName) * 1000;
-                                                const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);                                                let frontText = '';
-                                                let backText = '';
+                                                // 處理正面內容，檢測base64圖片
+                                                const processedFront = processImportedContent(rawFrontContent);
+                                                const frontText = processedFront.text;
+                                                const frontImage = processedFront.image;
 
-                                                // 處理 Google Sheets 格式化內容
-                                                if (excelSheets[sheetName].hasFormatting) {
-                                                    const frontCell = row[options.frontColumn];
-                                                    const backCell = row[options.backColumn];
+                                                // 處理背面內容，檢測base64圖片
+                                                const processedBack = processImportedContent(rawBackContent);
+                                                const backText = processedBack.text;
+                                                const backImage = processedBack.image;
 
-                                                    // 轉換為 HTML
-                                                    frontText = frontCell ? convertDeltaToHTML(frontCell.delta || { ops: [] }) : '';
-                                                    backText = backCell ? convertDeltaToHTML(backCell.delta || { ops: [] }) : '';
-                                                } else {
-                                                    // 普通文本處理
-                                                    const frontContent = row[options.frontColumn];
-                                                    const backContent = row[options.backColumn];
-                                                    frontText = frontContent ? frontContent.toString() : '';
-                                                    backText = backContent ? backContent.toString() : '';
-                                                }
-
+                                                // 創建新卡片時設置圖片內容
                                                 const newCard = {
                                                     id: newCardId,
                                                     frontText: frontText,
+                                                    frontImage: frontImage,
                                                     backText: backText,
+                                                    backImage: backImage,
                                                     nextReview: Date.now(),
                                                     repetitions: 0,
                                                     easeFactor: 2.0,
@@ -8336,6 +8661,8 @@
                                     // 初始化Excel導入功能
                                     initExcelImport();
 
+                                    setupNavigationButtons();
+
                                     // 初始化Excel導出功能
                                     exportExcelBtn.addEventListener('click', openExportExcelModal);
 
@@ -8363,8 +8690,11 @@
                                     // 初始觸發一次resize事件，以便在頁面加載時設置正確尺寸
                                     window.dispatchEvent(new Event('resize'));
 
-                                    // Initialize the app with the review section
-                                    showSection('review');
+                                    // 改為：
+                                    setTimeout(() => {
+                                        // 使用原始函數而非被包裝的函數
+                                        showSection('review');
+                                    }, 0);
                                 }
 
                                 // Initialize app when DOM is ready
@@ -8434,6 +8764,10 @@
                                 } else {
                                     setupCardSubmitShortcut();
                                 }
+
+                                // 檢測瀏覽器環境
+                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                console.log('檢測到的瀏覽器：', isSafari ? 'Safari' : '其他瀏覽器');
 
                             </script>
                         </body>
