@@ -2261,7 +2261,7 @@
 
                 return;
             }
-                        const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+
             const enableSync = document.getElementById('enableSyncGSheets').checked;
 
             if (!gSheetsUrl) {
@@ -2346,7 +2346,7 @@
                 showNotification('請輸入有效的 Google Sheets URL');
                 return;
             }
-            
+
             const loadBtn = document.getElementById('loadGSheetsBtn');
             const originalText = loadBtn.textContent;
 
@@ -2647,7 +2647,7 @@
             const onCancel = () => {
                 cleanupAndCallback(null); //傳遞 null 表示取消
             };
-            
+
             const cleanupAndCallback = (data) => {
                 confirmBtn.removeEventListener('click', onConfirm);
                 cancelBtn.removeEventListener('click', onCancel);
@@ -8418,7 +8418,7 @@
                         }
 
                         // 如果是來自 Google Sheets 的 'rename' 策略，或普通導入時名稱重複
-                        if ((conflictResolution && conflictResolution.strategy === 'rename') || 
+                        if ((conflictResolution && conflictResolution.strategy === 'rename') ||
                             decksData.some(d => d.name.toLowerCase() === deckName.toLowerCase())) {
                             let counter = 1;
                             let baseName = (conflictResolution && conflictResolution.strategy === 'rename') ? conflictResolution.originalSheetName : deckName;
@@ -8430,7 +8430,7 @@
                             deckName = newNameAttempt;
                             console.log(`卡組名稱 "${currentSheetMapping.newDeckName}" 重複，已重命名為 "${deckName}"。`);
                         }
-                        
+
                         const newDeck = {
                             id: Date.now() + Math.floor(Math.random() * 10000), // 確保ID唯一
                             name: deckName,
@@ -8458,7 +8458,7 @@
                         const rawFrontContent = row[currentSheetOptions.frontColumn];
                         const rawBackContent = row[currentSheetOptions.backColumn];
 
-                        if ((rawFrontContent == null || rawFrontContent.toString().trim() === "") && 
+                        if ((rawFrontContent == null || rawFrontContent.toString().trim() === "") &&
                             (rawBackContent == null || rawBackContent.toString().trim() === "")) {
                             skippedCount++;
                             continue;
@@ -8466,7 +8466,7 @@
 
                         const processedFront = processImportedContent(rawFrontContent);
                         const processedBack = processImportedContent(rawBackContent);
-                        
+
                         const newCardId = Date.now() + i + Math.floor(Math.random() * 100000); // 確保ID唯一
                         const newCard = {
                             id: newCardId,
@@ -8479,12 +8479,12 @@
                             easeFactor: 2.0,
                             interval: 1.0
                         };
-                        
+
                         // 如果是合併模式，檢查卡片是否已存在於目標卡組中 (可選的去重邏輯)
                         if (mergedIntoExisting) {
                             const cardExists = targetDeck.cardIds.some(existingCardId => {
                                 const existingCard = cardsData.find(c => c.id === existingCardId);
-                                return existingCard && 
+                                return existingCard &&
                                        stripHtml(existingCard.frontText || '').trim() === stripHtml(newCard.frontText || '').trim() &&
                                        stripHtml(existingCard.backText || '').trim() === stripHtml(newCard.backText || '').trim() &&
                                        existingCard.frontImage === newCard.frontImage && // 簡單比較圖片 URL
@@ -8537,7 +8537,7 @@
                 loadAllCards();
             }
             showStorageReminder();
-            
+
             // 如果沒有任何工作表實際被導入（可能全部跳過或失敗）
             if (overallImportResults.every(r => (r.skippedByUser || !r.success) && r.importedCount === 0) && anySheetSkippedByConflict) {
                 showNotification("所有衝突的工作表均已跳過或導入失敗，沒有新的卡片被添加。", 3000, "warning");
@@ -8586,7 +8586,7 @@
 
                 sheetTabsContainer.appendChild(tabElement);
             });
-            
+
             // 如果之前的 activeSheetName 被跳過了，或者沒有 tab，則設置 firstVisibleSheet 為 active
             if (Object.keys(excelSheets).length > 0 && (!activeSheetName || (gSheetsConflictResolutions[activeSheetName] && gSheetsConflictResolutions[activeSheetName].strategy === 'skip'))) {
                 if (firstVisibleSheet) {
@@ -8729,7 +8729,7 @@
 
                 const mappingElement = document.createElement('div');
                 mappingElement.className = 'border border-gray-300 dark:border-gray-700 rounded-lg p-3 mb-2';
-                
+
                 let sheetDisplayName = sheetName;
                 let conflictMessage = "";
                 if (resolution) {
