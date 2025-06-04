@@ -1024,88 +1024,72 @@
         </div>
 
         <!-- Card edit modal -->
-        <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 my-auto max-h-[85vh] overflow-y-auto">
-                <h2 class="text-xl font-semibold mb-4 sticky top-0 bg-white dark:bg-gray-800 py-2 z-10 border-b border-gray-200 dark:border-gray-700">編輯字卡</h2>
-                <div class="space-y-4 overflow-y-auto">
-                    <div>
-                        <label for="editCardFrontInput" class="block text-sm font-medium mb-1">正面（問題）</label>
-                        <div class="editor-with-button">
-                            <!-- Quill編輯器將替換這個div -->
-                            <div id="editFrontEditor"></div>
-
-                            <div class="input-group drag-area">
-                                <button type="button" id="editFrontImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-sm">
-                                    更改圖片
-                                </button>
-                                <input type="file" id="editCardFrontImage" accept="image/*" class="hidden" />
-                                <div class="drag-overlay">
-                                    <div class="drag-text">拖放圖片至此</div>
+                <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 my-auto max-h-[85vh] overflow-y-auto">
+                        <h2 class="text-xl font-semibold mb-4 sticky top-0 bg-white dark:bg-gray-800 py-2 z-10 border-b border-gray-200 dark:border-gray-700">編輯字卡</h2>
+                        <div class="space-y-4 overflow-y-auto">
+                            <div>
+                                <label for="editCardFrontInput" class="block text-sm font-medium mb-1">正面（問題）</label>
+                                <div class="editor-with-button">
+                                    <!-- Quill編輯器將替換這個div -->
+                                    <div id="editFrontEditor"></div>
+                                    <!-- 移除了正面的 "更改圖片" 按鈕和拖放區域 -->
+                                    <input type="file" id="editCardFrontImage" accept="image/*" class="hidden" />
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="editFrontImageContainer">
-                        <div id="editFrontImagePreview" class="mb-2 hidden">
-                            <div class="flex items-center">
-                                <img id="editFrontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                                <button type="button" id="removeEditFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                    移除圖片
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="editCardBackInput" class="block text-sm font-medium mb-1">背面（答案）</label>
-                        <div class="editor-with-button">
-                            <!-- Quill編輯器將替換這個div -->
-                            <div id="editBackEditor"></div>
-
-                            <div class="input-group drag-area">
-                                <button type="button" id="editBackImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-sm">
-                                    更改圖片
-                                </button>
-                                <input type="file" id="editCardBackImage" accept="image/*" class="hidden" />
-                                <div class="drag-overlay">
-                                    <div class="drag-text">拖放圖片至此</div>
+                            <div id="editFrontImageContainer">
+                                <div id="editFrontImagePreview" class="mb-2 hidden">
+                                    <div class="flex items-center">
+                                        <img id="editFrontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                                        <button type="button" id="removeEditFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                                            移除圖片
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="editBackImageContainer">
-                        <div id="editBackImagePreview" class="mb-2 hidden">
-                            <div class="flex items-center">
-                                <img id="editBackPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                                <button type="button" id="removeEditBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                    移除圖片
+                            <div>
+                                <label for="editCardBackInput" class="block text-sm font-medium mb-1">背面（答案）</label>
+                                <div class="editor-with-button">
+                                    <!-- Quill編輯器將替換這個div -->
+                                    <div id="editBackEditor"></div>
+                                    <!-- 移除了背面的 "更改圖片" 按鈕和拖放區域 -->
+                                    <input type="file" id="editCardBackImage" accept="image/*" class="hidden" />
+                                </div>
+                            </div>
+
+                            <div id="editBackImageContainer">
+                                <div id="editBackImagePreview" class="mb-2 hidden">
+                                    <div class="flex items-center">
+                                        <img id="editBackPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                                        <button type="button" id="removeEditBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                                            移除圖片
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">所屬卡組</label>
+                                <div class="max-h-60 overflow-y-auto space-y-2 border border-gray-300 dark:border-gray-700 rounded-lg p-2">
+                                    <div id="editCardDecksList">
+                                        <!-- Deck checkboxes will be added here dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end space-x-3 pt-4">
+                                <button id="closeCardEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                                    取消
+                                </button>
+                                <button id="saveCardEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                                    儲存
                                 </button>
                             </div>
                         </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">所屬卡組</label>
-                        <div class="max-h-60 overflow-y-auto space-y-2 border border-gray-300 dark:border-gray-700 rounded-lg p-2">
-                            <div id="editCardDecksList">
-                                <!-- Deck checkboxes will be added here dynamically -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button id="closeCardEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
-                            取消
-                        </button>
-                        <button id="saveCardEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
-                            儲存
-                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
 
         <!-- Deck edit modal -->
         <div id="deckEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-hidden">
@@ -1496,6 +1480,39 @@
             </div>
         </div>
 
+        <!-- Google Sheets 導入衝突解決對話框 -->
+                <div id="gSheetsConflictModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-[51] overflow-y-auto py-10">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 my-auto">
+                        <h2 class="text-xl font-semibold mb-4">Google Sheets 導入 - 名稱衝突</h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            以下從 Google Sheets 讀取到的工作表名稱，與您現有的卡組名稱重複。請為每個衝突選擇處理方式：
+                        </p>
+                        <div id="gSheetsConflictList" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 mb-4">
+                            <!-- 衝突列表將在此處動態生成 -->
+                            <!-- 範例條目:
+                            <div class="p-3 border rounded-md">
+                                <h3 class="font-medium">工作表: "重複的名稱"</h3>
+                                <p class="text-sm text-gray-500">與現有卡組 "重複的名稱" (ID: xxx) 衝突。</p>
+                                <div class="mt-2 space-y-1">
+                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="overwrite" class="mr-2"> 覆蓋現有卡組</label>
+                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="rename" checked class="mr-2"> 自動重命名 (例如: 重複的名稱 (1))</label>
+                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="merge" class="mr-2"> 合併到現有卡組</label>
+                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="skip" class="mr-2"> 跳過此工作表</label>
+                                </div>
+                            </div>
+                            -->
+                        </div>
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <button id="cancelGSheetsConflictBtn" type="button" class="modal-btn px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                                取消導入
+                            </button>
+                            <button id="confirmGSheetsConflictBtn" type="button" class="modal-btn px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                                套用選擇並繼續
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
         <!-- 自定義確認對話框 -->
         <div id="customConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
@@ -1711,6 +1728,10 @@
         let cardSortKey = 'frontText'; // Default sort key
         let cardSortOrder = 'asc';     // Default sort order ('asc' or 'desc')
 
+        // Google Sheets 導入衝突解決方案
+        let gSheetsConflictResolutions = {};
+
+
         // DOM Elements - Sections
         const reviewSection = document.getElementById('reviewSection');
         const createCardSection = document.getElementById('createCardSection');
@@ -1839,8 +1860,6 @@
         const editBackEditor = document.getElementById('editBackEditor');
         const editCardFrontImage = document.getElementById('editCardFrontImage');
         const editCardBackImage = document.getElementById('editCardBackImage');
-        const editFrontImageBtn = document.getElementById('editFrontImageBtn');
-        const editBackImageBtn = document.getElementById('editBackImageBtn');
         const editFrontImagePreview = document.getElementById('editFrontImagePreview');
         const editBackImagePreview = document.getElementById('editBackImagePreview');
         const editFrontPreviewImg = document.getElementById('editFrontPreviewImg');
@@ -2189,8 +2208,21 @@
             document.getElementById('gSheetsUrlInput').value = '';
             document.getElementById('enableSyncGSheets').checked = false;
 
+            // 重置衝突解決狀態
+            gSheetsConflictResolutions = {};
+
             // 顯示第一步
             showGSheetsStep(1);
+            // 更新 API Key 狀態顯示
+            const apiKeyPresent = document.getElementById('apiKeyPresent');
+            const apiKeyMissing = document.getElementById('apiKeyMissing');
+            if (GOOGLE_API_KEY) {
+                apiKeyPresent.classList.remove('hidden');
+                apiKeyMissing.classList.add('hidden');
+            } else {
+                apiKeyPresent.classList.add('hidden');
+                apiKeyMissing.classList.remove('hidden');
+            }
         }
 
         // 關閉 Google Sheets 導入對話框
@@ -2301,6 +2333,66 @@
 
             // 從 URL 獲取 spreadsheetId
             const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
+
+            const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+            const enableSync = document.getElementById('enableSyncGSheets').checked;
+
+            if (!gSheetsUrl) {
+                showNotification('請輸入 Google Sheets URL');
+                return;
+            }
+
+            if (!isValidGSheetsUrl(gSheetsUrl)) {
+                showNotification('請輸入有效的 Google Sheets URL');
+                return;
+            }
+            
+            const loadBtn = document.getElementById('loadGSheetsBtn');
+            const originalText = loadBtn.textContent;
+
+            // 檢查是否設置了API密鑰 (這部分您已經有了)
+            if (!GOOGLE_API_KEY) {
+                showNotification('請先設置Google API密鑰以獲取格式化數據。將嘗試以純文本方式導入。');
+                // 注意：這裡可能需要調整，如果沒有 API key，直接走 CSV 導入然後衝突檢測
+            }
+
+            loadBtn.disabled = true;
+            loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
+
+            const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
+
+            const handleLoadSuccess = () => {
+                loadBtn.disabled = false;
+                loadBtn.textContent = originalText;
+                // 數據載入成功後，檢測並處理衝突
+                detectAndHandleGSheetsConflicts();
+            };
+
+            const handleLoadFailure = (error) => {
+                console.error('Google Sheets 載入錯誤:', error);
+                showNotification(`載入失敗: ${error.message || '無法連接到Google Sheets'}`);
+                loadBtn.disabled = false;
+                loadBtn.textContent = originalText;
+            };
+
+            if (GOOGLE_API_KEY) {
+                console.log('使用 Google API 載入格式化數據');
+                loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
+                    .then(handleLoadSuccess)
+                    .catch(error => {
+                        console.warn('Google API 載入失敗，嘗試使用 CSV 方式:', error);
+                        // 如果 API 方式失敗，嘗試 CSV
+                        loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText)
+                            .then(handleLoadSuccess)
+                            .catch(handleLoadFailure);
+                    });
+            } else {
+                console.log('使用 CSV 方式載入數據（無格式）');
+                loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText)
+                    .then(handleLoadSuccess)
+                    .catch(handleLoadFailure);
+            }
+        }
 
             // 先嘗試使用 Google API（帶格式），如果失敗則回退到 CSV（無格式）
             if (GOOGLE_API_KEY) {
@@ -2459,6 +2551,114 @@
                 // 使用 CSV 方式（無格式）
                 loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
             }
+        }
+
+        function detectAndHandleGSheetsConflicts() {
+            const conflicts = [];
+            if (Object.keys(excelSheets).length === 0) {
+                showNotification("未能從 Google Sheets 載入任何工作表數據。");
+                showGSheetsStep(1); // 返回第一步
+                return;
+            }
+
+            Object.keys(excelSheets).forEach(sheetName => {
+                const existingDeck = decksData.find(deck => deck.name.toLowerCase() === sheetName.toLowerCase());
+                if (existingDeck) {
+                    conflicts.push({
+                        sheetName: sheetName,
+                        conflictingDeck: existingDeck
+                    });
+                }
+            });
+
+            if (conflicts.length > 0) {
+                showGSheetsConflictModal(conflicts, (resolutions) => {
+                    if (resolutions) { // 用戶確認了選擇
+                        gSheetsConflictResolutions = resolutions;
+                        showGSheetsStep(2);
+                        preparePreviewData(); // 包含更新UI以反映衝突解決方案
+                    } else { // 用戶取消
+                        closeGSheetsImportModal();
+                        showNotification("Google Sheets 導入已取消。");
+                    }
+                });
+            } else {
+                // 沒有衝突，直接進入預覽步驟
+                gSheetsConflictResolutions = {}; // 清空舊的解決方案
+                showGSheetsStep(2);
+                preparePreviewData();
+                showNotification('成功載入 Google Sheets 數據，未發現名稱衝突。');
+            }
+        }
+
+        function showGSheetsConflictModal(conflicts, callback) {
+            const conflictModal = document.getElementById('gSheetsConflictModal');
+            const conflictListElement = document.getElementById('gSheetsConflictList');
+            const confirmBtn = document.getElementById('confirmGSheetsConflictBtn');
+            const cancelBtn = document.getElementById('cancelGSheetsConflictBtn');
+
+            conflictListElement.innerHTML = ''; // 清空舊列表
+
+            conflicts.forEach((conflict, index) => {
+                const conflictItem = document.createElement('div');
+                conflictItem.className = 'p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800';
+                const safeSheetName = conflict.sheetName.replace(/[^a-zA-Z0-9-_]/g, ''); // 用於 radio name
+
+                conflictItem.innerHTML = `
+                    <h3 class="font-medium text-lg">工作表: "${conflict.sheetName}"</h3>
+                    <p class="text-sm text-yellow-600 dark:text-yellow-400 mb-2">與您現有的卡組 "${conflict.conflictingDeck.name}" (ID: ${conflict.conflictingDeck.id}) 名稱衝突。</p>
+                    <div class="mt-2 space-y-1 text-sm">
+                        <label class="flex items-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                            <input type="radio" name="conflict-${safeSheetName}-${index}" value="overwrite" class="mr-2"> 覆蓋現有卡組 "${conflict.conflictingDeck.name}"
+                        </label>
+                        <label class="flex items-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                            <input type="radio" name="conflict-${safeSheetName}-${index}" value="rename" checked class="mr-2"> 自動重命名導入的工作表 (例如: ${conflict.sheetName} (1))
+                        </label>
+                        <label class="flex items-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                            <input type="radio" name="conflict-${safeSheetName}-${index}" value="merge" class="mr-2"> 合併到現有卡組 "${conflict.conflictingDeck.name}"
+                        </label>
+                        <label class="flex items-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                            <input type="radio" name="conflict-${safeSheetName}-${index}" value="skip" class="mr-2"> 跳過此工作表 "${conflict.sheetName}"
+                        </label>
+                    </div>
+                `;
+                conflictListElement.appendChild(conflictItem);
+            });
+
+            const onConfirm = () => {
+                const resolutions = {};
+                conflicts.forEach((conflict, index) => {
+                    const safeSheetName = conflict.sheetName.replace(/[^a-zA-Z0-9-_]/g, '');
+                    const selectedOption = document.querySelector(`input[name="conflict-${safeSheetName}-${index}"]:checked`);
+                    if (selectedOption) {
+                        resolutions[conflict.sheetName] = {
+                            strategy: selectedOption.value,
+                            conflictingDeckId: conflict.conflictingDeck.id,
+                            originalSheetName: conflict.sheetName // 保留原始工作表名
+                        };
+                    } else {
+                        // 如果沒有選擇，默認為跳過 (或可以報錯提示用戶選擇)
+                        resolutions[conflict.sheetName] = { strategy: 'skip', originalSheetName: conflict.sheetName };
+                    }
+                });
+                cleanupAndCallback(resolutions);
+            };
+
+            const onCancel = () => {
+                cleanupAndCallback(null); //傳遞 null 表示取消
+            };
+            
+            const cleanupAndCallback = (data) => {
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+                conflictModal.classList.add('hidden');
+                callback(data);
+            };
+
+            confirmBtn.addEventListener('click', onConfirm, { once: true });
+            cancelBtn.addEventListener('click', onCancel, { once: true });
+
+            conflictModal.classList.remove('hidden');
         }
 
         // 使用 CSV 方式載入 Google Sheets 數據（無格式）
@@ -5311,15 +5511,6 @@
             showCurrentCard();
         });
 
-        // Edit card image handlers
-        editFrontImageBtn.addEventListener('click', () => {
-            editCardFrontImage.click();
-        });
-
-        editBackImageBtn.addEventListener('click', () => {
-            editCardBackImage.click();
-        });
-
         // Remove edit front image
         removeEditFrontImage.addEventListener('click', () => {
             editFrontImageData = null;
@@ -8108,54 +8299,304 @@
         }
 
         // 準備預覽數據 - 支持多工作表
-        function preparePreviewData() {
-            if (Object.keys(excelSheets).length === 0) return;
+        function importExcelData() { // 注意：此函數現在也可能被 Google Sheets 流程調用
+            if (Object.keys(excelSheets).length === 0) {
+                showNotification('沒有可用的工作表數據');
+                return;
+            }
 
-            // 更新工作表選項卡
-            updateSheetTabs();
+            const overallImportResults = [];
+            let anySheetSkippedByConflict = false;
 
-            // 顯示活動工作表的預覽數據
-            showSheetPreview(activeSheetName);
+            // 處理每個工作表
+            for (const sheetName of Object.keys(excelSheets)) {
+                const currentSheetData = excelSheets[sheetName].data;
+                const currentSheetOptions = sheetOptions[sheetName];
+                let currentSheetMapping = sheetMappings[sheetName]; // 這是用戶在步驟2配置的
 
-            // 設置工作表映射選項
-            updateSheetMappingOptions();
+                // 檢查此工作表是否有衝突解決方案 (來自 Google Sheets 流程)
+                const conflictResolution = gSheetsConflictResolutions[sheetName];
 
-            // 更新格式狀態指示器
-            const formatStatusValue = document.getElementById('formatStatusValue');
-            if (formatStatusValue) {
-                const hasFormatting = excelSheets[activeSheetName]?.hasFormatting;
-                if (hasFormatting) {
-                    formatStatusValue.textContent = '帶格式（粗體、斜體等將被保留）';
-                    formatStatusValue.className = 'text-green-600 dark:text-green-400';
-                } else {
-                    formatStatusValue.textContent = '純文本（不保留格式）';
-                    formatStatusValue.className = 'text-yellow-600 dark:text-yellow-400';
+                if (conflictResolution && conflictResolution.strategy === 'skip') {
+                    overallImportResults.push({
+                        sheetName: conflictResolution.originalSheetName,
+                        success: true, // 技術上是成功的，因為按用戶選擇跳過了
+                        message: '根據用戶選擇已跳過此工作表。',
+                        skippedByUser: true,
+                        importedCount: 0,
+                        skippedCount: currentSheetData.length -1 // 所有數據行都被視為跳過
+                    });
+                    anySheetSkippedByConflict = true;
+                    continue; // 處理下一個工作表
                 }
+
+                // 如果沒有用戶配置的映射（例如，如果工作表被動態跳過後又回來），則創建一個默認的
+                if (!currentSheetMapping) {
+                    currentSheetMapping = {
+                        deckOption: 'new',
+                        deckId: '',
+                        newDeckName: sheetName,
+                        newDeckDescription: `從工作表 ${sheetName} 導入`
+                    };
+                     // 根據衝突解決方案（如果存在且不是 skip）調整這個默認映射
+                    if (conflictResolution) {
+                        switch (conflictResolution.strategy) {
+                            case 'overwrite':
+                            case 'merge':
+                                currentSheetMapping.deckOption = 'existing';
+                                currentSheetMapping.deckId = conflictResolution.conflictingDeckId.toString();
+                                break;
+                            case 'rename':
+                                currentSheetMapping.deckOption = 'new';
+                                currentSheetMapping.newDeckName = conflictResolution.originalSheetName; // 稍後確保唯一性
+                                break;
+                        }
+                    }
+                    sheetMappings[sheetName] = currentSheetMapping; // 存回全局以供後續使用
+                }
+
+
+                // 驗證必要的選擇
+                if (currentSheetOptions.frontColumn === currentSheetOptions.backColumn) {
+                    overallImportResults.push({
+                        sheetName: sheetName,
+                        success: false,
+                        message: '正面和背面不能選擇相同的欄位。'
+                    });
+                    continue;
+                }
+
+                let targetDeckId;
+                let targetDeckName;
+                let newDeckCreated = false;
+                let mergedIntoExisting = false;
+                let overwroteExisting = false;
+
+                try {
+                    if (currentSheetMapping.deckOption === 'existing') {
+                        targetDeckId = parseInt(currentSheetMapping.deckId);
+                        const deckIndex = decksData.findIndex(d => d.id === targetDeckId);
+                        if (deckIndex === -1) {
+                            overallImportResults.push({
+                                sheetName: sheetName, success: false,
+                                message: `選擇的現有卡組 (ID: ${targetDeckId}) 找不到了。`
+                            });
+                            continue;
+                        }
+                        targetDeckName = decksData[deckIndex].name;
+
+                        // 如果是來自 Google Sheets 的 'overwrite' 策略
+                        if (conflictResolution && conflictResolution.strategy === 'overwrite' && conflictResolution.conflictingDeckId === targetDeckId) {
+                            // 清空現有卡組的卡片 (但保留卡組本身及其ID)
+                            // 注意：這裡的卡片移除邏輯需要小心，如果卡片也存在於其他卡組中
+                            const deckToOverwrite = decksData[deckIndex];
+                            const cardsToRemoveFromGlobal = [];
+                            deckToOverwrite.cardIds.forEach(cardId => {
+                                // 檢查此卡片是否只存在於這個將被覆蓋的卡組中
+                                const onlyInThisDeck = !decksData.some(d => d.id !== deckToOverwrite.id && d.cardIds.includes(cardId));
+                                if (onlyInThisDeck) {
+                                    cardsToRemoveFromGlobal.push(cardId);
+                                }
+                            });
+                            cardsData = cardsData.filter(c => !cardsToRemoveFromGlobal.includes(c.id));
+                            deckToOverwrite.cardIds = []; // 清空卡組的 cardIds
+                            overwroteExisting = true;
+                            console.log(`卡組 "${targetDeckName}" (ID: ${targetDeckId}) 已被清空，準備覆蓋。`);
+                        } else if (conflictResolution && conflictResolution.strategy === 'merge' && conflictResolution.conflictingDeckId === targetDeckId) {
+                            mergedIntoExisting = true;
+                             console.log(`準備合併卡片到卡組 "${targetDeckName}" (ID: ${targetDeckId})。`);
+                        }
+
+                    } else { // 創建新卡組
+                        let deckName = currentSheetMapping.newDeckName.trim();
+                        if (!deckName) {
+                            overallImportResults.push({
+                                sheetName: sheetName, success: false,
+                                message: '新卡組名稱不能為空。'
+                            });
+                            continue;
+                        }
+
+                        // 如果是來自 Google Sheets 的 'rename' 策略，或普通導入時名稱重複
+                        if ((conflictResolution && conflictResolution.strategy === 'rename') || 
+                            decksData.some(d => d.name.toLowerCase() === deckName.toLowerCase())) {
+                            let counter = 1;
+                            let baseName = (conflictResolution && conflictResolution.strategy === 'rename') ? conflictResolution.originalSheetName : deckName;
+                            let newNameAttempt = `${baseName} (${counter})`;
+                            while (decksData.some(d => d.name.toLowerCase() === newNameAttempt.toLowerCase())) {
+                                counter++;
+                                newNameAttempt = `${baseName} (${counter})`;
+                            }
+                            deckName = newNameAttempt;
+                            console.log(`卡組名稱 "${currentSheetMapping.newDeckName}" 重複，已重命名為 "${deckName}"。`);
+                        }
+                        
+                        const newDeck = {
+                            id: Date.now() + Math.floor(Math.random() * 10000), // 確保ID唯一
+                            name: deckName,
+                            description: currentSheetMapping.newDeckDescription.trim(),
+                            cardIds: [],
+                            createdAt: Date.now()
+                        };
+                        decksData.push(newDeck);
+                        targetDeckId = newDeck.id;
+                        targetDeckName = newDeck.name;
+                        newDeckCreated = true;
+                    }
+
+                    const targetDeck = decksData.find(d => d.id === targetDeckId);
+                    if (!targetDeck) { // 應該不會發生，但作為保險
+                         overallImportResults.push({ sheetName: sheetName, success: false, message: "無法找到或創建目標卡組。" });
+                         continue;
+                    }
+
+                    let importedCount = 0;
+                    let skippedCount = 0;
+
+                    for (let i = 1; i < currentSheetData.length; i++) { // 跳過標題行
+                        const row = currentSheetData[i];
+                        const rawFrontContent = row[currentSheetOptions.frontColumn];
+                        const rawBackContent = row[currentSheetOptions.backColumn];
+
+                        if ((rawFrontContent == null || rawFrontContent.toString().trim() === "") && 
+                            (rawBackContent == null || rawBackContent.toString().trim() === "")) {
+                            skippedCount++;
+                            continue;
+                        }
+
+                        const processedFront = processImportedContent(rawFrontContent);
+                        const processedBack = processImportedContent(rawBackContent);
+                        
+                        const newCardId = Date.now() + i + Math.floor(Math.random() * 100000); // 確保ID唯一
+                        const newCard = {
+                            id: newCardId,
+                            frontText: excelSheets[sheetName].hasFormatting && processedFront.text === '' && rawFrontContent && typeof rawFrontContent.delta === 'object' ? convertDeltaToHTML(rawFrontContent.delta) : processedFront.text,
+                            frontImage: processedFront.image,
+                            backText: excelSheets[sheetName].hasFormatting && processedBack.text === '' && rawBackContent && typeof rawBackContent.delta === 'object' ? convertDeltaToHTML(rawBackContent.delta) : processedBack.text,
+                            backImage: processedBack.image,
+                            nextReview: Date.now(),
+                            repetitions: 0,
+                            easeFactor: 2.0,
+                            interval: 1.0
+                        };
+                        
+                        // 如果是合併模式，檢查卡片是否已存在於目標卡組中 (可選的去重邏輯)
+                        if (mergedIntoExisting) {
+                            const cardExists = targetDeck.cardIds.some(existingCardId => {
+                                const existingCard = cardsData.find(c => c.id === existingCardId);
+                                return existingCard && 
+                                       stripHtml(existingCard.frontText || '').trim() === stripHtml(newCard.frontText || '').trim() &&
+                                       stripHtml(existingCard.backText || '').trim() === stripHtml(newCard.backText || '').trim() &&
+                                       existingCard.frontImage === newCard.frontImage && // 簡單比較圖片 URL
+                                       existingCard.backImage === newCard.backImage;
+                            });
+                            if (cardExists) {
+                                skippedCount++; // 卡片已存在，跳過
+                                continue;
+                            }
+                        }
+
+                        cardsData.push(newCard);
+                        targetDeck.cardIds.push(newCardId);
+                        importedCount++;
+                    }
+
+                    overallImportResults.push({
+                        sheetName: sheetName,
+                        success: true,
+                        targetDeckName,
+                        importedCount,
+                        skippedCount,
+                        newDeckCreated,
+                        mergedIntoExisting,
+                        overwroteExisting
+                    });
+
+                } catch (error) {
+                    console.error(`工作表 "${sheetName}" 導入出錯:`, error);
+                    overallImportResults.push({
+                        sheetName: sheetName,
+                        success: false,
+                        message: `導入數據過程中發生錯誤: ${error.message}`
+                    });
+                }
+            } // 結束 for (const sheetName of Object.keys(excelSheets))
+
+            // 顯示導入結果
+            showExcelStep(3); // 或者 gSheetsStep3
+            displayMultiSheetImportResults(overallImportResults); // 這個函數需要能處理新的狀態
+
+            // 清空 gSheetsConflictResolutions，因為導入已完成或被處理
+            gSheetsConflictResolutions = {};
+
+            // 更新UI
+            loadDeckList();
+            loadAllDecks(); // 如果在管理卡組頁面
+            loadDeckFilterOptions(); // 更新管理字卡頁面的篩選
+            if (!manageCardSection.classList.contains('hidden')) {
+                loadAllCards();
+            }
+            showStorageReminder();
+            
+            // 如果沒有任何工作表實際被導入（可能全部跳過或失敗）
+            if (overallImportResults.every(r => (r.skippedByUser || !r.success) && r.importedCount === 0) && anySheetSkippedByConflict) {
+                showNotification("所有衝突的工作表均已跳過或導入失敗，沒有新的卡片被添加。", 3000, "warning");
+            } else if (overallImportResults.some(r => r.success && r.importedCount > 0)) {
+                 showNotification("數據導入完成！詳情請見結果摘要。");
+            } else {
+                showNotification("數據導入過程中出現問題，請檢查結果摘要。", 3000, "error");
             }
         }
 
-        // 更新工作表選項卡
+
+        // 更新 `updateSheetTabs` 以便只顯示未被跳過的工作表
         function updateSheetTabs() {
             sheetTabsContainer.innerHTML = '';
+            let firstVisibleSheet = null;
 
             Object.keys(excelSheets).forEach(sheetName => {
+                const resolution = gSheetsConflictResolutions[sheetName];
+                if (resolution && resolution.strategy === 'skip') {
+                    return; // 跳過此工作表
+                }
+
+                if (!firstVisibleSheet) {
+                    firstVisibleSheet = sheetName;
+                }
+
                 const tabElement = document.createElement('div');
                 tabElement.className = `sheet-tab ${sheetName === activeSheetName ? 'active' : ''}`;
-                tabElement.textContent = sheetName;
+                tabElement.textContent = sheetName; // 顯示原始工作表名稱
+                // 如果是重命名，可以在這裡加個提示，例如：tabElement.textContent = `${sheetName} (將重命名)`;
+                if (resolution && resolution.strategy === 'rename') {
+                    // 預先生成一個可能的重命名，但最終的重命名會在導入時確定唯一性
+                    let tempNewName = `${resolution.originalSheetName} (1)`;
+                    tabElement.title = `此工作表將被重命名 (例如: ${tempNewName}) 以避免衝突。`;
+                }
+
                 tabElement.dataset.sheet = sheetName;
 
                 tabElement.addEventListener('click', () => {
-                    document.querySelectorAll('.sheet-tab').forEach(tab => tab.classList.remove('active'));
+                    document.querySelectorAll('.sheet-tab.active').forEach(tab => tab.classList.remove('active'));
                     tabElement.classList.add('active');
                     activeSheetName = sheetName;
-                    showSheetPreview(sheetName);
-
-                    // 更新列選擇
-                    updateColumnSelectors(sheetName);
+                    showSheetPreview(sheetName); // 會更新列選擇器
+                    // updateSheetMappingOptions(); // 映射選項的更新可以由 showSheetPreview 內部觸發或單獨調用
                 });
 
                 sheetTabsContainer.appendChild(tabElement);
             });
+            
+            // 如果之前的 activeSheetName 被跳過了，或者沒有 tab，則設置 firstVisibleSheet 為 active
+            if (Object.keys(excelSheets).length > 0 && (!activeSheetName || (gSheetsConflictResolutions[activeSheetName] && gSheetsConflictResolutions[activeSheetName].strategy === 'skip'))) {
+                if (firstVisibleSheet) {
+                    activeSheetName = firstVisibleSheet;
+                    const activeTabElem = sheetTabsContainer.querySelector(`.sheet-tab[data-sheet="${activeSheetName}"]`);
+                    if (activeTabElem) activeTabElem.classList.add('active');
+                } else {
+                    activeSheetName = ''; // 沒有可見的工作表
+                }
+            }
         }
 
         // 顯示指定工作表的預覽
@@ -8246,19 +8687,61 @@
             };
         }
 
-        // 更新工作表映射選項
+        // 修改 `updateSheetMappingOptions` 以應用衝突解決方案
         function updateSheetMappingOptions() {
             sheetMappingContainer.innerHTML = '';
 
             Object.keys(excelSheets).forEach(sheetName => {
-                const mapping = sheetMappings[sheetName];
+                const resolution = gSheetsConflictResolutions[sheetName];
+                if (resolution && resolution.strategy === 'skip') {
+                    return; // 如果選擇跳過，則不顯示此工作表的映射選項
+                }
+
+                // 獲取現有映射或創建默認映射
+                let mapping = sheetMappings[sheetName];
+                if (!mapping) {
+                     mapping = {
+                        deckOption: 'new',
+                        deckId: '',
+                        newDeckName: sheetName,
+                        newDeckDescription: `從工作表 ${sheetName} 導入`
+                    };
+                    sheetMappings[sheetName] = mapping; // 保存回全局
+                }
+
+
+                // 根據衝突解決方案調整默認映射
+                if (resolution) {
+                    switch (resolution.strategy) {
+                        case 'overwrite':
+                        case 'merge':
+                            mapping.deckOption = 'existing';
+                            mapping.deckId = resolution.conflictingDeckId.toString();
+                            break;
+                        case 'rename':
+                            mapping.deckOption = 'new';
+                            // 實際的重命名（確保唯一性）會在導入時進行，這裡可以預設原始名或提示
+                            mapping.newDeckName = resolution.originalSheetName; // 或者 `${resolution.originalSheetName} (自動重命名)`
+                            mapping.newDeckDescription = `從工作表 ${resolution.originalSheetName} 導入 (已重命名)`;
+                            break;
+                    }
+                }
 
                 const mappingElement = document.createElement('div');
                 mappingElement.className = 'border border-gray-300 dark:border-gray-700 rounded-lg p-3 mb-2';
+                
+                let sheetDisplayName = sheetName;
+                let conflictMessage = "";
+                if (resolution) {
+                     if (resolution.strategy === 'rename') sheetDisplayName = `${sheetName} (將重命名)`;
+                     if (resolution.strategy === 'overwrite') conflictMessage = `<p class="text-sm text-orange-500">將覆蓋現有卡組 ID: ${resolution.conflictingDeckId}</p>`;
+                     if (resolution.strategy === 'merge') conflictMessage = `<p class="text-sm text-blue-500">將合併到現有卡組 ID: ${resolution.conflictingDeckId}</p>`;
+                }
 
                 mappingElement.innerHTML = `
-                    <h4 class="font-medium mb-2">工作表「${sheetName}」</h4>
-                    <div class="space-y-2">
+                    <h4 class="font-medium mb-1">工作表「${sheetDisplayName}」</h4>
+                    ${conflictMessage}
+                    <div class="space-y-2 mt-1">
                         <div>
                             <label class="flex items-center">
                                 <input type="radio" name="deckOption-${sheetName}" value="existing"
@@ -8266,8 +8749,9 @@
                                 <span>添加到現有卡組</span>
                             </label>
                             <div class="existing-deck-selector ml-6 mt-1 ${mapping.deckOption === 'existing' ? '' : 'hidden'}">
-                                <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800">
+                                <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base">
                                     ${decksData.map(deck => `<option value="${deck.id}" ${mapping.deckId === deck.id.toString() ? 'selected' : ''}>${deck.name} (${deck.cardIds.length} 張字卡)</option>`).join('')}
+                                    ${decksData.length === 0 ? '<option value="" disabled>沒有現有卡組</option>' : ''}
                                 </select>
                             </div>
                         </div>
@@ -8279,9 +8763,9 @@
                             </label>
                             <div class="new-deck-inputs ml-6 mt-1 ${mapping.deckOption === 'new' ? '' : 'hidden'}">
                                 <input type="text" placeholder="卡組名稱" value="${mapping.newDeckName}"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 mb-2">
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base mb-2">
                                 <textarea placeholder="卡組描述（選填）"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800" rows="2">${mapping.newDeckDescription}</textarea>
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 text-base" rows="2">${mapping.newDeckDescription}</textarea>
                             </div>
                         </div>
                     </div>
@@ -8289,43 +8773,63 @@
 
                 sheetMappingContainer.appendChild(mappingElement);
 
-                // 添加事件監聽器
+                // 添加事件監聽器 (這部分與您現有的 Excel 導入邏輯類似)
                 const existingRadio = mappingElement.querySelector(`input[name="deckOption-${sheetName}"][value="existing"]`);
                 const newRadio = mappingElement.querySelector(`input[name="deckOption-${sheetName}"][value="new"]`);
-                const existingSelector = mappingElement.querySelector('.existing-deck-selector');
-                const newInputs = mappingElement.querySelector('.new-deck-inputs');
-                const deckSelect = mappingElement.querySelector('.existing-deck-selector select');
-                const newDeckNameInput = mappingElement.querySelector('.new-deck-inputs input');
-                const newDeckDescInput = mappingElement.querySelector('.new-deck-inputs textarea');
+                const existingSelectorDiv = mappingElement.querySelector('.existing-deck-selector');
+                const newInputsDiv = mappingElement.querySelector('.new-deck-inputs');
+                const deckSelect = existingSelectorDiv.querySelector('select');
+                const newDeckNameInput = newInputsDiv.querySelector('input[type="text"]');
+                const newDeckDescInput = newInputsDiv.querySelector('textarea');
+
+                // 如果沒有現有卡組，禁用 "添加到現有卡組" 選項
+                if (decksData.length === 0) {
+                    if (existingRadio) existingRadio.disabled = true;
+                    if (newRadio && !newRadio.checked) newRadio.checked = true; // 默認選中新建
+                    if (existingSelectorDiv) existingSelectorDiv.classList.add('hidden');
+                    if (newInputsDiv && mapping.deckOption !== 'new') newInputsDiv.classList.remove('hidden');
+                    mapping.deckOption = 'new'; // 強制為 new
+                }
+
 
                 existingRadio.addEventListener('change', function() {
                     if (this.checked) {
-                        existingSelector.classList.remove('hidden');
-                        newInputs.classList.add('hidden');
-                        mapping.deckOption = 'existing';
-                        mapping.deckId = deckSelect.value;
+                        existingSelectorDiv.classList.remove('hidden');
+                        newInputsDiv.classList.add('hidden');
+                        sheetMappings[sheetName].deckOption = 'existing';
+                        if (deckSelect.options.length > 0) { // 確保有選項可選
+                             sheetMappings[sheetName].deckId = deckSelect.value;
+                        } else {
+                            sheetMappings[sheetName].deckId = ''; // 沒有卡組可選
+                            showNotification("沒有現有卡組可供選擇。", 3000, "warning");
+                            // 理論上，如果 decksData 為空，此選項會被禁用
+                        }
                     }
                 });
 
                 newRadio.addEventListener('change', function() {
                     if (this.checked) {
-                        existingSelector.classList.add('hidden');
-                        newInputs.classList.remove('hidden');
-                        mapping.deckOption = 'new';
+                        existingSelectorDiv.classList.add('hidden');
+                        newInputsDiv.classList.remove('hidden');
+                        sheetMappings[sheetName].deckOption = 'new';
                     }
                 });
 
-                deckSelect.addEventListener('change', function() {
-                    mapping.deckId = this.value;
-                });
-
-                newDeckNameInput.addEventListener('input', function() {
-                    mapping.newDeckName = this.value;
-                });
-
-                newDeckDescInput.addEventListener('input', function() {
-                    mapping.newDeckDescription = this.value;
-                });
+                if (deckSelect) {
+                     deckSelect.addEventListener('change', function() {
+                        sheetMappings[sheetName].deckId = this.value;
+                    });
+                }
+                if (newDeckNameInput) {
+                    newDeckNameInput.addEventListener('input', function() {
+                        sheetMappings[sheetName].newDeckName = this.value.trim();
+                    });
+                }
+                if (newDeckDescInput) {
+                    newDeckDescInput.addEventListener('input', function() {
+                        sheetMappings[sheetName].newDeckDescription = this.value.trim();
+                    });
+                }
             });
         }
 
