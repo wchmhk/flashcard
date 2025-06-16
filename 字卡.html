@@ -8447,3 +8447,220 @@
             loadAllDecks();
             loadDeckList();
         }
+
+                                // 顯示多工作表導入結果
+                                function displayMultiSheetImportResults(results) {
+                                    importResults.innerHTML = '';
+
+                                    let totalSuccess = 0;
+                                    let totalFailed = 0;
+                                    let totalCards = 0;
+
+                                    // 彙總結果
+                                    results.forEach(result => {
+                                        if (result.success) {
+                                            totalSuccess++;
+                                            totalCards += result.importedCount;
+                                        } else {
+                                            totalFailed++;
+                                        }
+                                    });
+
+                                    // 添加彙總資訊
+                                    const summaryHTML = `
+                                        <div class="mb-4 border-b pb-3 border-gray-300 dark:border-gray-700">
+                                            <h3 class="font-medium mb-2 ${totalFailed > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">
+                                                導入完成
+                                            </h3>
+                                            <p>成功處理 <span class="font-medium">${totalSuccess}</span> 個工作表，
+                                               失敗 <span class="font-medium">${totalFailed}</span> 個工作表，
+                                               共導入 <span class="font-medium">${totalCards}</span> 張字卡</p>
+                                        </div>
+                                    `;
+
+                                    importResults.innerHTML = summaryHTML;
+
+                                    // 添加每個工作表的詳細結果
+                                    const detailsContainer = document.createElement('div');
+                                    detailsContainer.className = "space-y-3";
+
+                                    results.forEach(result => {
+                                        const resultElement = document.createElement('div');
+                                        resultElement.className = `p-3 rounded ${result.success ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'}`;
+
+                                        if (result.success) {
+                                            resultElement.innerHTML = `
+                                                <h4 class="font-medium">工作表「${result.sheetName}」- 成功</h4>
+                                                <p>導入 <span class="font-medium">${result.importedCount}</span> 張字卡${result.skippedCount > 0 ? `，跳過 ${result.skippedCount} 行數據` : ''}</p>
+                                                <p>卡組: <span class="font-medium">${result.targetDeckName}</span> ${result.newDeckCreated ? '(新建)' : '(現有)'}</p>
+                                            `;
+                                        } else {
+                                            resultElement.innerHTML = `
+                                                <h4 class="font-medium text-red-600 dark:text-red-400">工作表「${result.sheetName}」- 失敗</h4>
+                                                <p>${result.message || '未知錯誤'}</p>
+                                            `;
+                                        }
+
+                                        detailsContainer.appendChild(resultElement);
+                                    });
+
+                                    importResults.appendChild(detailsContainer);
+
+                                    // 添加導覽提示
+                                    if (totalSuccess > 0) {
+                                        const tipsElement = document.createElement('div');
+                                        tipsElement.className = "mt-4 pt-4 border-t border-gray-300 dark:border-gray-700";
+                                        tipsElement.innerHTML = `
+                                            <p class="text-sm">你現在可以:</p>
+                                            <ul class="list-disc pl-5 mt-2 text-sm space-y-1">
+                                                <li>在「複習」頁面中選擇卡組進行複習</li>
+                                                <li>在「管理卡組」頁面中查看或編輯卡組</li>
+                                                <li>在「管理字卡」頁面中查看或編輯導入的字卡</li>
+                                            </ul>
+                                        `;
+                                        importResults.appendChild(tipsElement);
+                                    }
+                                    // 預先更新複習頁面的卡組列表，確保導入後立即可見
+                                    loadDeckList();
+
+                                    // 如果用戶當前在複習頁面，確保視圖已正確更新
+                                    if (!reviewSection.classList.contains('hidden')) {
+                                        showReviewStage('deckSelection');
+                                    }
+                                }
+
+                                // Initialize app
+                                function initApp() {
+
+                                  // 初始化 Google Sheets 導入功能
+                                  initGSheetsImport();
+
+                                  // 初始化 API 設置
+                                  initApiSettings();
+
+                                    // Initialize Quill editors
+                                    initQuillEditors();
+
+                                    // Setup image compression
+                                    setupImageCompression();
+
+                                    // Setup drag and drop for file upload
+                                    setupDragAndDrop();
+
+                                    // Setup storage reminders
+                                    setupStorageReminders();
+
+                                    // 初始化Excel導入功能
+                                    initExcelImport();
+
+                                    setupNavigationButtons();
+
+                                    // 初始化Excel導出功能
+                                    exportExcelBtn.addEventListener('click', openExportExcelModal);
+
+                                    // Show welcome message for first time visitors
+                                    if (!window.welcomeShown) {
+                                        showWelcomeMessage();
+                                        window.welcomeShown = true;
+                                    }
+
+                                    // 添加視窗大小變化監聽
+                                    window.addEventListener('resize', function() {
+                                        // 如果在複習界面，動態調整卡片容器高度
+                                        if (!reviewInterface.classList.contains('hidden')) {
+                                            const availableHeight = window.innerHeight - 220;
+                                            cardContainer.style.height = `${Math.max(300, availableHeight * 0.6)}px`;
+                                        }
+
+                                        // 調整Quill編輯器外觀
+                                        adjustQuillForDarkMode();
+                                    });
+
+                                    // Listen for dark mode changes
+                                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', adjustQuillForDarkMode);
+
+                                    // 初始觸發一次resize事件，以便在頁面加載時設置正確尺寸
+                                    window.dispatchEvent(new Event('resize'));
+
+                                    // 改為：
+                                    setTimeout(() => {
+                                        // 使用原始函數而非被包裝的函數
+                                        showSection('review');
+                                    }, 0);
+                                }
+
+                                // Initialize app when DOM is ready
+                                document.addEventListener('DOMContentLoaded', initApp);
+
+                                // 為建立字卡按鈕添加Command+Enter或Ctrl+Enter快捷鍵
+                                function setupCardSubmitShortcut() {
+                                    // 添加全局鍵盤事件監聽
+                                    document.addEventListener('keydown', function(e) {
+                                        // 檢測是否是Command+Enter (Mac) 或 Ctrl+Enter (Windows/Linux)
+                                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                            // 只有當建立字卡頁面可見時才執行
+                                            if (!createCardSection.classList.contains('hidden')) {
+
+                                                // 防止可能的默認行為
+                                                e.preventDefault();
+
+                                                // 模擬點擊「建立字卡」按鈕
+                                                const submitButton = cardForm.querySelector('button[type="submit"]');
+                                                if (submitButton) {
+                                                    // 添加按鈕點擊效果以提供視覺反饋
+                                                    submitButton.classList.add('active');
+                                                    setTimeout(() => {
+                                                        submitButton.classList.remove('active');
+                                                    }, 200);
+
+                                                    // 觸發表單提交
+                                                    submitButton.click();
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // 添加提示樣式
+                                    const styleElement = document.createElement('style');
+                                    styleElement.textContent = `
+                                        button[type="submit"].active {
+                                            transform: scale(0.95);
+                                            box-shadow: 0 0 0 3px rgba(93, 92, 222, 0.3);
+                                        }
+                                    `;
+                                    document.head.appendChild(styleElement);
+
+                                    // 添加快捷鍵提示到按鈕上
+                                    const submitButton = cardForm.querySelector('button[type="submit"]');
+                                    if (submitButton) {
+                                        // 檢測操作系統以顯示適當的快捷鍵提示
+                                        const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+                                        const shortcutText = isMac ? '⌘+Enter' : 'Ctrl+Enter';
+
+                                        // 創建提示元素
+                                        const shortcutTip = document.createElement('span');
+                                        shortcutTip.className = 'ml-2 text-xs text-white bg-black bg-opacity-30 px-2 py-1 rounded';
+                                        shortcutTip.textContent = shortcutText;
+
+                                        // 添加到按鈕中
+                                        submitButton.appendChild(shortcutTip);
+
+                                        // 更新按鈕樣式以容納提示
+                                        submitButton.classList.add('flex', 'items-center', 'justify-center');
+                                    }
+                                }
+
+                                // 確保DOM完全加載後運行
+                                if (document.readyState === 'loading') {
+                                    document.addEventListener('DOMContentLoaded', setupCardSubmitShortcut);
+                                } else {
+                                    setupCardSubmitShortcut();
+                                }
+
+                                // 檢測瀏覽器環境
+                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                console.log('檢測到的瀏覽器：', isSafari ? 'Safari' : '其他瀏覽器');
+
+                            </script>
+                        </body>
+                        </html>
