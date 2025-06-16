@@ -2922,127 +2922,129 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-             // 如果沒有文本,返回空 Delta
-             if (!value) {
-                 return { ops: [] };
-             }
+            // 如果沒有文本或值為空，返回空 Delta
+            if (!value) {
+                return { ops: [] };
+            }
 
-             const format = {};
+            // 確保 value 是字符串
+            value = String(value);
 
-             // 從 effectiveFormat 提取全局格式
-             if (effectiveFormat) {
-                 // 原有的格式處理(粗體、斜體等)
-                 if (effectiveFormat.textFormat) {
-                     if (effectiveFormat.textFormat.bold) format.bold = true;
-                     if (effectiveFormat.textFormat.italic) format.italic = true;
-                     if (effectiveFormat.textFormat.underline) format.underline = true;
-                     if (effectiveFormat.textFormat.strikethrough) format.strike = true;
+            // 1. 分離行內格式和區塊格式
+            const inlineFormat = {};
+            const blockFormat = {};
 
-                     // 處理前景色
-                     if (effectiveFormat.textFormat.foregroundColor) {
-                         const color = effectiveFormat.textFormat.foregroundColor;
-                         if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                             const r = Math.round(color.red * 255);
-                             const g = Math.round(color.green * 255);
-                             const b = Math.round(color.blue * 255);
-                             const isDefaultBlack = (r === 0 && g === 0 && b === 0);
-                             if (!isDefaultBlack) {
-                                 format.color = `rgb(${r}, ${g}, ${b})`;
-                             }
-                         }
-                     }
+            if (effectiveFormat) {
+                // 提取行內格式
+                if (effectiveFormat.textFormat) {
+                    if (effectiveFormat.textFormat.bold) inlineFormat.bold = true;
+                    if (effectiveFormat.textFormat.italic) inlineFormat.italic = true;
+                    if (effectiveFormat.textFormat.underline) inlineFormat.underline = true;
+                    if (effectiveFormat.textFormat.strikethrough) inlineFormat.strike = true;
 
-                     // 處理背景色
-                     if (effectiveFormat.backgroundColor) {
-                         const bgColor = effectiveFormat.backgroundColor;
-                         const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                         if (!isDefaultWhite) {
-                             const r = Math.round(bgColor.red * 255);
-                             const g = Math.round(bgColor.green * 255);
-                             const b = Math.round(bgColor.blue * 255);
-                             format.background = `rgb(${r}, ${g}, ${b})`;
-                         }
-                     }
-                 }
+                    // 處理前景色
+                    if (effectiveFormat.textFormat.foregroundColor) {
+                        const color = effectiveFormat.textFormat.foregroundColor;
+                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                            const r = Math.round(color.red * 255);
+                            const g = Math.round(color.green * 255);
+                            const b = Math.round(color.blue * 255);
+                            const isDefaultBlack = (r === 0 && g === 0 && b === 0);
+                            if (!isDefaultBlack) {
+                                inlineFormat.color = `rgb(${r}, ${g}, ${b})`;
+                            }
+                        }
+                    }
 
-                 // ==========================================================
-                 // ===> 新增的程式碼：處理水平對齊方式
-                 // ==========================================================
-                 if (effectiveFormat.horizontalAlignment) {
-                     const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
-                     if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                         // Quill 使用 'align' 屬性來控制區塊對齊
-                         format.align = alignment;
-                     }
-                 }
-                 // ==========================================================
-                 // ===> 新增結束
-                 // ==========================================================
-             }
+                    // 處理背景色
+                    if (effectiveFormat.backgroundColor) {
+                        const bgColor = effectiveFormat.backgroundColor;
+                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                        if (!isDefaultWhite) {
+                            const r = Math.round(bgColor.red * 255);
+                            const g = Math.round(bgColor.green * 255);
+                            const b = Math.round(bgColor.blue * 255);
+                            inlineFormat.background = `rgb(${r}, ${g}, ${b})`;
+                        }
+                    }
+                }
 
-             // 如果沒有格式運行,使用整體格式
-             if (!textFormatRuns || textFormatRuns.length === 0) {
-                 // 如果文本包含換行符，需要為換行符單獨添加區塊格式
-                 const lines = value.split('\n');
-                 const ops = [];
-                 lines.forEach((line, index) => {
-                     if (line) {
-                         ops.push({ insert: line, attributes: format });
-                     }
-                     if (index < lines.length - 1) {
-                         // 為換行符應用區塊格式（如對齊）
-                         ops.push({ insert: '\n', attributes: { align: format.align } });
-                     }
-                 });
-                 return { ops: ops.length > 0 ? ops : [{ insert: '\n' }] };
-             }
+                // 提取區塊格式 (這是關鍵)
+                if (effectiveFormat.horizontalAlignment) {
+                    const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
+                    if (['center', 'right', 'justify'].includes(alignment)) {
+                        blockFormat.align = alignment;
+                    }
+                }
+            }
 
+            const ops = [];
 
-             // 如果有格式運行,處理每一段
-             const ops = [];
-             let lastIndex = 0;
+            // 如果有 textFormatRuns，則需要更精細地處理多重格式
+            if (textFormatRuns && textFormatRuns.length > 0) {
+                let lastIndex = 0;
+                textFormatRuns.forEach(run => {
+                    const startIndex = run.startIndex || 0;
+                    // 處理上一個格式到這個格式之間的文本
+                    if (startIndex > lastIndex) {
+                        ops.push({
+                            insert: value.substring(lastIndex, startIndex),
+                            attributes: inlineFormat // 使用儲存格的默認行內格式
+                        });
+                    }
 
-             textFormatRuns.forEach(run => {
-                 const startIndex = run.startIndex || 0;
+                    // 確定這段格式的結束位置
+                    const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
+                    const endIndex = nextRun ? nextRun.startIndex : value.length;
 
-                 if (startIndex > lastIndex) {
-                     const text = value.substring(lastIndex, startIndex);
-                     ops.push({ insert: text, attributes: {...format} });
-                 }
+                    const segmentText = value.substring(startIndex, endIndex);
 
-                 const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
-                 const endIndex = nextRun ? nextRun.startIndex : value.length;
-                 const text = value.substring(startIndex, endIndex);
-                 const segmentFormat = {...format}; // 從全局格式繼承
-                 if (run.format) {
-                    if (run.format.bold !== undefined) segmentFormat.bold = run.format.bold;
-                    if (run.format.italic !== undefined) segmentFormat.italic = run.format.italic;
-                    // ... 其他格式 ...
-                 }
-                 ops.push({ insert: text, attributes: segmentFormat });
-                 lastIndex = endIndex;
-             });
+                    // 合併儲存格默認格式和當前段落的特定格式
+                    const segmentFormat = { ...inlineFormat };
+                    if (run.format) {
+                        if (run.format.bold !== undefined) segmentFormat.bold = run.format.bold;
+                        if (run.format.italic !== undefined) segmentFormat.italic = run.format.italic;
+                        if (run.format.underline !== undefined) segmentFormat.underline = run.format.underline;
+                        if (run.format.strikethrough !== undefined) segmentFormat.strike = run.format.strikethrough;
+                        // ...可以添加更多顏色等格式的處理
+                    }
 
-             if (lastIndex < value.length) {
-                 const remainingText = value.substring(lastIndex);
-                 ops.push({ insert: remainingText, attributes: {...format} });
-             }
+                    if (segmentText) {
+                         ops.push({
+                            insert: segmentText,
+                            attributes: segmentFormat
+                        });
+                    }
 
-             // 確保最後的換行符也帶有區塊格式
-             if (ops.length > 0) {
-                 const lastOp = ops[ops.length - 1];
-                 if (typeof lastOp.insert === 'string' && lastOp.insert.endsWith('\n')) {
-                     if (!lastOp.attributes) lastOp.attributes = {};
-                     lastOp.attributes.align = format.align;
-                 } else {
-                     ops.push({ insert: '\n', attributes: { align: format.align } });
-                 }
-             } else {
-                  ops.push({ insert: '\n', attributes: { align: format.align } });
-             }
+                    lastIndex = endIndex;
+                });
 
-             return { ops: ops };
-         }
+                // 處理最後一段文本
+                if (lastIndex < value.length) {
+                    ops.push({
+                        insert: value.substring(lastIndex),
+                        attributes: inlineFormat
+                    });
+                }
+            } else {
+                 // 如果沒有 textFormatRuns，簡單處理整個儲存格
+                 if (value.trim()) {
+                     ops.push({
+                        insert: value,
+                        attributes: inlineFormat
+                    });
+                }
+            }
+
+            // 2. 將區塊格式（如對齊）應用到結尾的換行符上
+            // 這是 Quill 的標準做法，用來格式化一整行
+            ops.push({
+                insert: '\n',
+                attributes: blockFormat
+            });
+
+            return { ops };
+        }
 
         // 根據 Google Sheets 數據更新字卡
         function updateCardsFromGSheets() {
