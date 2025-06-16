@@ -2649,165 +2649,116 @@
         // 帶格式的 Google Sheets 導入（使用 Google API）
         function loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync) {
             return new Promise((resolve, reject) => {
-
-
-
                 // 檢查gapi是否正確載入
-                if (typeof gapi === 'undefined') {
-                    console.error('Google API 未能正確載入，嘗試使用備選方案');
-                    // 降級到 CSV 方法
-                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
-                        .then(resolve)
-                        .catch(reject);
-                    return;
+                if (typeof gapi === 'undefined' || typeof gapi.load !== 'function') {
+                    const errorMsg = 'Google API 未能正確載入。';
+                    console.error(errorMsg);
+                    return reject(new Error(errorMsg));
                 }
 
                 // 設置超時處理
                 const timeout = setTimeout(() => {
-                    reject(new Error('Google API 載入超時，嘗試使用備選方案'));
-                }, 10000); // 10秒超時
+                    reject(new Error('Google API 請求超時。'));
+                }, 15000); // 15秒超時
 
                 try {
-                    // 加載 Google API 客戶端
                     gapi.load('client', () => {
-                        clearTimeout(timeout); // 清除超時計時器
-
                         gapi.client.init({
                             apiKey: GOOGLE_API_KEY,
-                            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                        })
-                        .then(() => {
+                            discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+                        }).then(() => {
                             // 請求 Google Sheets 數據，包含格式信息
                             return gapi.client.sheets.spreadsheets.get({
                                 spreadsheetId: spreadsheetId,
-                                includeGridData: true,
-                                ranges: []  // 空數組表示獲取所有工作表
+                                includeGridData: true
                             });
-                        })
-                        .then(response => {
-                            // 創建深拷貝避免修改原始響應
-                            const responseData = JSON.parse(JSON.stringify(response.result));
-                            const sheets = responseData.sheets;
+                        }).then(response => {
+                            clearTimeout(timeout); // 清除超時計時器
+                            const sheets = response.result.sheets;
 
-                            // 檢查是否有工作表
                             if (!sheets || sheets.length === 0) {
-                                reject(new Error('未找到工作表數據'));
-                                return;
+                                return reject(new Error('未找到任何工作表數據'));
                             }
 
-                            // 重置 excelSheets
+                            // 重置暫存的工作表數據
                             excelSheets = {};
+                            sheetMappings = {};
+                            sheetOptions = {};
 
-                            // 處理所有工作表
                             sheets.forEach(sheet => {
                                 const sheetName = sheet.properties.title;
-                                const gridData = sheet.data[0]; // 第一個數據網格
+                                const gridData = sheet.data[0];
 
-                                if (!gridData || !gridData.rowData || gridData.rowData.length === 0) {
-                                    console.warn(`工作表 "${sheetName}" 沒有數據`);
+                                if (!gridData || !gridData.rowData) {
+                                    console.warn(`工作表 "${sheetName}" 沒有數據，已忽略`);
                                     return;
                                 }
 
-                                // 提取帶格式的數據
-                                const rowData = gridData.rowData;
-                                const formattedData = [];
+                                const sheetRows = [];
+                                const columns = [];
 
-                                // 處理所有行
-                                rowData.forEach(row => {
-                                    if (!row.values) return;
-
-                                    const formattedRow = [];
-                                    const values = row.values;
-
-                                    // 處理每個單元格
-                                    values.forEach(cell => {
-                                        // 獲取單元格值和格式
-                                        const value = cell.formattedValue || '';
-
-                                        // 創建深拷貝以避免修改唯讀屬性
-                                        const textFormatRunsCopyCopy = cell.textFormatRunsCopyCopy ?
-                                            JSON.parse(JSON.stringify(cell.textFormatRunsCopyCopy)) : [];
-
-                                        const effectiveFormatCopyCopy = cell.effectiveFormatCopyCopy ?
-                                            JSON.parse(JSON.stringify(cell.effectiveFormatCopyCopy)) : {};
-
-                                        // 安全地創建帶格式的單元格對象
-                                        const formattedCell = {
-                                            value: value,
-                                            textContent: value,
-                                            format: {
-                                                bold: effectiveFormatCopyCopy.textFormat?.bold || false,
-                                                italic: effectiveFormatCopyCopy.textFormat?.italic || false,
-                                                underline: effectiveFormatCopyCopy.textFormat?.underline || false,
-                                                strikethrough: effectiveFormatCopyCopy.textFormat?.strikethrough || false,
-                                                fontSize: effectiveFormatCopyCopy.textFormat?.fontSize || 10,
-                                                foregroundColor: effectiveFormatCopyCopy.textFormat?.foregroundColor ?
-                                                    {...effectiveFormatCopyCopy.textFormat.foregroundColor} : null,
-                                                backgroundColor: effectiveFormatCopyCopy.backgroundColor ?
-                                                    {...effectiveFormatCopyCopy.backgroundColor} : null
-                                            },
-                                            formatRuns: textFormatRunsCopyCopy,
-                                            delta: convertGSheetsCellToQuillDelta(
-                                                value,
-                                                textFormatRunsCopyCopy,
-                                                effectiveFormatCopyCopy
-                                            )
-                                        };
-
-                                        formattedRow.push(formattedCell);
+                                // 處理標題行 (第一行)
+                                if (gridData.rowData[0] && gridData.rowData[0].values) {
+                                    gridData.rowData[0].values.forEach(cell => {
+                                        columns.push(cell.formattedValue || '');
                                     });
+                                }
 
-                                    formattedData.push(formattedRow);
-                                });
+                                // 處理數據行
+                                for (let i = 0; i < gridData.rowData.length; i++) {
+                                    const row = gridData.rowData[i];
+                                    const formattedRow = [];
+                                    if (row.values) {
+                                        row.values.forEach(cell => {
+                                            // 將原始儲存格資訊直接傳遞，以便後續處理
+                                            // cell 包含 formattedValue, effectiveFormat, textFormatRuns 等
+                                            formattedRow.push(cell || {});
+                                        });
+                                    }
+                                    sheetRows.push(formattedRow);
+                                }
 
-                                // 保存帶格式的工作表數據
+                                // 保存處理後的工作表數據
                                 excelSheets[sheetName] = {
-                                    data: formattedData,
-                                    columns: formattedData[0].map(cell => cell.value),
+                                    data: sheetRows,
+                                    columns: columns,
                                     hasFormatting: true
                                 };
 
                                 // 設置默認卡組映射
-                                if (!sheetMappings[sheetName]) {
-                                    sheetMappings[sheetName] = {
-                                        deckOption: 'new',
-                                        deckId: '',
-                                        newDeckName: sheetName,
-                                        newDeckDescription: '從 Google Sheets 導入的字卡'
-                                    };
-                                }
+                                sheetMappings[sheetName] = {
+                                    deckOption: 'new',
+                                    deckId: '',
+                                    newDeckName: sheetName,
+                                    newDeckDescription: `從 Google Sheets 工作表 "${sheetName}" 導入`
+                                };
 
                                 // 設置默認列選擇
-                                if (!sheetOptions[sheetName]) {
-                                    sheetOptions[sheetName] = {
-                                        frontColumn: 0,
-                                        backColumn: 1
-                                    };
-                                }
+                                sheetOptions[sheetName] = {
+                                    frontColumn: 0,
+                                    backColumn: 1
+                                };
                             });
+
+                            if (Object.keys(excelSheets).length === 0) {
+                                return reject(new Error('所有工作表均無有效數據。'));
+                            }
 
                             // 設置第一個工作表為活動工作表
                             activeSheetName = Object.keys(excelSheets)[0];
-
                             resolve();
-                        })
 
-                        .catch(error => {
-                            console.error('Google Sheets API 錯誤:', error);
-                            console.error('在Safari上使用Google API失敗，嘗試備選方案');
-                            // 如果API調用失敗，轉向備選方案
-                            loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
-                                .then(resolve)
-                                .catch(reject);
+                        }).catch(err => {
+                            clearTimeout(timeout);
+                            console.error('Google Sheets API 錯誤:', err);
+                            const errorDetail = err.result ? err.result.error.message : err.message;
+                            reject(new Error(`API 請求失敗: ${errorDetail}`));
                         });
                     });
                 } catch (error) {
                     clearTimeout(timeout);
-                    console.error('初始化Google API發生錯誤', error);
-                    // 異常情況下也使用備選方案
-                    loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, null, null)
-                        .then(resolve)
-                        .catch(reject);
+                    console.error('初始化 Google API 發生錯誤:', error);
+                    reject(error);
                 }
             });
         }
@@ -2921,122 +2872,80 @@
             }
         }
 
-        function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-            // 如果沒有文本或值為空，返回空 Delta
-            if (!value) {
+        function convertGSheetsCellToQuillDelta(cell) {
+            // 如果儲存格為空或沒有值，返回空的 Delta
+            if (!cell || !cell.formattedValue) {
                 return { ops: [] };
             }
 
-            // 確保 value 是字符串
-            value = String(value);
-
-            // 1. 分離行內格式和區塊格式
-            const inlineFormat = {};
-            const blockFormat = {};
-
-            if (effectiveFormat) {
-                // 提取行內格式
-                if (effectiveFormat.textFormat) {
-                    if (effectiveFormat.textFormat.bold) inlineFormat.bold = true;
-                    if (effectiveFormat.textFormat.italic) inlineFormat.italic = true;
-                    if (effectiveFormat.textFormat.underline) inlineFormat.underline = true;
-                    if (effectiveFormat.textFormat.strikethrough) inlineFormat.strike = true;
-
-                    // 處理前景色
-                    if (effectiveFormat.textFormat.foregroundColor) {
-                        const color = effectiveFormat.textFormat.foregroundColor;
-                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                            const r = Math.round(color.red * 255);
-                            const g = Math.round(color.green * 255);
-                            const b = Math.round(color.blue * 255);
-                            const isDefaultBlack = (r === 0 && g === 0 && b === 0);
-                            if (!isDefaultBlack) {
-                                inlineFormat.color = `rgb(${r}, ${g}, ${b})`;
-                            }
-                        }
-                    }
-
-                    // 處理背景色
-                    if (effectiveFormat.backgroundColor) {
-                        const bgColor = effectiveFormat.backgroundColor;
-                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                        if (!isDefaultWhite) {
-                            const r = Math.round(bgColor.red * 255);
-                            const g = Math.round(bgColor.green * 255);
-                            const b = Math.round(bgColor.blue * 255);
-                            inlineFormat.background = `rgb(${r}, ${g}, ${b})`;
-                        }
-                    }
-                }
-
-                // 提取區塊格式 (這是關鍵)
-                if (effectiveFormat.horizontalAlignment) {
-                    const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
-                    if (['center', 'right', 'justify'].includes(alignment)) {
-                        blockFormat.align = alignment;
-                    }
-                }
-            }
-
+            const value = cell.formattedValue;
             const ops = [];
+            let currentPos = 0;
 
-            // 如果有 textFormatRuns，則需要更精細地處理多重格式
-            if (textFormatRuns && textFormatRuns.length > 0) {
-                let lastIndex = 0;
-                textFormatRuns.forEach(run => {
-                    const startIndex = run.startIndex || 0;
-                    // 處理上一個格式到這個格式之間的文本
-                    if (startIndex > lastIndex) {
-                        ops.push({
-                            insert: value.substring(lastIndex, startIndex),
-                            attributes: inlineFormat // 使用儲存格的默認行內格式
-                        });
-                    }
-
-                    // 確定這段格式的結束位置
-                    const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
-                    const endIndex = nextRun ? nextRun.startIndex : value.length;
-
-                    const segmentText = value.substring(startIndex, endIndex);
-
-                    // 合併儲存格默認格式和當前段落的特定格式
-                    const segmentFormat = { ...inlineFormat };
-                    if (run.format) {
-                        if (run.format.bold !== undefined) segmentFormat.bold = run.format.bold;
-                        if (run.format.italic !== undefined) segmentFormat.italic = run.format.italic;
-                        if (run.format.underline !== undefined) segmentFormat.underline = run.format.underline;
-                        if (run.format.strikethrough !== undefined) segmentFormat.strike = run.format.strikethrough;
-                        // ...可以添加更多顏色等格式的處理
-                    }
-
-                    if (segmentText) {
-                         ops.push({
-                            insert: segmentText,
-                            attributes: segmentFormat
-                        });
-                    }
-
-                    lastIndex = endIndex;
-                });
-
-                // 處理最後一段文本
-                if (lastIndex < value.length) {
-                    ops.push({
-                        insert: value.substring(lastIndex),
-                        attributes: inlineFormat
-                    });
+            // 1. 獲取整個儲存格的基礎格式和區塊格式
+            const baseFormat = {};
+            const blockFormat = {};
+            if (cell.effectiveFormat) {
+                const textFormat = cell.effectiveFormat.textFormat;
+                if (textFormat) {
+                    if (textFormat.bold) baseFormat.bold = true;
+                    if (textFormat.italic) baseFormat.italic = true;
+                    if (textFormat.underline) baseFormat.underline = true;
+                    if (textFormat.strikethrough) baseFormat.strike = true;
                 }
-            } else {
-                 // 如果沒有 textFormatRuns，簡單處理整個儲存格
-                 if (value.trim()) {
-                     ops.push({
-                        insert: value,
-                        attributes: inlineFormat
-                    });
+                const alignment = cell.effectiveFormat.horizontalAlignment;
+                if (alignment) {
+                    const align = alignment.toLowerCase();
+                    if (['center', 'right', 'justify'].includes(align)) {
+                        blockFormat.align = align;
+                    }
                 }
             }
 
-            // 2. 將區塊格式（如對齊）應用到結尾的換行符上
+            // 2. 處理包含多種格式的文本 (textFormatRuns)
+            if (cell.textFormatRuns && cell.textFormatRuns.length > 0) {
+                cell.textFormatRuns.forEach(run => {
+                    const startIndex = run.startIndex || 0;
+
+                    // 處理上一個 run 到這個 run 之間的文本（使用基礎格式）
+                    if (startIndex > currentPos) {
+                        ops.push({
+                            insert: value.substring(currentPos, startIndex),
+                            attributes: { ...baseFormat }
+                        });
+                    }
+
+                    // 處理當前 run 的文本
+                    const runFormat = { ...baseFormat };
+                    if (run.format) {
+                        if (run.format.bold !== undefined) runFormat.bold = run.format.bold;
+                        if (run.format.italic !== undefined) runFormat.italic = run.format.italic;
+                        if (run.format.underline !== undefined) runFormat.underline = run.format.underline;
+                        if (run.format.strikethrough !== undefined) runFormat.strike = run.format.strikethrough;
+                    }
+
+                    const nextRun = cell.textFormatRuns.find(r => (r.startIndex || 0) > startIndex);
+                    const endIndex = nextRun ? (nextRun.startIndex || 0) : value.length;
+
+                    if (endIndex > startIndex) {
+                       ops.push({
+                           insert: value.substring(startIndex, endIndex),
+                           attributes: runFormat
+                       });
+                    }
+                    currentPos = endIndex;
+                });
+            }
+
+            // 3. 處理剩餘的文本或沒有 textFormatRuns 的情況
+            if (currentPos < value.length) {
+                ops.push({
+                    insert: value.substring(currentPos),
+                    attributes: { ...baseFormat }
+                });
+            }
+
+            // 4. 在結尾添加換行符，並附上區塊格式（如對齊）
             // 這是 Quill 的標準做法，用來格式化一整行
             ops.push({
                 insert: '\n',
@@ -3175,105 +3084,73 @@
             showStorageReminder();
         }
 
-        // 將 Quill Delta 轉換為 HTML
-        // 修改 convertDeltaToHTML 函數以正確處理換行
-        // 修改 convertDeltaToHTML 函數以適應暗模式
         function convertDeltaToHTML(delta) {
             if (!delta || !delta.ops || delta.ops.length === 0) {
                 return '';
             }
 
-            // 檢測當前頁面模式
-            const isDarkMode = document.documentElement.classList.contains('dark');
+            let html = '';
+            let currentLine = '';
+            let currentLineAttributes = {};
 
-            // 創建臨時 div 元素
-            const tempDiv = document.createElement('div');
-
-            // 追蹤當前的段落和格式
-            let currentP = document.createElement('p');
-            tempDiv.appendChild(currentP);
-            let blockAttributes = {};
-
-            // 處理每個操作
             delta.ops.forEach(op => {
-                if (!op.insert) return;
+                const attributes = op.attributes || {};
+                let text = op.insert;
 
-                // 檢查是否有區塊級屬性（如對齊方式）
-                if (op.attributes && (op.attributes.align || op.attributes.header || op.attributes.list)) {
-                    blockAttributes = {
-                        align: op.attributes.align,
-                        header: op.attributes.header,
-                        list: op.attributes.list
-                    };
-                }
+                if (typeof text === 'string') {
+                    // 處理換行符
+                    if (text === '\n') {
+                        // 結束當前行，並應用區塊格式
+                        let lineTag = 'p';
+                        let lineClasses = '';
+                        let lineStyles = '';
 
-                // 處理文本換行
-                if (typeof op.insert === 'string' && op.insert.includes('\n')) {
-                    // 將文本按換行符分割
-                    const lines = op.insert.split('\n');
+                        if (currentLineAttributes.align) {
+                            lineClasses += ` ql-align-${currentLineAttributes.align}`;
+                        }
+                        // 可以擴展支持 header, list 等
 
-                    for (let i = 0; i < lines.length; i++) {
-                        // 如果不是第一行，創建新段落
-                        if (i > 0) {
-                            // 結束上一個段落
-                            applyBlockAttributes(currentP, blockAttributes);
+                        html += `<${lineTag} class="${lineClasses.trim()}" style="${lineStyles}">` + (currentLine || '<br>') + `</${lineTag}>`;
 
-                            // 創建新段落
-                            currentP = document.createElement('p');
-                            tempDiv.appendChild(currentP);
+                        // 重置下一行
+                        currentLine = '';
+                        currentLineAttributes = attributes; // 換行符上的屬性是下一行的屬性
+                    } else {
+                        // 處理普通文本
+                        // HTML 編碼以防止 XSS
+                        text = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+                        let styledText = text;
+
+                        // 應用行內格式
+                        if (attributes.bold) styledText = `<strong>${styledText}</strong>`;
+                        if (attributes.italic) styledText = `<em>${styledText}</em>`;
+                        if (attributes.underline) styledText = `<u>${styledText}</u>`;
+                        if (attributes.strike) styledText = `<s>${styledText}</s>`;
+
+                        // 處理字體大小
+                        if (attributes.size) {
+                           styledText = `<span class="ql-size-${attributes.size}">${styledText}</span>`;
                         }
 
-                        if (lines[i]) {
-                            const span = document.createElement('span');
-                            span.textContent = lines[i];
-
-                            // 應用格式並顧及暗模式適配
-                            applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
-
-                            currentP.appendChild(span);
-                        }
+                        currentLine += styledText;
                     }
-                } else {
-                    // 處理普通文本或其他內容（如圖片）
-                    if (typeof op.insert === 'string') {
-                        const span = document.createElement('span');
-                        span.textContent = op.insert;
-
-                        // 應用格式
-                        applyFormattingWithColorEnhancement(span, op.attributes, isDarkMode);
-
-                        currentP.appendChild(span);
-                    } else if (op.insert.image) {
-                        // 處理圖片
-                        const img = document.createElement('img');
-                        img.src = op.insert.image;
-                        img.style.maxWidth = '100%';
-
-                        // 應用圖片格式
-                        if (op.attributes) {
-                            if (op.attributes.width) img.style.width = op.attributes.width + 'px';
-                            if (op.attributes.height) img.style.height = op.attributes.height + 'px';
-                            if (op.attributes.align) {
-                                if (op.attributes.align === 'center') {
-                                    img.style.display = 'block';
-                                    img.style.marginLeft = 'auto';
-                                    img.style.marginRight = 'auto';
-                                } else if (op.attributes.align === 'right') {
-                                    img.style.display = 'block';
-                                    img.style.marginLeft = 'auto';
-                                }
-                            }
-                        }
-
-                        currentP.appendChild(img);
-                    }
+                } else if (op.insert && op.insert.image) {
+                    // 處理圖片
+                    currentLine += `<img src="${op.insert.image}" style="max-width: 100%; height: auto;">`;
                 }
             });
 
-            // 確保最後一個段落也應用了區塊屬性
-            applyBlockAttributes(currentP, blockAttributes);
+            // 處理檔案末尾可能遺留的最後一行
+            if (currentLine) {
+                 let lineTag = 'p';
+                 let lineClasses = '';
+                 if (currentLineAttributes.align) {
+                    lineClasses += ` ql-align-${currentLineAttributes.align}`;
+                 }
+                 html += `<${lineTag} class="${lineClasses.trim()}">` + currentLine + `</${lineTag}>`;
+            }
 
-            return tempDiv.innerHTML;
+            return html;
         }
 
         // 應用區塊級屬性（如對齊）到段落
