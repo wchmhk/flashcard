@@ -601,20 +601,7 @@
           transition: all 0.3s ease;
         }
 
-        .sortable-header {
-            cursor: pointer;
-            user-select: none; /* Prevent text selection on click */
-        }
-        .sortable-header.sort-asc::after {
-            content: " ▲";
-            font-size: 0.7em;
-            margin-left: 4px;
-        }
-        .sortable-header.sort-desc::after {
-            content: " ▼";
-            font-size: 0.7em;
-            margin-left: 4px;
-        }
+
 
     </style>
 </head>
@@ -939,18 +926,18 @@
             <!-- MODIFIED: allCardsContainer to hold a table -->
             <div id="allCardsContainer" class="overflow-x-auto shadow rounded-lg border border-gray-200 dark:border-gray-700">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead class="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-12">
-                              <!-- Checkbox -->
-                          </th>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="frontText">正面</th>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="backText">背面</th>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="decks">所屬卡組</th>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="difficulty">難度</th>
-                          <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-24">操作</th>
-                      </tr>
-                  </thead>
+                    <thead class="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-12">
+                                <!-- Global select all is outside, this column is for individual row checkbox -->
+                            </th>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="frontText">正面</th>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="backText">背面</th>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="decks">所屬卡組</th>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider sortable-header" data-sort-key="difficulty">難度</th>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider w-24">操作</th>
+                        </tr>
+                    </thead>
                     <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                         <!-- Table rows will be inserted here by JavaScript -->
                         <tr>
@@ -1024,72 +1011,88 @@
         </div>
 
         <!-- Card edit modal -->
-                <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 my-auto max-h-[85vh] overflow-y-auto">
-                        <h2 class="text-xl font-semibold mb-4 sticky top-0 bg-white dark:bg-gray-800 py-2 z-10 border-b border-gray-200 dark:border-gray-700">編輯字卡</h2>
-                        <div class="space-y-4 overflow-y-auto">
-                            <div>
-                                <label for="editCardFrontInput" class="block text-sm font-medium mb-1">正面（問題）</label>
-                                <div class="editor-with-button">
-                                    <!-- Quill編輯器將替換這個div -->
-                                    <div id="editFrontEditor"></div>
-                                    <!-- 移除了正面的 "更改圖片" 按鈕和拖放區域 -->
-                                    <input type="file" id="editCardFrontImage" accept="image/*" class="hidden" />
-                                </div>
-                            </div>
+        <div id="cardEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-y-auto py-10">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 my-auto max-h-[85vh] overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4 sticky top-0 bg-white dark:bg-gray-800 py-2 z-10 border-b border-gray-200 dark:border-gray-700">編輯字卡</h2>
+                <div class="space-y-4 overflow-y-auto">
+                    <div>
+                        <label for="editCardFrontInput" class="block text-sm font-medium mb-1">正面（問題）</label>
+                        <div class="editor-with-button">
+                            <!-- Quill編輯器將替換這個div -->
+                            <div id="editFrontEditor"></div>
 
-                            <div id="editFrontImageContainer">
-                                <div id="editFrontImagePreview" class="mb-2 hidden">
-                                    <div class="flex items-center">
-                                        <img id="editFrontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                                        <button type="button" id="removeEditFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                            移除圖片
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label for="editCardBackInput" class="block text-sm font-medium mb-1">背面（答案）</label>
-                                <div class="editor-with-button">
-                                    <!-- Quill編輯器將替換這個div -->
-                                    <div id="editBackEditor"></div>
-                                    <!-- 移除了背面的 "更改圖片" 按鈕和拖放區域 -->
-                                    <input type="file" id="editCardBackImage" accept="image/*" class="hidden" />
-                                </div>
-                            </div>
-
-                            <div id="editBackImageContainer">
-                                <div id="editBackImagePreview" class="mb-2 hidden">
-                                    <div class="flex items-center">
-                                        <img id="editBackPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
-                                        <button type="button" id="removeEditBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
-                                            移除圖片
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium mb-1">所屬卡組</label>
-                                <div class="max-h-60 overflow-y-auto space-y-2 border border-gray-300 dark:border-gray-700 rounded-lg p-2">
-                                    <div id="editCardDecksList">
-                                        <!-- Deck checkboxes will be added here dynamically -->
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="flex justify-end space-x-3 pt-4">
-                                <button id="closeCardEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
-                                    取消
+                            <div class="input-group drag-area">
+                                <button type="button" id="editFrontImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-sm">
+                                    更改圖片
                                 </button>
-                                <button id="saveCardEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
-                                    儲存
+                                <input type="file" id="editCardFrontImage" accept="image/*" class="hidden" />
+                                <div class="drag-overlay">
+                                    <div class="drag-text">拖放圖片至此</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="editFrontImageContainer">
+                        <div id="editFrontImagePreview" class="mb-2 hidden">
+                            <div class="flex items-center">
+                                <img id="editFrontPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                                <button type="button" id="removeEditFrontImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                                    移除圖片
                                 </button>
                             </div>
                         </div>
                     </div>
+
+                    <div>
+                        <label for="editCardBackInput" class="block text-sm font-medium mb-1">背面（答案）</label>
+                        <div class="editor-with-button">
+                            <!-- Quill編輯器將替換這個div -->
+                            <div id="editBackEditor"></div>
+
+                            <div class="input-group drag-area">
+                                <button type="button" id="editBackImageBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-lg transition-colors text-sm">
+                                    更改圖片
+                                </button>
+                                <input type="file" id="editCardBackImage" accept="image/*" class="hidden" />
+                                <div class="drag-overlay">
+                                    <div class="drag-text">拖放圖片至此</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="editBackImageContainer">
+                        <div id="editBackImagePreview" class="mb-2 hidden">
+                            <div class="flex items-center">
+                                <img id="editBackPreviewImg" class="max-h-40 max-w-full rounded border border-gray-300 dark:border-gray-700" />
+                                <button type="button" id="removeEditBackImage" class="ml-2 text-red-500 hover:text-red-700 text-sm">
+                                    移除圖片
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">所屬卡組</label>
+                        <div class="max-h-60 overflow-y-auto space-y-2 border border-gray-300 dark:border-gray-700 rounded-lg p-2">
+                            <div id="editCardDecksList">
+                                <!-- Deck checkboxes will be added here dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button id="closeCardEditBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
+                            取消
+                        </button>
+                        <button id="saveCardEditBtn" class="px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
+                            儲存
+                        </button>
+                    </div>
                 </div>
+            </div>
+        </div>
 
         <!-- Deck edit modal -->
         <div id="deckEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-hidden">
@@ -1480,39 +1483,6 @@
             </div>
         </div>
 
-        <!-- Google Sheets 導入衝突解決對話框 -->
-                <div id="gSheetsConflictModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-[51] overflow-y-auto py-10">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 my-auto">
-                        <h2 class="text-xl font-semibold mb-4">Google Sheets 導入 - 名稱衝突</h2>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            以下從 Google Sheets 讀取到的工作表名稱，與您現有的卡組名稱重複。請為每個衝突選擇處理方式：
-                        </p>
-                        <div id="gSheetsConflictList" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 mb-4">
-                            <!-- 衝突列表將在此處動態生成 -->
-                            <!-- 範例條目:
-                            <div class="p-3 border rounded-md">
-                                <h3 class="font-medium">工作表: "重複的名稱"</h3>
-                                <p class="text-sm text-gray-500">與現有卡組 "重複的名稱" (ID: xxx) 衝突。</p>
-                                <div class="mt-2 space-y-1">
-                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="overwrite" class="mr-2"> 覆蓋現有卡組</label>
-                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="rename" checked class="mr-2"> 自動重命名 (例如: 重複的名稱 (1))</label>
-                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="merge" class="mr-2"> 合併到現有卡組</label>
-                                    <label class="flex items-center"><input type="radio" name="conflict-sheetName" value="skip" class="mr-2"> 跳過此工作表</label>
-                                </div>
-                            </div>
-                            -->
-                        </div>
-                        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <button id="cancelGSheetsConflictBtn" type="button" class="modal-btn px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg">
-                                取消導入
-                            </button>
-                            <button id="confirmGSheetsConflictBtn" type="button" class="modal-btn px-4 py-2 bg-primary hover:bg-opacity-80 text-white rounded-lg">
-                                套用選擇並繼續
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
         <!-- 自定義確認對話框 -->
         <div id="customConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
@@ -1728,10 +1698,6 @@
         let cardSortKey = 'frontText'; // Default sort key
         let cardSortOrder = 'asc';     // Default sort order ('asc' or 'desc')
 
-        // Google Sheets 導入衝突解決方案
-        let gSheetsConflictResolutions = {};
-
-
         // DOM Elements - Sections
         const reviewSection = document.getElementById('reviewSection');
         const createCardSection = document.getElementById('createCardSection');
@@ -1860,6 +1826,8 @@
         const editBackEditor = document.getElementById('editBackEditor');
         const editCardFrontImage = document.getElementById('editCardFrontImage');
         const editCardBackImage = document.getElementById('editCardBackImage');
+        const editFrontImageBtn = document.getElementById('editFrontImageBtn');
+        const editBackImageBtn = document.getElementById('editBackImageBtn');
         const editFrontImagePreview = document.getElementById('editFrontImagePreview');
         const editBackImagePreview = document.getElementById('editBackImagePreview');
         const editFrontPreviewImg = document.getElementById('editFrontPreviewImg');
@@ -2954,186 +2922,127 @@
         }
 
         function convertGSheetsCellToQuillDelta(value, textFormatRuns, effectiveFormat) {
-            // 如果沒有文本,返回空 Delta
-            if (!value) {
-                return { ops: [] };
-            }
+             // 如果沒有文本,返回空 Delta
+             if (!value) {
+                 return { ops: [] };
+             }
 
-            const format = {};
+             const format = {};
 
-            // 從 effectiveFormat 提取全局格式
-            if (effectiveFormat) {
-                // 原有的格式處理(粗體、斜體等)
-                if (effectiveFormat.textFormat) {
-                    if (effectiveFormat.textFormat.bold) format.bold = true;
-                    if (effectiveFormat.textFormat.italic) format.italic = true;
-                    if (effectiveFormat.textFormat.underline) format.underline = true;
-                    if (effectiveFormat.textFormat.strikethrough) format.strike = true;
+             // 從 effectiveFormat 提取全局格式
+             if (effectiveFormat) {
+                 // 原有的格式處理(粗體、斜體等)
+                 if (effectiveFormat.textFormat) {
+                     if (effectiveFormat.textFormat.bold) format.bold = true;
+                     if (effectiveFormat.textFormat.italic) format.italic = true;
+                     if (effectiveFormat.textFormat.underline) format.underline = true;
+                     if (effectiveFormat.textFormat.strikethrough) format.strike = true;
 
-                    // 處理前景色 - 增強顏色處理邏輯
-                    if (effectiveFormat.textFormat.foregroundColor) {
-                        const color = effectiveFormat.textFormat.foregroundColor;
-                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                            // 使用更精確的RGB值
-                            const r = Math.round(color.red * 255);
-                            const g = Math.round(color.green * 255);
-                            const b = Math.round(color.blue * 255);
+                     // 處理前景色
+                     if (effectiveFormat.textFormat.foregroundColor) {
+                         const color = effectiveFormat.textFormat.foregroundColor;
+                         if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
+                             const r = Math.round(color.red * 255);
+                             const g = Math.round(color.green * 255);
+                             const b = Math.round(color.blue * 255);
+                             const isDefaultBlack = (r === 0 && g === 0 && b === 0);
+                             if (!isDefaultBlack) {
+                                 format.color = `rgb(${r}, ${g}, ${b})`;
+                             }
+                         }
+                     }
 
-                            // 檢查是否為默認黑色
-                            const isDefaultBlack = (r === 0 && g === 0 && b === 0);
-                            if (!isDefaultBlack) {
-                                format.color = `rgb(${r}, ${g}, ${b})`;
-                                // 保存原始顏色值以備在暗模式下使用
-                                format.originalColor = [r, g, b];
-                            }
-                        }
-                    }
+                     // 處理背景色
+                     if (effectiveFormat.backgroundColor) {
+                         const bgColor = effectiveFormat.backgroundColor;
+                         const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
+                         if (!isDefaultWhite) {
+                             const r = Math.round(bgColor.red * 255);
+                             const g = Math.round(bgColor.green * 255);
+                             const b = Math.round(bgColor.blue * 255);
+                             format.background = `rgb(${r}, ${g}, ${b})`;
+                         }
+                     }
+                 }
 
-                    // 處理背景色
-                    if (effectiveFormat.backgroundColor) {
-                        const bgColor = effectiveFormat.backgroundColor;
-                        // 檢查是否不是默認白色
-                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                        if (!isDefaultWhite) {
-                            const r = Math.round(bgColor.red * 255);
-                            const g = Math.round(bgColor.green * 255);
-                            const b = Math.round(bgColor.blue * 255);
-                            format.background = `rgb(${r}, ${g}, ${b})`;
-                        }
-                    }
-                }
+                 // ==========================================================
+                 // ===> 新增的程式碼：處理水平對齊方式
+                 // ==========================================================
+                 if (effectiveFormat.horizontalAlignment) {
+                     const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
+                     if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+                         // Quill 使用 'align' 屬性來控制區塊對齊
+                         format.align = alignment;
+                     }
+                 }
+                 // ==========================================================
+                 // ===> 新增結束
+                 // ==========================================================
+             }
 
-                // 處理對齊方式 - 重要部分,確保對齊格式被保留
-                if (effectiveFormat.horizontalAlignment) {
-                    const alignment = effectiveFormat.horizontalAlignment.toLowerCase();
-                    if (alignment === 'center' || alignment === 'right' || alignment === 'justify') {
-                        format.align = alignment;
-                    }
-                }
-            }
+             // 如果沒有格式運行,使用整體格式
+             if (!textFormatRuns || textFormatRuns.length === 0) {
+                 // 如果文本包含換行符，需要為換行符單獨添加區塊格式
+                 const lines = value.split('\n');
+                 const ops = [];
+                 lines.forEach((line, index) => {
+                     if (line) {
+                         ops.push({ insert: line, attributes: format });
+                     }
+                     if (index < lines.length - 1) {
+                         // 為換行符應用區塊格式（如對齊）
+                         ops.push({ insert: '\n', attributes: { align: format.align } });
+                     }
+                 });
+                 return { ops: ops.length > 0 ? ops : [{ insert: '\n' }] };
+             }
 
-            // 如果沒有格式運行,使用整體格式
-            if (!textFormatRuns || textFormatRuns.length === 0) {
-                // 創建帶格式的 Delta
-                return {
-                    ops: [
-                        {
-                            insert: value,
-                            attributes: Object.keys(format).length > 0 ? format : undefined
-                        }
-                    ]
-                };
-            }
 
-            // 如果有格式運行,處理每一段
-            const ops = [];
-            let lastIndex = 0;
+             // 如果有格式運行,處理每一段
+             const ops = [];
+             let lastIndex = 0;
 
-            // 按順序處理每個格式段
-            textFormatRuns.forEach(run => {
-                const startIndex = run.startIndex || 0;
+             textFormatRuns.forEach(run => {
+                 const startIndex = run.startIndex || 0;
 
-                // 添加前一段文本(如果有)
-                if (startIndex > lastIndex) {
-                    const text = value.substring(lastIndex, startIndex);
-                    if (text) {
-                        ops.push({
-                            insert: text,
-                            attributes: Object.keys(format).length > 0 ? {...format} : undefined
-                        });
-                    }
-                }
+                 if (startIndex > lastIndex) {
+                     const text = value.substring(lastIndex, startIndex);
+                     ops.push({ insert: text, attributes: {...format} });
+                 }
 
-                // 獲取此格式段的結束索引
-                const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
-                const endIndex = nextRun ? nextRun.startIndex : value.length;
+                 const nextRun = textFormatRuns.find(r => r.startIndex > startIndex);
+                 const endIndex = nextRun ? nextRun.startIndex : value.length;
+                 const text = value.substring(startIndex, endIndex);
+                 const segmentFormat = {...format}; // 從全局格式繼承
+                 if (run.format) {
+                    if (run.format.bold !== undefined) segmentFormat.bold = run.format.bold;
+                    if (run.format.italic !== undefined) segmentFormat.italic = run.format.italic;
+                    // ... 其他格式 ...
+                 }
+                 ops.push({ insert: text, attributes: segmentFormat });
+                 lastIndex = endIndex;
+             });
 
-                // 提取文本
-                const text = value.substring(startIndex, endIndex);
+             if (lastIndex < value.length) {
+                 const remainingText = value.substring(lastIndex);
+                 ops.push({ insert: remainingText, attributes: {...format} });
+             }
 
-                // 提取格式 - 增強顏色處理
-                const segmentFormat = {...format}; // 從全局格式繼承
-                if (run.format) {
-                    if (run.format.bold) segmentFormat.bold = true;
-                    if (run.format.italic) segmentFormat.italic = true;
-                    if (run.format.underline) segmentFormat.underline = true;
-                    if (run.format.strikethrough) segmentFormat.strike = true;
+             // 確保最後的換行符也帶有區塊格式
+             if (ops.length > 0) {
+                 const lastOp = ops[ops.length - 1];
+                 if (typeof lastOp.insert === 'string' && lastOp.insert.endsWith('\n')) {
+                     if (!lastOp.attributes) lastOp.attributes = {};
+                     lastOp.attributes.align = format.align;
+                 } else {
+                     ops.push({ insert: '\n', attributes: { align: format.align } });
+                 }
+             } else {
+                  ops.push({ insert: '\n', attributes: { align: format.align } });
+             }
 
-                    // 處理前景色 - 加強顏色轉換
-                    if (run.format.foregroundColor) {
-                        const color = run.format.foregroundColor;
-                        if (color.red !== undefined && color.green !== undefined && color.blue !== undefined) {
-                            const r = Math.round(color.red * 255);
-                            const g = Math.round(color.green * 255);
-                            const b = Math.round(color.blue * 255);
-
-                            // 檢查顏色是否為默認黑色
-                            const isDefaultBlack = r === 0 && g === 0 && b === 0;
-                            if (!isDefaultBlack) {
-                                segmentFormat.color = `rgb(${r}, ${g}, ${b})`;
-                                // 保存原始顏色值
-                                segmentFormat.originalColor = [r, g, b];
-                            }
-                        }
-                    }
-
-                    // 處理背景色
-                    if (run.format.backgroundColor) {
-                        const bgColor = run.format.backgroundColor;
-                        const isDefaultWhite = (bgColor.red === 1 && bgColor.green === 1 && bgColor.blue === 1);
-                        if (!isDefaultWhite) {
-                            const r = Math.round(bgColor.red * 255);
-                            const g = Math.round(bgColor.green * 255);
-                            const b = Math.round(bgColor.blue * 255);
-                            segmentFormat.background = `rgb(${r}, ${g}, ${b})`;
-                        }
-                    }
-                }
-
-                // 添加帶格式的文本
-                ops.push({
-                    insert: text,
-                    attributes: Object.keys(segmentFormat).length > 0 ? segmentFormat : undefined
-                });
-
-                // 更新處理索引
-                lastIndex = endIndex;
-            });
-
-            // 添加剩餘的文本(如果有)
-            if (lastIndex < value.length) {
-                const remainingText = value.substring(lastIndex);
-                ops.push({
-                    insert: remainingText,
-                    attributes: Object.keys(format).length > 0 ? {...format} : undefined
-                });
-            }
-
-            // 如果是最後一個操作並且有換行，確保換行也有格式
-            if (ops.length > 0 && typeof ops[ops.length-1].insert === 'string' &&
-                ops[ops.length-1].insert.endsWith('\n')) {
-                // 確保最後一個換行也帶有格式
-                const lastOp = ops[ops.length-1];
-                if (lastOp.insert === '\n') {
-                    lastOp.attributes = format;
-                } else if (lastOp.insert.endsWith('\n')) {
-                    // 拆分最後的文本和換行
-                    const text = lastOp.insert.slice(0, -1);
-                    const attributes = lastOp.attributes || {};
-
-                    // 修改最後一個操作為不含換行的文本
-                    lastOp.insert = text;
-
-                    // 添加一個新的操作為換行
-                    ops.push({
-                        insert: '\n',
-                        attributes: format
-                    });
-                }
-            }
-
-            return { ops: ops };
-        }
+             return { ops: ops };
+         }
 
         // 根據 Google Sheets 數據更新字卡
         function updateCardsFromGSheets() {
@@ -3522,187 +3431,285 @@
             }
         }
 
-        // 初始化Quill編輯器 - 修復輸入問題並統一工具欄
-                function initQuillEditors() {
-                  console.log("初始化Quill編輯器...");
+        // 初始化Quill編輯器 - 使用直接HTML創建工具欄，並防止表單提交
+        // 初始化Quill編輯器 - 修復輸入問題
+        function initQuillEditors() {
+          console.log("初始化Quill編輯器...");
 
-                  // 確保之前的實例被清理
-                  if (frontQuill) {
-                    try {
-                      frontQuill.off('selection-change'); // 假設有這個事件，實際可能不需要
-                      // 更安全的做法是直接銷毀，但Quill 2.x RC可能沒有直接的destroy方法，或行為不同
-                      // 如果Quill實例的容器被移除或清空，下次創建新實例時舊的引用會失效
-                      const frontEditorContainer = document.getElementById('frontEditor');
-                      if (frontEditorContainer) frontEditorContainer.innerHTML = ''; // 清空容器
-                      frontQuill = null;
-                    } catch (e) {
-                      console.warn("清理前面編輯器時發生輕微錯誤:", e);
+          // 確保之前的實例被清理
+          if (frontQuill) {
+            try {
+              frontQuill.off('selection-change');
+              frontQuill = null;
+            } catch (e) {
+              console.log("清理前面編輯器失敗:", e);
+            }
+          }
+
+          if (backQuill) {
+            try {
+              backQuill.off('selection-change');
+              backQuill = null;
+            } catch (e) {
+              console.log("清理背面編輯器失敗:", e);
+            }
+          }
+
+          // 定義 formatButtons 對象
+          formatButtons = {};
+
+          console.log("工具欄HTML已創建，正在創建編輯器...");
+
+          // 使用延遲初始化，確保DOM已完全加載
+          setTimeout(() => {
+            try {
+              // 檢查編輯器容器是否存在
+              const frontEditorContainer = document.getElementById('frontEditor');
+              const backEditorContainer = document.getElementById('backEditor');
+
+              if (!frontEditorContainer || !backEditorContainer) {
+                console.error("找不到編輯器容器元素");
+                return;
+              }
+
+              // 確保容器是空的並且能夠接收點擊
+              frontEditorContainer.innerHTML = '';
+              backEditorContainer.innerHTML = '';
+
+              // 確保編輯器容器可以接收事件
+              frontEditorContainer.style.pointerEvents = 'auto';
+              backEditorContainer.style.pointerEvents = 'auto';
+
+              // 定義共用的工具欄配置
+              const standardToolbarOptions = [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': ['', 'center', 'right', 'justify'] }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['image'] // 添加圖片按鈕
+              ];
+
+              // 初始化Quill編輯器 - 使用擴展配置
+              frontQuill = new Quill('#frontEditor', {
+                theme: 'snow',
+                modules: {
+                  toolbar: {
+                    container: standardToolbarOptions,
+                    handlers: {
+                      // 可以添加自定義處理器
                     }
+                  },
+                  clipboard: {
+                    matchVisual: false // 改進粘貼行為
                   }
+                },
+                placeholder: '輸入卡片正面內容...'
+              });
 
-                  if (backQuill) {
-                    try {
-                      backQuill.off('selection-change');
-                      const backEditorContainer = document.getElementById('backEditor');
-                      if (backEditorContainer) backEditorContainer.innerHTML = '';
-                      backQuill = null;
-                    } catch (e) {
-                      console.warn("清理背面編輯器時發生輕微錯誤:", e);
-                    }
-                  }
+              console.log("正在初始化背面編輯器...");
+              backQuill = new Quill('#backEditor', {
+                theme: 'snow',
+                modules: {
+                  toolbar: standardToolbarOptions
+                },
+                placeholder: '輸入卡片背面內容...'
+              });
 
-                  if (editFrontQuill) {
-                    try {
-                      editFrontQuill.off('selection-change');
-                      const editFrontEditorContainer = document.getElementById('editFrontEditor');
-                      if (editFrontEditorContainer) editFrontEditorContainer.innerHTML = '';
-                      editFrontQuill = null;
-                    } catch (e) {
-                      console.warn("清理編輯正面編輯器時發生輕微錯誤:", e);
-                    }
-                  }
+              // 編輯模式編輯器初始化 - 使用相同的工具欄配置確保一致性
+              const editFrontEditorContainer = document.getElementById('editFrontEditor');
+              const editBackEditorContainer = document.getElementById('editBackEditor');
 
-                  if (editBackQuill) {
-                    try {
-                      editBackQuill.off('selection-change');
-                      const editBackEditorContainer = document.getElementById('editBackEditor');
-                      if (editBackEditorContainer) editBackEditorContainer.innerHTML = '';
-                      editBackQuill = null;
-                    } catch (e) {
-                      console.warn("清理編輯背面編輯器時發生輕微錯誤:", e);
-                    }
-                  }
+              if (editFrontEditorContainer && editBackEditorContainer) {
+                console.log("正在初始化編輯模式編輯器...");
+                editFrontQuill = new Quill('#editFrontEditor', {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: standardToolbarOptions
+                  },
+                  placeholder: '輸入卡片正面內容...'
+                });
 
+                editBackQuill = new Quill('#editBackEditor', {
+                  theme: 'snow',
+                  modules: {
+                    toolbar: [
+                      ['bold', 'italic', 'underline', 'strike'],
+                      ['blockquote'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'align': ['', 'center', 'right', 'justify'] }], // 添加這一行
+                      [{ 'color': [] }, { 'background': [] }],
+                      [{ 'size': ['small', false, 'large', 'huge'] }]
+                    ]
+                  },
+                  placeholder: '輸入卡片背面內容...'
+                });
 
-                  // 使用延遲初始化，確保DOM已完全加載
-                  setTimeout(() => {
-                    try {
-                      // 檢查編輯器容器是否存在
-                      const frontEditorContainer = document.getElementById('frontEditor');
-                      const backEditorContainer = document.getElementById('backEditor');
-                      const editFrontEditorContainer = document.getElementById('editFrontEditor');
-                      const editBackEditorContainer = document.getElementById('editBackEditor');
+              } else {
+                console.log("編輯模式編輯器容器不存在，跳過初始化");
+              }
 
-
-                      // 定義共用的工具欄配置
-                      const standardToolbarOptions = [
-                        ['bold', 'italic', 'underline', 'strike'],
-                        ['blockquote'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'align': ['', 'center', 'right', 'justify'] }], // Quill本身會處理空字符串為預設對齊
-                        [{ 'color': [] }, { 'background': [] }],
-                        [{ 'size': ['small', false, 'large', 'huge'] }], // 'false' 代表預設字體大小
-                        ['image'] // <--- 確保圖片按鈕在此
-                      ];
-
-                      // 初始化創建卡片編輯器
-                      if (frontEditorContainer && backEditorContainer) {
-                          frontQuill = new Quill('#frontEditor', {
-                            theme: 'snow',
-                            modules: {
-                              toolbar: standardToolbarOptions,
-                              clipboard: { matchVisual: false }
-                            },
-                            placeholder: '輸入卡片正面內容...'
-                          });
-
-                          backQuill = new Quill('#backEditor', {
-                            theme: 'snow',
-                            modules: {
-                              toolbar: standardToolbarOptions,
-                              clipboard: { matchVisual: false }
-                            },
-                            placeholder: '輸入卡片背面內容...'
-                          });
-                      } else {
-                          console.warn("創建卡片用的編輯器容器(frontEditor/backEditor)不存在，跳過初始化");
-                      }
-
-
-                      // 初始化編輯模式編輯器
-                      if (editFrontEditorContainer && editBackEditorContainer) {
-                        console.log("正在初始化編輯模式編輯器...");
-                        editFrontQuill = new Quill('#editFrontEditor', {
-                          theme: 'snow',
-                          modules: {
-                            toolbar: standardToolbarOptions, // <-- 使用標準配置
-                            clipboard: { matchVisual: false }
-                          },
-                          placeholder: '輸入卡片正面內容...'
-                        });
-
-                        editBackQuill = new Quill('#editBackEditor', {
-                          theme: 'snow',
-                          modules: {
-                            toolbar: standardToolbarOptions, // <-- 使用標準配置 (確保這裡也是！)
-                            clipboard: { matchVisual: false }
-                          },
-                          placeholder: '輸入卡片背面內容...'
-                        });
-                      } else {
-                        console.log("編輯模式編輯器容器(editFrontEditor/editBackEditor)不存在，跳過初始化");
-                      }
-
-                      // 移除編輯器內容區域可能產生的重複工具欄 (以防萬一)
-                      document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
-                        if (toolbar.parentNode && toolbar.closest('.editor-content')) { // 確保是內容區域內的工具欄
-                          toolbar.parentNode.removeChild(toolbar);
-                        }
-                      });
-
-                      console.log("編輯器已創建，設置事件處理器...");
-
-                      // 確保編輯器區域可點擊，能夠獲得焦點
-                      document.querySelectorAll('.ql-editor').forEach(editor => {
-                        editor.style.pointerEvents = 'auto';
-                        editor.style.userSelect = 'text';
-                      });
-
-                      // 統一的事件處理和狀態更新函數
-                      function setupEditorEvents(editorInstance, editorName) {
-                        if (editorInstance && editorInstance.root) {
-                          editorInstance.root.addEventListener('focus', function() {
-                            console.log(`${editorName} 編輯器獲得焦點`);
-                            // activeQuill = editorInstance; // 如果需要追蹤當前活動編輯器
-                            // updateButtonStates(); // 如果有外部按鈕需要根據編輯器狀態更新
-                          });
-
-                          editorInstance.on('selection-change', function(range) {
-                            if (range && editorInstance.hasFocus()) { // 只有當編輯器有焦點時才更新
-                              // activeQuill = editorInstance;
-                              // updateButtonStates();
-                            }
-                          });
-                        }
-                      }
-
-                      setupEditorEvents(frontQuill, "前面");
-                      setupEditorEvents(backQuill, "背面");
-                      setupEditorEvents(editFrontQuill, "編輯正面");
-                      setupEditorEvents(editBackQuill, "編輯背面");
-
-
-                      // 調整Quill編輯器的深色模式 (如果需要)
-                      adjustQuillForDarkMode();
-
-                      // 初始化時設置焦點到創建卡片的正面編輯器 (如果該部分可見)
-                      if (frontQuill && !createCardSection.classList.contains('hidden')) {
-                        setTimeout(() => {
-                          try {
-                            frontQuill.focus();
-                            console.log("設置焦點到創建卡片的前面編輯器");
-                          } catch (error) {
-                            console.error("設置焦點時出錯:", error);
-                          }
-                        }, 200);
-                      }
-
-                      console.log("Quill編輯器初始化完成");
-                    } catch (error) {
-                      console.error("初始化Quill編輯器時發生錯誤:", error);
-                    }
-                  }, 100); // 稍微減少延遲，看是否能改善初始化時機
+              // 移除編輯器內容區域的重複工具欄
+              document.querySelectorAll('.editor-content .ql-toolbar').forEach(toolbar => {
+                if (toolbar.parentNode) {
+                  toolbar.parentNode.removeChild(toolbar);
                 }
+              });
+
+              console.log("編輯器已創建，設置事件處理器...");
+
+              // 確保編輯器區域可點擊，能夠獲得焦點
+              document.querySelectorAll('.ql-editor').forEach(editor => {
+                editor.style.pointerEvents = 'auto';
+                editor.style.userSelect = 'text';
+              });
+
+              // 為每個按鈕添加獨立事件處理器，避免事件衝突
+              for (const [format, button] of Object.entries(formatButtons)) {
+                if (!button) {
+                  console.warn(`找不到按鈕: ${format}`);
+                  continue;
+                }
+
+                // 刪除任何現有的事件監聽器，避免重複
+                const newButton = button.cloneNode(true);
+                if (button.parentNode) {
+                  button.parentNode.replaceChild(newButton, button);
+                }
+
+                // 添加新的事件監聽器
+                newButton.addEventListener('click', (e) => {
+                  console.log(`點擊了 ${format} 按鈕`);
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  if (!activeQuill) {
+                    console.warn("沒有活動的編輯器");
+                    return false;
+                  }
+
+                  try {
+                    const currentFormat = activeQuill.getFormat();
+
+                    if (format === 'orderedList') {
+                      const isOrdered = currentFormat.list === 'ordered';
+                      activeQuill.format('list', isOrdered ? false : 'ordered');
+                      newButton.classList.toggle('active', !isOrdered);
+                    }
+                    else if (format === 'bulletList') {
+                      const isBullet = currentFormat.list === 'bullet';
+                      activeQuill.format('list', isBullet ? false : 'bullet');
+                      newButton.classList.toggle('active', !isBullet);
+                    }
+                    else {
+                      const formatKey = format === 'blockquote' ? 'blockquote' : format;
+                      const newValue = !currentFormat[formatKey];
+                      activeQuill.format(formatKey, newValue);
+                      newButton.classList.toggle('active', newValue);
+                    }
+
+                    activeQuill.focus();
+                  } catch (error) {
+                    console.error(`格式化錯誤 (${format}):`, error);
+                  }
+
+                  return false;
+                });
+
+                // 更新引用
+                formatButtons[format] = newButton;
+              }
+
+              // 更新按鈕活動狀態的函數
+              function updateButtonStates() {
+                if (!activeQuill) return;
+
+                try {
+                  // 檢查編輯器選擇範圍是否存在
+                  const selection = activeQuill.getSelection();
+                  if (!selection) return;
+
+                  const format = activeQuill.getFormat(selection);
+
+                  Object.entries(formatButtons).forEach(([key, button]) => {
+                    if (!button) return;
+
+                    if (key === 'orderedList') {
+                      button.classList.toggle('active', format.list === 'ordered');
+                    } else if (key === 'bulletList') {
+                      button.classList.toggle('active', format.list === 'bullet');
+                    } else {
+                      const formatKey = key === 'blockquote' ? 'blockquote' : key;
+                      button.classList.toggle('active', !!format[formatKey]);
+                    }
+                  });
+                } catch (error) {
+                  console.error("更新按鈕狀態時出錯:", error);
+                }
+              }
+
+              // 為編輯器添加焦點和選擇事件
+              if (frontQuill && frontQuill.root) {
+                frontQuill.root.addEventListener('focus', function() {
+                  console.log("前面編輯器獲得焦點");
+                  activeQuill = frontQuill;
+                  updateButtonStates();
+                });
+
+                frontQuill.on('selection-change', function() {
+                  if (frontQuill.hasFocus()) {
+                    activeQuill = frontQuill;
+                    updateButtonStates();
+                  }
+                });
+              }
+
+              if (backQuill && backQuill.root) {
+                backQuill.root.addEventListener('focus', function() {
+                  console.log("背面編輯器獲得焦點");
+                  activeQuill = backQuill;
+                  updateButtonStates();
+                });
+
+                backQuill.on('selection-change', function() {
+                  if (backQuill.hasFocus()) {
+                    activeQuill = backQuill;
+                    updateButtonStates();
+                  }
+                });
+              }
+
+              // 添加Tab鍵順序
+              if (frontQuill && frontQuill.root) {
+                frontQuill.root.setAttribute('tabindex', '1');
+              }
+
+              if (backQuill && backQuill.root) {
+                backQuill.root.setAttribute('tabindex', '2');
+              }
+
+              // 調整Quill編輯器的深色模式
+              adjustQuillForDarkMode();
+
+              // 初始化時設置焦點
+              setTimeout(() => {
+                if (frontQuill) {
+                  try {
+                    frontQuill.focus();
+                    console.log("設置焦點到前面編輯器");
+                  } catch (error) {
+                    console.error("設置焦點時出錯:", error);
+                  }
+                }
+              }, 200);
+
+              console.log("Quill編輯器初始化完成");
+            } catch (error) {
+              console.error("初始化Quill編輯器時發生錯誤:", error);
+            }
+          }, 300);  // 延遲初始化，確保DOM已完全加載
+        }
 
         // 處理圖片拖拽
         [frontQuill, backQuill, editFrontQuill, editBackQuill].forEach(editor => {
@@ -5330,6 +5337,15 @@
             showCurrentCard();
         });
 
+        // Edit card image handlers
+        editFrontImageBtn.addEventListener('click', () => {
+            editCardFrontImage.click();
+        });
+
+        editBackImageBtn.addEventListener('click', () => {
+            editCardBackImage.click();
+        });
+
         // Remove edit front image
         removeEditFrontImage.addEventListener('click', () => {
             editFrontImageData = null;
@@ -6954,7 +6970,8 @@
                         let valA, valB;
 
                         function getSortableText(htmlContent) {
-                            return stripHtml(htmlContent || '').toLowerCase(); // 轉換為小寫進行不區分大小寫的排序
+                            // For sorting, we primarily care about the text, ignore images for now
+                            return stripHtml(htmlContent || '').toLowerCase();
                         }
 
                         switch (cardSortKey) {
@@ -6967,31 +6984,29 @@
                                 valB = getSortableText(b.backText);
                                 break;
                             case 'decks':
-                                // 對於多個卡組的情況，先獲取卡組名稱列表，排序後再組合成字串進行比較
                                 const decksA = decksData.filter(d => d.cardIds.includes(a.id)).map(d => d.name).sort().join(', ');
                                 const decksB = decksData.filter(d => d.cardIds.includes(b.id)).map(d => d.name).sort().join(', ');
                                 valA = decksA.toLowerCase();
                                 valB = decksB.toLowerCase();
                                 break;
                             case 'difficulty':
-                                // 為難度定義一個排序順序，方便比較
-                                const difficultyOrder = { 'unknown': 0, 'easy': 1, 'medium': 2, 'hard': 3 }; // 'unknown' 或未評分的排最前面
+                                // Define an order for difficulties for sorting
+                                const difficultyOrder = { 'unknown': 0, 'easy': 1, 'medium': 2, 'hard': 3 };
                                 valA = difficultyOrder[a.difficulty || 'unknown'] || 0;
                                 valB = difficultyOrder[b.difficulty || 'unknown'] || 0;
                                 break;
-                            default:
-                                valA = getSortableText(a.frontText); // 預設按正面內容排序
+                            default: // Should not happen if data-sort-key is always set
+                                valA = getSortableText(a.frontText);
                                 valB = getSortableText(b.frontText);
                         }
 
-                        // 比較並返回排序結果
                         if (valA < valB) {
                             return cardSortOrder === 'asc' ? -1 : 1;
                         }
                         if (valA > valB) {
                             return cardSortOrder === 'asc' ? 1 : -1;
                         }
-                        return 0; // 相等則不改變順序
+                        return 0;
                     });
 
 
