@@ -3085,73 +3085,75 @@
         }
 
         function convertDeltaToHTML(delta) {
-            if (!delta || !delta.ops || delta.ops.length === 0) {
-                return '';
-            }
-
-            let html = '';
-            let currentLine = '';
-            let currentLineAttributes = {};
-
-            delta.ops.forEach(op => {
-                const attributes = op.attributes || {};
-                let text = op.insert;
-
-                if (typeof text === 'string') {
-                    // 處理換行符
-                    if (text === '\n') {
-                        // 結束當前行，並應用區塊格式
-                        let lineTag = 'p';
-                        let lineClasses = '';
-                        let lineStyles = '';
-
-                        if (currentLineAttributes.align) {
-                            lineClasses += ` ql-align-${currentLineAttributes.align}`;
-                        }
-                        // 可以擴展支持 header, list 等
-
-                        html += `<${lineTag} class="${lineClasses.trim()}" style="${lineStyles}">` + (currentLine || '<br>') + `</${lineTag}>`;
-
-                        // 重置下一行
-                        currentLine = '';
-                        currentLineAttributes = attributes; // 換行符上的屬性是下一行的屬性
-                    } else {
-                        // 處理普通文本
-                        // HTML 編碼以防止 XSS
-                        text = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-                        let styledText = text;
-
-                        // 應用行內格式
-                        if (attributes.bold) styledText = `<strong>${styledText}</strong>`;
-                        if (attributes.italic) styledText = `<em>${styledText}</em>`;
-                        if (attributes.underline) styledText = `<u>${styledText}</u>`;
-                        if (attributes.strike) styledText = `<s>${styledText}</s>`;
-
-                        // 處理字體大小
-                        if (attributes.size) {
-                           styledText = `<span class="ql-size-${attributes.size}">${styledText}</span>`;
-                        }
-
-                        currentLine += styledText;
+                    if (!delta || !delta.ops || delta.ops.length === 0) {
+                        return '';
                     }
-                } else if (op.insert && op.insert.image) {
-                    // 處理圖片
-                    currentLine += `<img src="${op.insert.image}" style="max-width: 100%; height: auto;">`;
+
+                    let html = '';
+                    let currentLine = '';
+                    let currentLineAttributes = {};
+
+                    // 輔助函數來生成帶屬性的標籤
+                    function generateStyledSpan(text, attributes) {
+                        let content = text;
+                        if (attributes.bold) content = `<strong>${content}</strong>`;
+                        if (attributes.italic) content = `<em>${content}</em>`;
+                        if (attributes.underline) content = `<u>${content}</u>`;
+                        if (attributes.strike) content = `<s>${content}</s>`;
+
+                        if (attributes.size) {
+                            return `<span class="ql-size-${attributes.size}">${content}</span>`;
+                        }
+                        return content;
+                    }
+
+                    delta.ops.forEach(op => {
+                        if (typeof op.insert === 'string') {
+                            const lines = op.insert.split('\n');
+                            lines.forEach((line, index) => {
+                                if (line) {
+                                    currentLine += generateStyledSpan(line, op.attributes || {});
+                                }
+
+                                if (index < lines.length - 1) {
+                                    // 這是一個換行符，結束當前行
+                                    let tag = 'p';
+                                    let classes = '';
+                                    const attributesForLine = op.attributes || currentLineAttributes;
+
+                                    if (attributesForLine.align) {
+                                        classes += `ql-align-${attributesForLine.align}`;
+                                    }
+
+                                    html += `<${tag} class="${classes.trim()}">${currentLine || '<br>'}</${tag}>`;
+
+                                    // 重置
+                                    currentLine = '';
+                                    currentLineAttributes = {};
+                                }
+                            });
+                             // 將當前操作的區塊格式（如對齊）保存下來，供下一行使用
+                             if(op.attributes && op.attributes.align) {
+                                currentLineAttributes.align = op.attributes.align;
+                             }
+
+                        } else if (op.insert && op.insert.image) {
+                            currentLine += `<img src="${op.insert.image}" style="max-width: 100%; height: auto; display: block;">`;
+                        }
+                    });
+
+                    // 處理文件末尾最後一行
+                    if (currentLine) {
+                        let tag = 'p';
+                        let classes = '';
+                         if (currentLineAttributes.align) {
+                            classes += `ql-align-${currentLineAttributes.align}`;
+                        }
+                        html += `<${tag} class="${classes.trim()}">${currentLine}</${tag}>`;
+                    }
+
+                    return html;
                 }
-            });
-
-            // 處理檔案末尾可能遺留的最後一行
-            if (currentLine) {
-                 let lineTag = 'p';
-                 let lineClasses = '';
-                 if (currentLineAttributes.align) {
-                    lineClasses += ` ql-align-${currentLineAttributes.align}`;
-                 }
-                 html += `<${lineTag} class="${lineClasses.trim()}">` + currentLine + `</${lineTag}>`;
-            }
-
-            return html;
-        }
 
         // 應用區塊級屬性（如對齊）到段落
         function applyBlockAttributes(element, attributes) {
