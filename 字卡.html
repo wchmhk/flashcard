@@ -2222,256 +2222,136 @@
 
         // 從 Google Sheets 載入數據
         function loadGSheetsData() {
-            // 檢查是否設置了API密鑰
-            if (!GOOGLE_API_KEY) {
-                // 提示用戶設置API密鑰
-                showNotification('請先設置Google API密鑰');
-
-                // 自動打開API設置對話框
-                const apiSettingsModal = document.getElementById('apiSettingsModal');
-                if (apiSettingsModal) {
-                    apiSettingsModal.classList.remove('hidden');
-
-                    // 聚焦到API密鑰輸入框
-                    var googleApiKeyInput = document.getElementById('googleApiKeyInput');
-                    if (googleApiKeyInput) {
-                        googleApiKeyInput.focus();
+                    if (!GOOGLE_API_KEY) {
+                        showNotification('請先設置Google API密鑰');
+                        const apiSettingsModal = document.getElementById('apiSettingsModal');
+                        if (apiSettingsModal) {
+                            apiSettingsModal.classList.remove('hidden');
+                            const googleApiKeyInput = document.getElementById('googleApiKeyInput');
+                            if (googleApiKeyInput) googleApiKeyInput.focus();
+                        }
+                        return;
                     }
-                }
 
-                return;
-            }
-                        const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
-            const enableSync = document.getElementById('enableSyncGSheets').checked;
+                    const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
+                    if (!gSheetsUrl) {
+                        showNotification('請輸入 Google Sheets URL');
+                        return;
+                    }
+                    if (!isValidGSheetsUrl(gSheetsUrl)) {
+                        showNotification('請輸入有效的 Google Sheets URL');
+                        return;
+                    }
 
-            if (!gSheetsUrl) {
-                showNotification('請輸入 Google Sheets URL');
-                return;
-            }
+                    const loadBtn = document.getElementById('loadGSheetsBtn');
+                    const originalText = loadBtn.textContent;
+                    loadBtn.disabled = true;
+                    loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
 
-            // 驗證 URL 格式
-            if (!isValidGSheetsUrl(gSheetsUrl)) {
-                showNotification('請輸入有效的 Google Sheets URL');
-                return;
-            }
+                    const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
 
-            var googleApiKeyInput = document.getElementById('googleApiKeyInput');
-            if (!googleApiKeyInput) {
-                console.warn('找不到 googleApiKeyInput 元素');
-                return; // 如果元素不存在，退出函數
-            }
+                    loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, false)
+                        .then(() => {
+                            loadBtn.disabled = false;
+                            loadBtn.textContent = originalText;
+                            showNotification('成功載入 Google Sheets 數據（含格式）');
 
-            // 添加輸入事件監聽器，即時更新狀態顯示
-            googleApiKeyInput.addEventListener('input', function() {
-                // 獲取當前輸入的值
-                const currentInputValue = this.value.trim();
+                            // --- START OF QUICK IMPORT FIX ---
+                            setTimeout(() => {
+                                if (confirm('成功載入數據！是否直接導入所有工作表到新卡組？')) {
+                                    const importResultsLog = [];
+                                    Object.keys(excelSheets).forEach(sheetName => {
+                                        try {
+                                            const sheetInfo = excelSheets[sheetName];
+                                            const sheetData = sheetInfo.data;
+                                            const options = sheetOptions[sheetName];
 
-                // 獲取狀態顯示元素
-                const apiKeyPresent = document.getElementById('apiKeyPresent');
-                const apiKeyMissing = document.getElementById('apiKeyMissing');
+                                            const newDeck = {
+                                                id: Date.now() + Math.floor(Math.random() * 10000),
+                                                name: sheetName,
+                                                description: `從 Google Sheets 導入`,
+                                                cardIds: [],
+                                                createdAt: Date.now()
+                                            };
+                                            decksData.push(newDeck);
 
-                // 根據輸入值更新顯示
-                if (currentInputValue) {
-                    apiKeyPresent.classList.remove('hidden');
-                    apiKeyMissing.classList.add('hidden');
-                    apiKeyPresent.textContent = '已輸入';
-                } else {
-                    apiKeyPresent.classList.add('hidden');
-                    apiKeyMissing.classList.remove('hidden');
-                }
-            });
+                                            let importedCount = 0;
+                                            let skippedCount = 0;
 
-            // 保存按鈕點擊事件 - 修改保存後的顯示
-            saveApiSettingsBtn.addEventListener('click', () => {
-                const newApiKey = googleApiKeyInput.value.trim();
+                                            for (let i = 1; i < sheetData.length; i++) {
+                                                const row = sheetData[i];
+                                                if (!row || row.length === 0) {
+                                                    skippedCount++;
+                                                    continue;
+                                                }
 
-                // 保存API密鑰
-                GOOGLE_API_KEY = newApiKey;
-                localStorage.setItem('google_api_key', newApiKey);
+                                                const rawFrontContent = row[options.frontColumn];
+                                                const rawBackContent = row[options.backColumn];
 
-                // 更新狀態顯示 - 確保更新為最終狀態
-                const apiKeyPresent = document.getElementById('apiKeyPresent');
-                if (newApiKey) {
-                    apiKeyPresent.textContent = '已設定'; // 更改為最終顯示文字
-                }
+                                                if ((!rawFrontContent || !rawFrontContent.formattedValue) &&
+                                                    (!rawBackContent || !rawBackContent.formattedValue)) {
+                                                    skippedCount++;
+                                                    continue;
+                                                }
 
-                // 顯示確認
-                showNotification('API設置已保存');
+                                                // 關鍵修正：將原始物件轉換為Delta，再轉換為HTML
+                                                const frontDelta = convertGSheetsCellToQuillDelta(rawFrontContent);
+                                                const backDelta = convertGSheetsCellToQuillDelta(rawBackContent);
+                                                const frontHtml = convertDeltaToHTML(frontDelta);
+                                                const backHtml = convertDeltaToHTML(backDelta);
 
-                // 關閉對話框
-                apiSettingsModal.classList.add('hidden');
+                                                const newCardId = Date.now() + i + Math.floor(Math.random() * 100000);
+                                                const newCard = {
+                                                    id: newCardId,
+                                                    frontText: frontHtml,
+                                                    backText: backHtml,
+                                                    frontImage: null,
+                                                    backImage: null,
+                                                    nextReview: Date.now(),
+                                                    repetitions: 0,
+                                                    easeFactor: 2.0,
+                                                    interval: 1.0
+                                                };
 
-                // 返回到Google Sheets URL輸入畫面
-                showGSheetsStep(1);
-            });
+                                                cardsData.push(newCard);
+                                                newDeck.cardIds.push(newCardId);
+                                                importedCount++;
+                                            }
 
-            // 顯示載入中狀態
-            const loadBtn = document.getElementById('loadGSheetsBtn');
-            const originalText = loadBtn.textContent;
-            loadBtn.disabled = true;
-            loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
-
-            // 從 URL 獲取 spreadsheetId
-            const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
-
-            // 先嘗試使用 Google API（帶格式），如果失敗則回退到 CSV（無格式）
-            if (GOOGLE_API_KEY) {
-                console.log('使用 Google API 載入格式化數據');
-                loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
-                    .then(() => {
-
-                      // 添加自動導入功能
-                      setTimeout(() => {
-                        // 詢問用戶是否直接導入
-                        if (confirm('成功載入數據！是否直接導入所有工作表到新卡組？')) {
-                            // 處理每個工作表
-                            let totalImportCount = 0;
-
-                            Object.keys(excelSheets).forEach(sheetName => {
-                                if (!excelSheets[sheetName]) return;
-
-                                // 為每個工作表創建新卡組，使用工作表名稱
-                                const newDeck = {
-                                    id: Date.now() + Math.floor(Math.random() * 1000),
-                                    name: `${sheetName}`,
-                                    description: ``,
-                                    cardIds: [],
-                                    createdAt: Date.now()
-                                };
-
-                                // 添加卡組
-                                decksData.push(newDeck);
-
-                                // 處理數據（從第1行開始，跳過標題行）
-                                const sheetData = excelSheets[sheetName].data;
-                                let cardImportCount = 0;
-
-                                // 獲取此工作表的列配置
-                                const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
-                                const backCol = sheetOptions[sheetName]?.backColumn || 1;
-
-                                for (let i = 1; i < sheetData.length; i++) {
-                                    const row = sheetData[i];
-                                    if (!row || !row.length) continue;
-
-                                    // 使用正確的列索引作為正反面
-                                    const frontContent = row[frontCol];
-                                    const backContent = row[backCol];
-
-                                    // 處理內容，支持格式化和純文本
-                                    let frontText, backText;
-
-                                    if (excelSheets[sheetName].hasFormatting) {
-                                        // 處理格式化內容
-                                        frontText = typeof frontContent === 'object' && frontContent.delta
-                                            ? convertDeltaToHTML(frontContent.delta)
-                                            : (frontContent ? frontContent.toString() : '');
-
-                                        backText = typeof backContent === 'object' && backContent.delta
-                                            ? convertDeltaToHTML(backContent.delta)
-                                            : (backContent ? backContent.toString() : '');
-                                    } else {
-                                        // 處理純文本
-                                        frontText = frontContent ? frontContent.toString() : '';
-                                        backText = backContent ? backContent.toString() : '';
-                                    }
-
-                                    // 跳過空行
-                                    if (!frontText && !backText) continue;
-
-                                    // 創建新卡片
-                                    // 創建一個基於整個工作表名稱的更可靠哈希值
-                                    const getSheetHash = (str) => {
-                                        let hash = 0;
-                                        for (let i = 0; i < str.length; i++) {
-                                            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                                            hash |= 0; // 轉換為32位整數
+                                            importResultsLog.push({
+                                                sheetName,
+                                                success: true,
+                                                importedCount,
+                                                targetDeckName: newDeck.name
+                                            });
+                                        } catch (e) {
+                                            console.error(`快速導入工作表 ${sheetName} 失敗:`, e);
+                                            importResultsLog.push({ sheetName, success: false, message: e.message });
                                         }
-                                        return Math.abs(hash);
-                                    };
-                                    const sheetHash = getSheetHash(sheetName) * 1000;
-                                    const newCardId = Date.now() + i + sheetHash + Math.floor(Math.random() * 1000);
-                                    const newCard = {
-                                        id: newCardId,
-                                        frontText: frontText,
-                                        backText: backText,
-                                        nextReview: Date.now(),
-                                        repetitions: 0,
-                                        easeFactor: 2.0,
-                                        interval: 1.0
-                                    };
+                                    });
 
-                                    // 添加卡片
-                                    cardsData.push(newCard);
-                                    newDeck.cardIds.push(newCardId);
-                                    cardImportCount++; // 正確計算每個工作表導入的卡片數
+                                    const totalImported = importResultsLog.reduce((sum, r) => sum + (r.success ? r.importedCount : 0), 0);
+                                    showNotification(`總共導入了 ${totalImported} 張字卡`);
+
+                                    loadDeckList();
+                                    loadAllDecks();
+                                    showStorageReminder();
+                                    closeGSheetsImportModal();
+                                } else {
+                                    // 如果用戶選擇不快速導入，則顯示詳細的預覽畫面
+                                    showGSheetsStep(2);
+                                    preparePreviewData();
                                 }
+                            }, 100);
+                            // --- END OF QUICK IMPORT FIX ---
 
-                                // 添加到總計數
-                                totalImportCount += cardImportCount;
-                            });
-
-                            // 顯示總體導入結果
-                            if (totalImportCount > 0) {
-                                showNotification(`總共從 ${Object.keys(excelSheets).length} 個工作表導入了 ${totalImportCount} 張字卡`);
-                            }
-
-                            // 刷新UI
-                            loadDeckList();
-                            showStorageReminder();
-
-                            // 修改：返回到URL輸入畫面而不是關閉對話框
-                            showGSheetsStep(1);
-                            showNotification('導入完成，可以繼續輸入新的URL');
-                        }
-                      }, 500); // 短暫延遲確保通知顯示後再彈出確認
-
-                        // 顯示預覽
-                        showGSheetsStep(2);
-                        preparePreviewData();
-
-                        // 恢復按鈕狀態
-                        loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
-
-                        showNotification('成功載入 Google Sheets 數據（含格式）');
-
-
-                    })
-
-
-
-                    .catch(error => {
-                        console.error('Google Sheets API 錯誤:', error);
-
-                        // 檢查是否是API密鑰錯誤
-                        if (error.message && (
-                            error.message.includes('API key') ||
-                            error.message.includes('invalid key') ||
-                            error.message.includes('unauthorized')
-                        )) {
-                            showNotification('Google API密鑰無效，請重新設置');
-
-                            // 自動打開API設置對話框
-                            const apiSettingsModal = document.getElementById('apiSettingsModal');
-                            if (apiSettingsModal) {
-                                apiSettingsModal.classList.remove('hidden');
-                            }
-                        } else {
+                        }).catch(error => {
+                            loadBtn.disabled = false;
+                            loadBtn.textContent = originalText;
                             showNotification(`載入失敗: ${error.message}`);
-                        }
+                        });
+                }
 
-
-                        // 恢復按鈕狀態
-                        loadBtn.disabled = false;
-                        loadBtn.textContent = originalText;
-                    });
-
-            } else {
-                // 使用 CSV 方式（無格式）
-                loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
-            }
-        }
 
         // 使用 CSV 方式載入 Google Sheets 數據（無格式）
         function loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText) {
