@@ -2725,11 +2725,11 @@
                                         const value = cell.formattedValue || '';
 
                                         // 創建深拷貝以避免修改唯讀屬性
-                                        const textFormatRunsCopyCopy = cell.textFormatRunsCopyCopy ?
-                                            JSON.parse(JSON.stringify(cell.textFormatRunsCopyCopy)) : [];
+                                        const textFormatRunsCopy = cell.textFormatRuns ?
+                                            JSON.parse(JSON.stringify(cell.textFormatRuns)) : [];
 
-                                        const effectiveFormatCopyCopy = cell.effectiveFormatCopyCopy ?
-                                            JSON.parse(JSON.stringify(cell.effectiveFormatCopyCopy)) : {};
+                                        const effectiveFormatCopy = cell.effectiveFormat ?
+                                            JSON.parse(JSON.stringify(cell.effectiveFormat)) : {};
 
                                         // 安全地創建帶格式的單元格對象
                                         const formattedCell = {
