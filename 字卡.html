@@ -3865,8 +3865,17 @@
             let match = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
             if (match && match[1]) {
                 const fileId = match[1];
-                // 返回可以直接在 <img> 標籤中使用的連結格式
-                return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                // 原始的直接連結
+                const directAccessUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+
+                // 【關鍵修改】使用代理伺服器來繞過 Google 的 403 錯誤
+                // 這裡我們使用 allorigins.win 作為代理
+                // 它會獲取目標 URL 的內容並以 JSON 格式返回
+                // 但對於圖片，我們可以用 images.weserv.nl 或其他專門的圖片代理
+
+                // 使用 images.weserv.nl 代理，它專門處理圖片，非常高效
+                // 我們需要將原始 URL 編碼後傳遞給它
+                return `https://images.weserv.nl/?url=${encodeURIComponent(directAccessUrl)}`;
             }
             return null; // 如果不是有效的 Google Drive 連結，返回 null
         }
