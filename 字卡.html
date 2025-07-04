@@ -7983,6 +7983,9 @@
             try {
                 const savedCards = localStorage.getItem('flashcard_cardsData');
                 const savedDecks = localStorage.getItem('flashcard_decksData');
+                const lastSaved = localStorage.getItem('flashcard_lastSaved');
+                // 【新增】讀取 "關鍵概念一覽表" 的數據
+                const savedExcelSheets = localStorage.getItem('flashcard_excelSheets');
 
                 if (savedCards) {
                     cardsData = JSON.parse(savedCards);
@@ -7993,11 +7996,25 @@
                     decksData = JSON.parse(savedDecks);
                     console.log(`從 localStorage 載入了 ${decksData.length} 個卡組。`);
                 }
+
+                // 【新增】如果存在已儲存的工作表數據，則載入
+                if (savedExcelSheets) {
+                    excelSheets = JSON.parse(savedExcelSheets);
+                    console.log(`從 localStorage 載入了 ${Object.keys(excelSheets).length} 個工作表數據。`);
+                }
+
+
+                // 載入後更新時間戳顯示
+                if(lastSaved) {
+                    updateLastSavedTimestamp(lastSaved);
+                }
+
             } catch (e) {
                 console.error("從 localStorage 讀取數據失敗:", e);
                 // 如果解析失敗，重置為空，防止程式崩潰
                 cardsData = [];
                 decksData = [];
+                excelSheets = {}; // 【新增】確保在出錯時也清空
                 showNotification("錯誤：讀取本地存檔失敗，將以空白狀態啟動。", 5000);
             }
         }
@@ -9298,6 +9315,8 @@
                                                 localStorage.removeItem('flashcard_cardsData');
                                                 localStorage.removeItem('flashcard_decksData');
                                                 localStorage.removeItem('flashcard_lastSaved');
+                                                // 【新增】清除 "關鍵概念一覽表" 的數據
+                                                localStorage.removeItem('flashcard_excelSheets');
                                                 localStorage.removeItem('flashcard_firstVisit'); // 也清除訪問記錄，以便下次顯示歡迎訊息
 
                                                 // 清空記憶體中的數據
@@ -9343,6 +9362,28 @@
                                         cardsData = [];
                                         decksData = [];
                                         showNotification("錯誤：讀取本地存檔失敗，將以空白狀態啟動。", 5000);
+                                    }
+                                }
+
+                                // 【新增】將數據保存到瀏覽器的 localStorage
+                                function saveDataToLocalStorage() {
+                                    try {
+                                        const now = new Date();
+                                        // 將 cardsData 和 decksData 陣列轉換為 JSON 字串並儲存
+                                        localStorage.setItem('flashcard_cardsData', JSON.stringify(cardsData));
+                                        localStorage.setItem('flashcard_decksData', JSON.stringify(decksData));
+                                        // 【新增】儲存 "關鍵概念一覽表" 的數據來源
+                                        localStorage.setItem('flashcard_excelSheets', JSON.stringify(excelSheets));
+
+                                        // 記錄儲存時間
+                                        localStorage.setItem('flashcard_lastSaved', now.toISOString());
+
+                                        console.log("數據已成功保存到 localStorage。");
+                                        updateLastSavedTimestamp(now); // 更新頁面上的時間顯示
+                                    } catch (e) {
+                                        console.error("保存數據到 localStorage 失敗:", e);
+                                        // 如果儲存失敗（例如空間已滿），可以提示使用者
+                                        showNotification("錯誤：無法自動保存您的數據！請嘗試手動匯出。", 5000);
                                     }
                                 }
 
