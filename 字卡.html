@@ -680,14 +680,21 @@
               <!-- Sheet buttons will be dynamically added here -->
           </div>
 
-          <!-- Search Bar for Key Concepts (新增的部分) -->
-          <div id="keyConceptsSearchContainer" class="relative mb-4 hidden">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                  </svg>
+          <!-- Controls for Key Concepts (Search and Toggle All) -->
+          <div id="keyConceptsControlsContainer" class="flex items-center gap-4 mb-4 hidden">
+              <!-- Search Bar -->
+              <div class="relative flex-grow">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                      </svg>
+                  </div>
+                  <input type="text" id="keyConceptsSearchInput" placeholder="在此工作表中搜尋..." class="bg-white dark:bg-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base">
               </div>
-              <input type="text" id="keyConceptsSearchInput" placeholder="在此工作表中搜尋..." class="bg-white dark:bg-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base">
+              <!-- Toggle All Button -->
+              <button id="toggleAllConceptsBtn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm whitespace-nowrap hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                  展開全部
+              </button>
           </div>
 
           <!-- Container for the concepts of the selected sheet -->
@@ -8920,12 +8927,13 @@
                                     });
                                 }
 
-                                // 3. 載入「關鍵概念一覽表」視圖的主函數
+                                // 3. 載入「關鍵概念一覽表」視圖的主函數 (已加入切換按鈕邏輯)
                                 function loadKeyConceptsView() {
                                     const sheetListContainer = document.getElementById('keyConceptsSheetList');
                                     const contentContainer = document.getElementById('keyConceptsContent');
-                                    const searchContainer = document.getElementById('keyConceptsSearchContainer');
+                                    const controlsContainer = document.getElementById('keyConceptsControlsContainer');
                                     const searchInput = document.getElementById('keyConceptsSearchInput');
+                                    const toggleAllBtn = document.getElementById('toggleAllConceptsBtn');
 
                                     sheetListContainer.innerHTML = '';
                                     contentContainer.innerHTML = ''; // 清除先前內容
@@ -8942,12 +8950,12 @@
                                             </div>
                                         `;
                                         document.getElementById('goToImportBtnFromConcepts').addEventListener('click', openGSheetsImportModal);
-                                        searchContainer.classList.add('hidden'); // 隱藏搜尋欄
+                                        controlsContainer.classList.add('hidden'); // 隱藏控制項
                                         return;
                                     }
 
-                                    // 有數據時，顯示搜尋欄並清空
-                                    searchContainer.classList.remove('hidden');
+                                    // 有數據時，顯示控制項並清空搜尋框
+                                    controlsContainer.classList.remove('hidden');
                                     searchInput.value = '';
 
                                     // 為每個工作表創建按鈕
@@ -8975,13 +8983,37 @@
                                         }
                                     });
 
+                                    // 【關鍵修改】為「展開/收合全部」按鈕設置事件監聽器 (確保只設置一次)
+                                    if (!toggleAllBtn.listenerAttached) {
+                                        toggleAllBtn.addEventListener('click', () => {
+                                            const currentState = toggleAllBtn.dataset.state || 'closed';
+                                            const detailsElements = document.querySelectorAll('#keyConceptsContent details');
+                                            const shouldOpen = currentState === 'closed';
+
+                                            detailsElements.forEach(detail => {
+                                                detail.open = shouldOpen;
+                                            });
+
+                                            // 更新按鈕狀態和文字
+                                            if (shouldOpen) {
+                                                toggleAllBtn.textContent = '收合全部';
+                                                toggleAllBtn.dataset.state = 'open';
+                                            } else {
+                                                toggleAllBtn.textContent = '展開全部';
+                                                toggleAllBtn.dataset.state = 'closed';
+                                            }
+                                        });
+                                        toggleAllBtn.listenerAttached = true; // 標記已設置監聽器
+                                    }
+
+
                                     // 自動點擊並顯示第一個工作表的內容
                                     if (sheetListContainer.firstChild) {
                                         sheetListContainer.firstChild.click();
                                     }
                                 }
 
-                                // 4. 顯示指定工作表的概念列表 (已加入搜尋與空行過濾功能)
+                                // 4. 顯示指定工作表的概念列表 (已加入搜尋、空行過濾、重置切換按鈕狀態)
                                 function displaySheetConcepts(sheetName, searchText = '') {
                                     const contentContainer = document.getElementById('keyConceptsContent');
                                     contentContainer.innerHTML = ''; // 清空
@@ -9016,8 +9048,7 @@
                                         const definition = row[1]; // 第 2 欄
                                         const extraInfo = row.length > 2 ? row[2] : null; // 第 3 欄 (可選)
 
-                                        // 【關鍵修改】如果第一欄和第二欄的內容都為空，則跳過此行
-                                        // 使用 getCellTextContent 和 trim() 來確保能處理不同格式和只含空白的儲存格
+                                        // 如果第一欄和第二欄的內容都為空，則跳過此行
                                         if (!getCellTextContent(concept).trim() && !getCellTextContent(definition).trim()) {
                                             return; // continue a forEach loop
                                         }
@@ -9062,6 +9093,13 @@
                                         contentContainer.appendChild(detailsEl);
                                     });
 
+                                    // 【關鍵修改】重置「展開/收合全部」按鈕的狀態
+                                    const toggleBtn = document.getElementById('toggleAllConceptsBtn');
+                                    if (toggleBtn) {
+                                        toggleBtn.textContent = '展開全部';
+                                        toggleBtn.dataset.state = 'closed';
+                                    }
+
                                     // 如果遍歷完所有行後，沒有任何項目被顯示
                                     if (itemsDisplayed === 0) {
                                         if (searchText) {
@@ -9069,6 +9107,9 @@
                                         } else {
                                             contentContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">此工作表無有效內容可顯示。</p>';
                                         }
+                                        toggleBtn.style.display = 'none'; // 如果沒有內容，隱藏切換按鈕
+                                    } else {
+                                        toggleBtn.style.display = ''; // 有內容則顯示按鈕
                                     }
                                 }
 
