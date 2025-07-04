@@ -1517,30 +1517,6 @@
             </div>
         </div>
 
-        <!-- Data storage reminder -->
-        <div id="storageReminder" class="fixed bottom-4 left-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 p-4 rounded shadow-lg hidden">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-yellow-600 dark:text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700 dark:text-yellow-200">
-                        請記得匯出您的數據！資料只暫存在記憶體中，關閉或重新整理頁面將會遺失。
-                    </p>
-                    <div class="mt-2">
-                        <button type="button" id="exportReminderBtn" class="text-sm text-yellow-700 dark:text-yellow-300 font-medium bg-yellow-50 dark:bg-yellow-800 px-2 py-1 rounded">
-                            立即匯出
-                        </button>
-                        <button type="button" id="dismissReminderBtn" class="text-sm text-yellow-700 dark:text-yellow-300 font-medium ml-2 underline">
-                            我知道了
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Google Sheets 導入衝突解決對話框 -->
                 <div id="gSheetsConflictModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-[51] overflow-y-auto py-10">
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 my-auto">
@@ -2118,6 +2094,7 @@
             text: content,
             image: null
           };
+          saveDataToLocalStorage();
         }
 
         function initApiSettings() {
@@ -2512,6 +2489,7 @@
                         // 使用 CSV 方式（無格式）
                         loadGSheetsDataWithCSV(spreadsheetId, gSheetsUrl, enableSync, loadBtn, originalText);
                     }
+                    saveDataToLocalStorage();
                 }
 
         // 使用 CSV 方式載入 Google Sheets 數據（無格式）
@@ -5021,6 +4999,9 @@
                 loadDeckList();
                 loadAllDecks();
 
+                // 【關鍵新增】
+                saveDataToLocalStorage();
+
                 // 顯示存儲提醒
                 showStorageReminder();
             } else {
@@ -5190,6 +5171,8 @@
 
             // 顯示存儲提醒
             showStorageReminder();
+
+            saveDataToLocalStorage();
         }
 
         // Delete selected cards
@@ -5214,6 +5197,8 @@
 
             // Show storage reminder as data has changed
             showStorageReminder();
+
+            saveDataToLocalStorage();
         }
 
         // Delete selected decks
@@ -5257,6 +5242,8 @@
 
                     // Show storage reminder
                     showStorageReminder();
+
+                    saveDataToLocalStorage();
                 }
             });
         }
@@ -6510,6 +6497,7 @@
             if (cardIndex !== -1) {
                 cardsData[cardIndex] = {...card};
             }
+            saveDataToLocalStorage();
         }
 
         // Show current card to review
@@ -6947,6 +6935,8 @@
 
           cardsData.push(newCard);
           return newCardId;
+
+          saveDataToLocalStorage();
         }
 
         // Load all cards for management (Excel-like table)
@@ -7341,6 +7331,7 @@
 
             // Show storage reminder as data has changed
             showStorageReminder();
+            saveDataToLocalStorage();
         }
 
         // Delete a card
@@ -7362,6 +7353,7 @@
 
             // Show storage reminder as data has changed
             showStorageReminder();
+            saveDataToLocalStorage();
         }
 
         // Load all decks for management
@@ -7833,6 +7825,7 @@
 
                 // Show storage reminder as data has changed
                 showStorageReminder();
+                saveDataToLocalStorage();
             } else {
                 showNotification('卡組名稱不能為空');
             }
@@ -7896,6 +7889,7 @@
 
                     // 顯示存儲提醒
                     showStorageReminder();
+                    saveDataToLocalStorage();
                 }
             });
         }
@@ -7921,6 +7915,44 @@
                     }
                 }, 500);
             }, duration);
+        }
+
+        // 【新增】將數據保存到瀏覽器的 localStorage
+        function saveDataToLocalStorage() {
+            try {
+                // 將 cardsData 和 decksData 陣列轉換為 JSON 字串並儲存
+                localStorage.setItem('flashcard_cardsData', JSON.stringify(cardsData));
+                localStorage.setItem('flashcard_decksData', JSON.stringify(decksData));
+                console.log("數據已成功保存到 localStorage。");
+            } catch (e) {
+                console.error("保存數據到 localStorage 失敗:", e);
+                // 如果儲存失敗（例如空間已滿），可以提示使用者
+                showNotification("錯誤：無法自動保存您的數據！請嘗試手動匯出。", 5000);
+            }
+        }
+
+        // 【新增】從瀏覽器的 localStorage 載入數據
+        function loadDataFromLocalStorage() {
+            try {
+                const savedCards = localStorage.getItem('flashcard_cardsData');
+                const savedDecks = localStorage.getItem('flashcard_decksData');
+
+                if (savedCards) {
+                    cardsData = JSON.parse(savedCards);
+                    console.log(`從 localStorage 載入了 ${cardsData.length} 張字卡。`);
+                }
+
+                if (savedDecks) {
+                    decksData = JSON.parse(savedDecks);
+                    console.log(`從 localStorage 載入了 ${decksData.length} 個卡組。`);
+                }
+            } catch (e) {
+                console.error("從 localStorage 讀取數據失敗:", e);
+                // 如果解析失敗，重置為空，防止程式崩潰
+                cardsData = [];
+                decksData = [];
+                showNotification("錯誤：讀取本地存檔失敗，將以空白狀態啟動。", 5000);
+            }
         }
 
         // 【新增】統一的UI刷新函數，在導入數據後調用
@@ -8599,6 +8631,8 @@
                     // 顯示導入結果
                     showExcelStep(3);
                     displayMultiSheetImportResults(results);
+
+                    saveDataToLocalStorage();
                 }
 
                                 // 顯示多工作表導入結果
@@ -8684,6 +8718,9 @@
 
                                 // Initialize app
                                 function initApp() {
+
+                                  // 【關鍵新增】在應用程式初始化時，首先載入本地儲存的數據
+                                  loadDataFromLocalStorage();
 
                                   // 初始化 Google Sheets 導入功能
                                   initGSheetsImport();
