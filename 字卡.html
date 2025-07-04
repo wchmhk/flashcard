@@ -7961,6 +7961,15 @@
             }
         }
 
+        // 輔助函數：將純文字中的換行符轉為HTML的<br>標籤
+                function processRawTextForCard(rawText) {
+                    if (!rawText || typeof rawText !== 'string') {
+                        return '';
+                    }
+                    // 替換所有類型的換行符為 <br>
+                    return rawText.replace(/\r\n/g, '<br>').replace(/\n/g, '<br>');
+                }
+
         // Excel Import Functions
         // 初始化Excel導入功能
         function initExcelImport() {
@@ -8448,153 +8457,159 @@
         }
 
         // 修改的importExcelData函數 - 支持多工作表
-        function importExcelData() {
-            if (Object.keys(excelSheets).length === 0) {
-                showNotification('沒有可用的工作表數據');
-                return;
-            }
+                function importExcelData() {
+                    if (Object.keys(excelSheets).length === 0) {
+                        showNotification('沒有可用的工作表數據');
+                        return;
+                    }
 
-            // 收集導入結果
-            const importResults = [];
+                    // 收集導入結果
+                    const results = [];
 
-            // 處理每個工作表
-            for (const sheetName of Object.keys(excelSheets)) {
-                const sheetData = excelSheets[sheetName].data;
-                const mapping = sheetMappings[sheetName];
-                const options = sheetOptions[sheetName];
+                    // 處理每個工作表
+                    for (const sheetName of Object.keys(excelSheets)) {
+                        const sheetData = excelSheets[sheetName].data;
+                        const mapping = sheetMappings[sheetName];
+                        const options = sheetOptions[sheetName];
 
-                // 驗證必要的選擇
-                if (options.frontColumn === options.backColumn) {
-                    importResults.push({
-                        sheetName,
-                        success: false,
-                        message: '正面和背面不能選擇相同的欄位'
-                    });
-                    continue;
-                }
+                        // 驗證必要的選擇
+                        if (options.frontColumn === options.backColumn) {
+                            results.push({
+                                sheetName,
+                                success: false,
+                                message: '正面和背面不能選擇相同的欄位'
+                            });
+                            continue;
+                        }
 
-                // 獲取目標卡組或創建新卡組
-                let targetDeckId;
-                let targetDeckName;
-                let newDeckCreated = false;
+                        // 獲取目標卡組或創建新卡組
+                        let targetDeckId;
+                        let targetDeckName;
+                        let newDeckCreated = false;
 
-                try {
-                    if (mapping.deckOption === 'existing') {
-                        // 使用現有卡組
-                        targetDeckId = parseInt(mapping.deckId);
-
-                        const deckIndex = decksData.findIndex(d => d.id === targetDeckId);
-                                                if (deckIndex === -1) {
-                                                    importResults.push({
-                                                        sheetName,
-                                                        success: false,
-                                                        message: '找不到選擇的卡組'
-                                                    });
-                                                    continue;
-                                                }
-                                                targetDeckName = decksData[deckIndex].name;
-                                            } else {
-                                                // 創建新卡組
-                                                const deckName = mapping.newDeckName.trim();
-                                                if (!deckName) {
-                                                    importResults.push({
-                                                        sheetName,
-                                                        success: false,
-                                                        message: '卡組名稱不能為空'
-                                                    });
-                                                    continue;
-                                                }
-
-                                                // 建立新卡組
-                                                const newDeck = {
-                                                    id: Date.now() + Math.floor(Math.random() * 1000), // 確保ID唯一
-                                                    name: deckName,
-                                                    description: mapping.newDeckDescription.trim(),
-                                                    cardIds: [],
-                                                    createdAt: Date.now()
-                                                };
-
-                                                decksData.push(newDeck);
-                                                targetDeckId = newDeck.id;
-                                                targetDeckName = newDeck.name;
-                                                newDeckCreated = true;
-                                            }
-
-                                            // 取得目標卡組
-                                            const targetDeck = decksData.find(d => d.id === targetDeckId);
-                                            let importedCount = 0;
-                                            let skippedCount = 0;
-
-                                            // 從第二行開始循環（跳過標題）
-                                            for (let i = 1; i < sheetData.length; i++) {
-                                                const row = sheetData[i];
-
-                                                // 獲取原始的正面和背面內容
-                                                const rawFrontContent = row[options.frontColumn];
-                                                const rawBackContent = row[options.backColumn];
-
-                                                // 跳过缺少必要内容的行
-                                                if (!rawFrontContent && !rawBackContent) {
-                                                    skippedCount++;
-                                                    continue;
-                                                }
-
-                                                // 處理正面內容，檢測base64圖片
-                                                const processedFront = processImportedContent(rawFrontContent);
-                                                const frontText = processedFront.text;
-                                                const frontImage = processedFront.image;
-
-                                                // 處理背面內容，檢測base64圖片
-                                                const processedBack = processImportedContent(rawBackContent);
-                                                const backText = processedBack.text;
-                                                const backImage = processedBack.image;
-
-                                                // 創建新卡片時設置圖片內容
-                                                const newCard = {
-                                                    id: newCardId,
-                                                    frontText: frontText,
-                                                    frontImage: frontImage,
-                                                    backText: backText,
-                                                    backImage: backImage,
-                                                    nextReview: Date.now(),
-                                                    repetitions: 0,
-                                                    easeFactor: 2.0,
-                                                    interval: 1.0
-                                                };
-
-                                                // 添加新字卡
-                                                cardsData.push(newCard);
-                                                targetDeck.cardIds.push(newCardId);
-                                                importedCount++;
-                                            }
-
-                                            // 記錄導入結果
-                                            importResults.push({
-                                                sheetName,
-                                                success: true,
-                                                targetDeckName,
-                                                importedCount,
-                                                skippedCount,
-                                                newDeckCreated
-                                            });
-
-                                        } catch (error) {
-                                            console.error(`工作表 "${sheetName}" 導入出錯:`, error);
-                                            importResults.push({
-                                                sheetName,
-                                                success: false,
-                                                message: '導入數據過程中發生錯誤'
-                                            });
-                                        }
-                                    }
-
-                                    // 顯示導入結果
-                                    showExcelStep(3);
-                                    displayMultiSheetImportResults(importResults);
-
-                                    // 顯示提醒，更新相關UI
-                                    showStorageReminder();
+                        try {
+                            if (mapping.deckOption === 'existing') {
+                                // 使用現有卡組
+                                targetDeckId = parseInt(mapping.deckId);
+                                const deckIndex = decksData.findIndex(d => d.id === targetDeckId);
+                                if (deckIndex === -1) {
+                                    results.push({
+                                        sheetName,
+                                        success: false,
+                                        message: '找不到選擇的卡組'
+                                    });
+                                    continue;
                                 }
+                                targetDeckName = decksData[deckIndex].name;
+                            } else {
+                                // 創建新卡組
+                                const deckName = mapping.newDeckName.trim();
+                                if (!deckName) {
+                                    results.push({
+                                        sheetName,
+                                        success: false,
+                                        message: '卡組名稱不能為空'
+                                    });
+                                    continue;
+                                }
+
+                                // 建立新卡組
+                                const newDeck = {
+                                    id: Date.now() + Math.floor(Math.random() * 1000), // 確保ID唯一
+                                    name: deckName,
+                                    description: mapping.newDeckDescription.trim(),
+                                    cardIds: [],
+                                    createdAt: Date.now()
+                                };
+
+                                decksData.push(newDeck);
+                                targetDeckId = newDeck.id;
+                                targetDeckName = newDeck.name;
+                                newDeckCreated = true;
+                            }
+
+                            // 取得目標卡組
+                            const targetDeck = decksData.find(d => d.id === targetDeckId);
+                            let importedCount = 0;
+                            let skippedCount = 0;
+
+                            // 從第二行開始循環（跳過標題）
+                            for (let i = 1; i < sheetData.length; i++) {
+                                const row = sheetData[i];
+                                if (!row) { // 確保行存在
+                                    skippedCount++;
+                                    continue;
+                                }
+
+                                // 獲取原始的正面和背面內容
+                                const rawFrontContent = row[options.frontColumn];
+                                const rawBackContent = row[options.backColumn];
+
+                                // 跳过缺少必要内容的行
+                                if (!rawFrontContent && !rawBackContent) {
+                                    skippedCount++;
+                                    continue;
+                                }
+
+                                // 【關鍵修改】處理正面內容，檢測base64圖片並處理換行
+                                const processedFront = processImportedContent(rawFrontContent);
+                                const frontText = processRawTextForCard(processedFront.text); // <--- 處理換行
+                                const frontImage = processedFront.image;
+
+                                // 【關鍵修改】處理背面內容，檢測base64圖片並處理換行
+                                const processedBack = processImportedContent(rawBackContent);
+                                const backText = processRawTextForCard(processedBack.text); // <--- 處理換行
+                                const backImage = processedBack.image;
+
+                                // 產生唯一的卡片ID
+                                const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
+
+                                // 創建新卡片時設置圖片內容
+                                const newCard = {
+                                    id: newCardId,
+                                    frontText: frontText,
+                                    frontImage: frontImage,
+                                    backText: backText,
+                                    backImage: backImage,
+                                    nextReview: Date.now(),
+                                    repetitions: 0,
+                                    easeFactor: 2.0,
+                                    interval: 1.0
+                                };
+
+                                // 添加新字卡
+                                cardsData.push(newCard);
+                                targetDeck.cardIds.push(newCardId);
+                                importedCount++;
+                            }
+
+                            // 記錄導入結果
+                            results.push({
+                                sheetName,
+                                success: true,
+                                targetDeckName,
+                                importedCount,
+                                skippedCount,
+                                newDeckCreated
+                            });
+
+                        } catch (error) {
+                            console.error(`工作表 "${sheetName}" 導入出錯:`, error);
+                            results.push({
+                                sheetName,
+                                success: false,
+                                message: '導入數據過程中發生錯誤'
+                            });
+                        }
+                    }
+
+                    // 顯示導入結果
+                    showExcelStep(3);
+                    displayMultiSheetImportResults(results);
+
+                    // 顯示提醒，更新相關UI
+                    showStorageReminder();
+                }
 
                                 // 顯示多工作表導入結果
                                 function displayMultiSheetImportResults(results) {
@@ -8966,7 +8981,7 @@
                                     }
                                 }
 
-                                // 4. 顯示指定工作表的概念列表 (已加入搜尋功能)
+                                // 4. 顯示指定工作表的概念列表 (已加入搜尋與空行過濾功能)
                                 function displaySheetConcepts(sheetName, searchText = '') {
                                     const contentContainer = document.getElementById('keyConceptsContent');
                                     contentContainer.innerHTML = ''; // 清空
@@ -8993,15 +9008,7 @@
                                         });
                                     }
 
-                                    // 如果過濾後沒有結果
-                                    if (conceptRows.length === 0) {
-                                        if (searchText) {
-                                            contentContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4">在此工作表中找不到符合「${searchText}」的內容。</p>`;
-                                        } else {
-                                            contentContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">此工作表無內容。</p>';
-                                        }
-                                        return;
-                                    }
+                                    let itemsDisplayed = 0; // 用於計算實際顯示的項目數量
 
                                     // 遍歷過濾後的結果
                                     conceptRows.forEach(row => {
@@ -9009,8 +9016,13 @@
                                         const definition = row[1]; // 第 2 欄
                                         const extraInfo = row.length > 2 ? row[2] : null; // 第 3 欄 (可選)
 
-                                        // 如果第一欄沒有內容，則跳過此行
-                                        if (!concept) return;
+                                        // 【關鍵修改】如果第一欄和第二欄的內容都為空，則跳過此行
+                                        // 使用 getCellTextContent 和 trim() 來確保能處理不同格式和只含空白的儲存格
+                                        if (!getCellTextContent(concept).trim() && !getCellTextContent(definition).trim()) {
+                                            return; // continue a forEach loop
+                                        }
+
+                                        itemsDisplayed++; // 實際要顯示的項目加一
 
                                         const detailsEl = document.createElement('details');
                                         detailsEl.className = 'bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm group';
@@ -9021,7 +9033,7 @@
                                         const conceptHTML = processCellContent(concept);
 
                                         summaryEl.innerHTML = `
-                                            <span>${conceptHTML}</span>
+                                            <span>${conceptHTML || '<span class="italic text-gray-500">無標題</span>'}</span>
                                             <svg class="w-5 h-5 transition-transform duration-300 group-open:rotate-180 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                               <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
@@ -9038,12 +9050,26 @@
                                             answerHTML += `<div class="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">${processCellContent(extraInfo)}</div>`;
                                         }
 
-                                        answerDiv.innerHTML = answerHTML || '<p class="text-gray-500 italic">無詳細內容。</p>';
+                                        // 如果第二欄和第三欄都為空，也給一個提示
+                                        if (!definition && !extraInfo) {
+                                             answerHTML = '<p class="text-gray-500 italic">無詳細內容。</p>';
+                                        }
+
+                                        answerDiv.innerHTML = answerHTML;
 
                                         detailsEl.appendChild(summaryEl);
                                         detailsEl.appendChild(answerDiv);
                                         contentContainer.appendChild(detailsEl);
                                     });
+
+                                    // 如果遍歷完所有行後，沒有任何項目被顯示
+                                    if (itemsDisplayed === 0) {
+                                        if (searchText) {
+                                            contentContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4">在此工作表中找不到符合「${searchText}」的內容。</p>`;
+                                        } else {
+                                            contentContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">此工作表無有效內容可顯示。</p>';
+                                        }
+                                    }
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (可能為字串或帶格式的物件)
