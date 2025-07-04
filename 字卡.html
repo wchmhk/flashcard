@@ -4950,22 +4950,10 @@
 
             // 關閉模態框並刷新UI
             closeImportPreviewModal();
+            refreshAllViews(); // 使用統一的刷新函數
 
-            // 無論當前在哪個頁面，都預先更新複習頁面的卡組列表
-            loadDeckList();
-
-            // 根據當前頁面刷新UI其他部分
-            if (!reviewSection.classList.contains('hidden')) {
-                // 如果當前在複習頁面，確保卡組列表可見
-                showReviewStage('deckSelection');
-            } else if (!manageDeckSection.classList.contains('hidden')) {
-                loadAllDecks();
-            } else if (!manageCardSection.classList.contains('hidden')) {
-                loadDeckFilterOptions();
-                loadAllCards();
-            }
-
-            showNotification('數據匯入成功！');
+            // 【關鍵新增】確保匯入後立即儲存
+            saveDataToLocalStorage();
 
             // 清除緩存的導入數據
             importDataCache = null;
@@ -6981,9 +6969,11 @@
           };
 
           cardsData.push(newCard);
-          return newCardId;
 
+          // 【關鍵新增】確保每次新增卡片後都立即儲存
           saveDataToLocalStorage();
+
+          return newCardId;
         }
 
         // Load all cards for management (Excel-like table)
