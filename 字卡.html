@@ -2348,7 +2348,6 @@
 
             const gSheetsUrl = document.getElementById('gSheetsUrlInput').value.trim();
             const enableSync = document.getElementById('enableSyncGSheets').checked;
-            // 【新增】獲取是否設為預設的選項
             const setDefault = document.getElementById('setDefaultGSheetUrl').checked;
 
             if (!gSheetsUrl) {
@@ -2361,20 +2360,16 @@
                 return;
             }
 
-            // 【關鍵修改】處理預設連結的儲存邏輯
             if (setDefault) {
                 localStorage.setItem('flashcard_defaultGSheetUrl', gSheetsUrl);
                 showNotification('已將此連結設為預設，下次開啟將自動載入。', 2500);
             } else {
-                // 如果使用者沒有勾選，但之前有設定過，則清除設定
-                // 這樣使用者可以透過不勾選來取消預設連結
                 const currentDefault = localStorage.getItem('flashcard_defaultGSheetUrl');
                 if (currentDefault === gSheetsUrl) {
                     localStorage.removeItem('flashcard_defaultGSheetUrl');
                     showNotification('已取消此連結的預設設定。', 2500);
                 }
             }
-
 
             const loadBtn = document.getElementById('loadGSheetsBtn');
             const originalText = loadBtn.textContent;
@@ -2383,10 +2378,8 @@
 
             const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
 
-            // 優先使用 Google API 載入
             loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
                 .then(() => {
-                    // 手動導入時，直接導入所有內容
                     let totalImportCount = 0;
                     Object.keys(excelSheets).forEach(sheetName => {
                         if (!excelSheets[sheetName]) return;
@@ -2405,19 +2398,30 @@
                         for (let i = 1; i < sheetData.length; i++) {
                             const row = sheetData[i];
                             if (!row || !row.length) continue;
-                            const frontContent = row[frontCol];
-                            const backContent = row[backCol];
-                            let frontText, backText;
-                            if (excelSheets[sheetName].hasFormatting) {
-                                frontText = typeof frontContent === 'object' && frontContent.delta ? convertDeltaToHTML(frontContent.delta) : (frontContent ? frontContent.toString() : '');
-                                backText = typeof backContent === 'object' && backContent.delta ? convertDeltaToHTML(backContent.delta) : (backContent ? backContent.toString() : '');
-                            } else {
-                                frontText = frontContent ? processRawTextForCard(frontContent.toString()) : '';
-                                backText = backContent ? processRawTextForCard(backContent.toString()) : '';
-                            }
-                            if (!frontText && !backText) continue;
+
+                            // 【關鍵修改】使用 processImportedContent 處理正反面內容
+                            const processedFront = processImportedContent(row[frontCol]);
+                            const frontText = processedFront.text;
+                            const frontImage = processedFront.image;
+
+                            const processedBack = processImportedContent(row[backCol]);
+                            const backText = processedBack.text;
+                            const backImage = processedBack.image;
+
+                            if (!frontText && !frontImage && !backText && !backImage) continue;
+
                             const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
-                            const newCard = { id: newCardId, frontText, backText, nextReview: Date.now(), repetitions: 0, easeFactor: 2.0, interval: 1.0 };
+                            const newCard = {
+                                id: newCardId,
+                                frontText: frontText,
+                                frontImage: frontImage,
+                                backText: backText,
+                                backImage: backImage,
+                                nextReview: Date.now(),
+                                repetitions: 0,
+                                easeFactor: 2.0,
+                                interval: 1.0
+                            };
                             cardsData.push(newCard);
                             newDeck.cardIds.push(newCardId);
                             cardImportCount++;
@@ -9032,10 +9036,10 @@
                                     }
                                 }
 
-                                // 4. 顯示指定工作表的概念列表 (已加入圖片處理邏輯)
+                                // 4. 顯示指定工作表的概念列表 (已加入圖片與文字混合顯示)
                                 function displaySheetConcepts(sheetName, searchText = '') {
                                     const contentContainer = document.getElementById('keyConceptsContent');
-                                    contentContainer.innerHTML = ''; // 清空
+                                    contentContainer.innerHTML = '';
 
                                     const sheet = excelSheets[sheetName];
                                     if (!sheet || !sheet.data || sheet.data.length < 2) {
@@ -9074,17 +9078,10 @@
                                         const summaryEl = document.createElement('summary');
                                         summaryEl.className = 'font-medium text-lg list-none cursor-pointer flex justify-between items-center';
 
-                                        // 處理標題 (第一欄)
-                                        const processedConcept = processCellContent(conceptCell);
-                                        let conceptHTML = '';
-                                        if (processedConcept.type === 'image') {
-                                            conceptHTML = `<img src="${processedConcept.content}" class="max-h-16 rounded-md mr-4"> <span class="italic text-gray-500">圖片標題</span>`;
-                                        } else {
-                                            conceptHTML = processedConcept.content || '<span class="italic text-gray-500">無標題</span>';
-                                        }
+                                        const conceptHTML = renderMixedContent(conceptCell);
 
                                         summaryEl.innerHTML = `
-                                            <div class="flex items-center">${conceptHTML}</div>
+                                            <div>${conceptHTML.text || '<span class="italic text-gray-500">無標題</span>'}</div>
                                             <svg class="w-5 h-5 transition-transform duration-300 group-open:rotate-180 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                               <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
@@ -9093,29 +9090,26 @@
                                         const answerDiv = document.createElement('div');
                                         answerDiv.className = 'mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 space-y-4';
 
-                                        let answerHTML = '';
+                                        // 處理定義 (第二欄) 和補充資訊 (第三欄)
+                                        const definitionHTML = renderMixedContent(definitionCell);
+                                        const extraInfoHTML = renderMixedContent(extraInfoCell);
 
-                                        // 【關鍵修改】處理定義 (第二欄)
-                                        const processedDefinition = processCellContent(definitionCell);
-                                        if (processedDefinition.type === 'image') {
-                                            answerHTML += `<div><img src="${processedDefinition.content}" class="max-w-full h-auto rounded-lg"></div>`;
-                                        } else if (processedDefinition.content) {
-                                            answerHTML += `<div>${processedDefinition.content}</div>`;
+                                        let answerContent = '';
+                                        if (definitionHTML.text) answerContent += `<div>${definitionHTML.text}</div>`;
+                                        if (definitionHTML.image) answerContent += `<div><img src="${definitionHTML.image}" class="max-w-full h-auto rounded-lg mt-2"></div>`;
+
+                                        if (extraInfoHTML.text || extraInfoHTML.image) {
+                                            answerContent += `<div class="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded text-sm space-y-2">`;
+                                            if (extraInfoHTML.text) answerContent += `<div>${extraInfoHTML.text}</div>`;
+                                            if (extraInfoHTML.image) answerContent += `<div><img src="${extraInfoHTML.image}" class="max-w-full h-auto rounded-lg mt-2"></div>`;
+                                            answerContent += `</div>`;
                                         }
 
-                                        // 【關鍵修改】處理補充資訊 (第三欄)
-                                        const processedExtraInfo = processCellContent(extraInfoCell);
-                                        if (processedExtraInfo.type === 'image') {
-                                            answerHTML += `<div><img src="${processedExtraInfo.content}" class="max-w-full h-auto rounded-lg"></div>`;
-                                        } else if (processedExtraInfo.content) {
-                                            answerHTML += `<div class="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">${processedExtraInfo.content}</div>`;
+                                        if (!answerContent) {
+                                             answerContent = '<p class="text-gray-500 italic">無詳細內容。</p>';
                                         }
 
-                                        if (!answerHTML) {
-                                             answerHTML = '<p class="text-gray-500 italic">無詳細內容。</p>';
-                                        }
-
-                                        answerDiv.innerHTML = answerHTML;
+                                        answerDiv.innerHTML = answerContent;
 
                                         detailsEl.appendChild(summaryEl);
                                         detailsEl.appendChild(answerDiv);
@@ -9138,6 +9132,48 @@
                                     } else {
                                         if (toggleBtn) toggleBtn.style.display = '';
                                     }
+                                }
+
+                                // 【新增】處理混合內容（文字+圖片連結）的輔助函數
+                                function renderMixedContent(cell) {
+                                    let result = { text: '', image: null };
+                                    if (!cell) return result;
+
+                                    let contentStr = '';
+                                    // 如果是帶格式的物件，先轉成 HTML
+                                    if (typeof cell === 'object' && cell.delta) {
+                                        contentStr = convertDeltaToHTML(cell.delta);
+                                    } else {
+                                        contentStr = cell.toString();
+                                    }
+
+                                    // 正則表達式，用來尋找 Google Drive 連結
+                                    const urlRegex = /(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)/g;
+
+                                    let match;
+                                    let lastIndex = 0;
+                                    let textParts = [];
+
+                                    // 遍歷所有找到的 URL
+                                    while ((match = urlRegex.exec(contentStr)) !== null) {
+                                        // 將 URL 前面的文字部分加進來
+                                        textParts.push(contentStr.substring(lastIndex, match.index));
+
+                                        // 處理找到的第一個 URL 作為圖片
+                                        if (!result.image) {
+                                            result.image = convertGoogleDriveLink(match[0]);
+                                        }
+
+                                        lastIndex = match.index + match[0].length;
+                                    }
+
+                                    // 添加最後剩餘的文字部分
+                                    textParts.push(contentStr.substring(lastIndex));
+
+                                    // 將所有文字部分合併，並處理換行
+                                    result.text = textParts.join('').replace(/\n/g, '<br>').trim();
+
+                                    return result;
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (返回類型和內容)
