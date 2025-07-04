@@ -8020,40 +8020,39 @@
         }
 
         // 【新增】統一的UI刷新函數，在導入數據後調用
-                function refreshAllViews() {
-                    console.log("Refreshing all UI components with new data...");
+        function refreshAllViews() {
+            console.log("Refreshing all UI components with new data...");
 
-                    // 1. 無論在哪個頁面，都先更新這些共享的數據來源
-                    loadDeckList(); // 更新「複習」頁面的卡組列表
-                    loadDeckFilterOptions(); // 更新「管理字卡」頁面的卡組過濾下拉選單
+            // 1. 無論在哪個頁面，都先更新這些共享的數據來源
+            loadDeckList(); // 更新「複習」頁面的卡組列表
+            loadDeckFilterOptions(); // 更新「管理字卡」頁面的卡組過濾下拉選單
 
-                    // 2. 根據當前顯示的頁面，刷新其主要內容
-                    if (!keyConceptsSection.classList.contains('hidden')) {
-                        loadKeyConceptsView();
-                    } else if (!reviewSection.classList.contains('hidden')) {
-                        // 如果在複習頁，確保回到卡組選擇畫面
-                        showReviewStage('deckSelection');
-                    } else if (!manageDeckSection.classList.contains('hidden')) {
-                        loadAllDecks();
-                    } else if (!manageCardSection.classList.contains('hidden')) {
-                        loadAllCards();
-                    } else if (!createCardSection.classList.contains('hidden')) {
-                        // 如果在建立字卡頁面，導入後應顯示卡組選擇器
-                        if(decksData.length > 0) {
-                            noDeckWarning.classList.add('hidden');
-                            deckSelectionForCard.classList.remove('hidden');
-                            cardForm.classList.remove('hidden');
-                            updateSelectedDecksDisplay();
-                            initSearchableDeckSelector();
-                        }
-                    }
-
-                    // 3. 顯示一個統一的成功提示
-                    showNotification('數據已成功導入並更新頁面！', 2500);
-
-                    // 4. 提醒用戶儲存
-                    showStorageReminder();
+            // 2. 根據當前顯示的頁面，刷新其主要內容
+            if (!keyConceptsSection.classList.contains('hidden')) {
+                loadKeyConceptsView();
+            } else if (!reviewSection.classList.contains('hidden')) {
+                // 如果在複習頁，確保回到卡組選擇畫面
+                showReviewStage('deckSelection');
+            } else if (!manageDeckSection.classList.contains('hidden')) {
+                loadAllDecks();
+            } else if (!manageCardSection.classList.contains('hidden')) {
+                loadAllCards();
+            } else if (!createCardSection.classList.contains('hidden')) {
+                // 如果在建立字卡頁面，導入後應顯示卡組選擇器
+                if(decksData.length > 0) {
+                    noDeckWarning.classList.add('hidden');
+                    deckSelectionForCard.classList.remove('hidden');
+                    cardForm.classList.remove('hidden');
+                    updateSelectedDecksDisplay();
+                    initSearchableDeckSelector();
                 }
+            }
+
+            // 3. 顯示一個統一的成功提示
+            showNotification('數據已成功導入並更新頁面！', 2500);
+
+            // 【已移除】不再呼叫 showStorageReminder()
+        }
 
         // Show welcome message for first-time users
         function showWelcomeMessage() {
@@ -9279,6 +9278,9 @@
                                         // 將 cardsData 和 decksData 陣列轉換為 JSON 字串並儲存
                                         localStorage.setItem('flashcard_cardsData', JSON.stringify(cardsData));
                                         localStorage.setItem('flashcard_decksData', JSON.stringify(decksData));
+                                        // 【已移除】不再儲存 "關鍵概念一覽表" 的數據，以避免超出儲存配額
+                                        // localStorage.setItem('flashcard_excelSheets', JSON.stringify(excelSheets));
+
                                         // 記錄儲存時間
                                         localStorage.setItem('flashcard_lastSaved', now.toISOString());
 
@@ -9315,8 +9317,7 @@
                                                 localStorage.removeItem('flashcard_cardsData');
                                                 localStorage.removeItem('flashcard_decksData');
                                                 localStorage.removeItem('flashcard_lastSaved');
-                                                // 【新增】清除 "關鍵概念一覽表" 的數據
-                                                localStorage.removeItem('flashcard_excelSheets');
+                                                // 【已移除】不再需要清除 excelSheets 的存檔，因為我們已不儲存它
                                                 localStorage.removeItem('flashcard_firstVisit'); // 也清除訪問記錄，以便下次顯示歡迎訊息
 
                                                 // 清空記憶體中的數據
@@ -9340,6 +9341,8 @@
                                         const savedCards = localStorage.getItem('flashcard_cardsData');
                                         const savedDecks = localStorage.getItem('flashcard_decksData');
                                         const lastSaved = localStorage.getItem('flashcard_lastSaved');
+                                        // 【已移除】不再讀取 "關鍵概念一覽表" 的數據
+                                        // const savedExcelSheets = localStorage.getItem('flashcard_excelSheets');
 
                                         if (savedCards) {
                                             cardsData = JSON.parse(savedCards);
@@ -9351,6 +9354,10 @@
                                             console.log(`從 localStorage 載入了 ${decksData.length} 個卡組。`);
                                         }
 
+                                        // 【已移除】excelSheets 在每次啟動時都會是空的，需要重新匯入
+                                        excelSheets = {};
+
+
                                         // 載入後更新時間戳顯示
                                         if(lastSaved) {
                                             updateLastSavedTimestamp(lastSaved);
@@ -9361,6 +9368,7 @@
                                         // 如果解析失敗，重置為空，防止程式崩潰
                                         cardsData = [];
                                         decksData = [];
+                                        excelSheets = {}; // 確保在出錯時也清空
                                         showNotification("錯誤：讀取本地存檔失敗，將以空白狀態啟動。", 5000);
                                     }
                                 }
