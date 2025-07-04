@@ -9317,15 +9317,15 @@
                                                 localStorage.removeItem('flashcard_cardsData');
                                                 localStorage.removeItem('flashcard_decksData');
                                                 localStorage.removeItem('flashcard_lastSaved');
-                                                // 【已移除】不再需要清除 excelSheets 的存檔，因為我們已不儲存它
-                                                localStorage.removeItem('flashcard_firstVisit'); // 也清除訪問記錄，以便下次顯示歡迎訊息
+                                                // 【已移除】不再需要清除 excelSheets 的存檔
+                                                localStorage.removeItem('flashcard_firstVisit');
 
                                                 // 清空記憶體中的數據
                                                 cardsData = [];
                                                 decksData = [];
-                                                excelSheets = {}; // 清除匯入的Sheet數據
+                                                excelSheets = {};
 
-                                                // 顯示成功訊息並重新載入頁面，回到初始狀態
+                                                // 顯示成功訊息並重新載入頁面
                                                 showNotification('已清除所有本地存檔。頁面即將重新整理。', 3000);
                                                 setTimeout(() => {
                                                     window.location.reload();
@@ -9342,7 +9342,6 @@
                                         const savedDecks = localStorage.getItem('flashcard_decksData');
                                         const lastSaved = localStorage.getItem('flashcard_lastSaved');
                                         // 【已移除】不再讀取 "關鍵概念一覽表" 的數據
-                                        // const savedExcelSheets = localStorage.getItem('flashcard_excelSheets');
 
                                         if (savedCards) {
                                             cardsData = JSON.parse(savedCards);
@@ -9354,7 +9353,7 @@
                                             console.log(`從 localStorage 載入了 ${decksData.length} 個卡組。`);
                                         }
 
-                                        // 【已移除】excelSheets 在每次啟動時都會是空的，需要重新匯入
+                                        // 【關鍵】excelSheets 在每次啟動時都會是空的，需要重新匯入
                                         excelSheets = {};
 
 
