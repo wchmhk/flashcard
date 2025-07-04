@@ -672,16 +672,27 @@
           </label>
       </div>
 
-        <!-- Review card section -->
-        <div id="keyConceptsSection" class="space-y-6 hidden">
-            <h2 class="text-2xl font-bold">關鍵概念一覽表</h2>
-            <!-- Container for sheet selection buttons -->
-            <div id="keyConceptsSheetList" class="flex flex-wrap gap-2 mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-                <!-- Sheet buttons will be dynamically added here -->
-            </div>
-            <!-- Container for the concepts of the selected sheet -->
-            <div id="keyConceptsContent" class="space-y-3">
-                <!-- The list of concepts will be rendered here -->
+      <!-- Key Concepts Section -->
+      <div id="keyConceptsSection" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold">關鍵概念一覽表</h2>
+          <!-- Container for sheet selection buttons -->
+          <div id="keyConceptsSheetList" class="flex flex-wrap gap-2 mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+              <!-- Sheet buttons will be dynamically added here -->
+          </div>
+
+          <!-- Search Bar for Key Concepts (新增的部分) -->
+          <div id="keyConceptsSearchContainer" class="relative mb-4 hidden">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                  </svg>
+              </div>
+              <input type="text" id="keyConceptsSearchInput" placeholder="在此工作表中搜尋..." class="bg-white dark:bg-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base">
+          </div>
+
+          <!-- Container for the concepts of the selected sheet -->
+          <div id="keyConceptsContent" class="space-y-3">
+              <!-- The list of concepts will be rendered here -->
                 <div class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <h3 class="text-lg font-medium">無可用數據</h3>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">請先使用「從 Google Sheets 導入」功能載入您的概念表。</p>
@@ -8898,6 +8909,9 @@
                                 function loadKeyConceptsView() {
                                     const sheetListContainer = document.getElementById('keyConceptsSheetList');
                                     const contentContainer = document.getElementById('keyConceptsContent');
+                                    const searchContainer = document.getElementById('keyConceptsSearchContainer');
+                                    const searchInput = document.getElementById('keyConceptsSearchInput');
+
                                     sheetListContainer.innerHTML = '';
                                     contentContainer.innerHTML = ''; // 清除先前內容
 
@@ -8913,21 +8927,37 @@
                                             </div>
                                         `;
                                         document.getElementById('goToImportBtnFromConcepts').addEventListener('click', openGSheetsImportModal);
+                                        searchContainer.classList.add('hidden'); // 隱藏搜尋欄
                                         return;
                                     }
+
+                                    // 有數據時，顯示搜尋欄並清空
+                                    searchContainer.classList.remove('hidden');
+                                    searchInput.value = '';
 
                                     // 為每個工作表創建按鈕
                                     Object.keys(excelSheets).forEach(sheetName => {
                                         const button = document.createElement('button');
                                         button.textContent = sheetName;
+                                        button.dataset.sheetName = sheetName; // 使用 data attribute 存儲名稱
                                         button.className = 'px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary';
                                         button.addEventListener('click', () => {
                                             // 更新按鈕樣式
                                             document.querySelectorAll('#keyConceptsSheetList button').forEach(btn => btn.classList.remove('bg-primary', 'text-white', 'border-primary'));
                                             button.classList.add('bg-primary', 'text-white', 'border-primary');
-                                            displaySheetConcepts(sheetName);
+                                            // 切換工作表時，應用當前的搜尋條件
+                                            displaySheetConcepts(sheetName, searchInput.value);
                                         });
                                         sheetListContainer.appendChild(button);
+                                    });
+
+                                    // 搜尋欄的事件監聽器
+                                    searchInput.addEventListener('input', () => {
+                                        const activeSheetBtn = document.querySelector('#keyConceptsSheetList button.bg-primary');
+                                        if (activeSheetBtn) {
+                                            const activeSheetName = activeSheetBtn.dataset.sheetName;
+                                            displaySheetConcepts(activeSheetName, searchInput.value);
+                                        }
                                     });
 
                                     // 自動點擊並顯示第一個工作表的內容
@@ -8936,8 +8966,8 @@
                                     }
                                 }
 
-                                // 4. 顯示指定工作表的概念列表
-                                function displaySheetConcepts(sheetName) {
+                                // 4. 顯示指定工作表的概念列表 (已加入搜尋功能)
+                                function displaySheetConcepts(sheetName, searchText = '') {
                                     const contentContainer = document.getElementById('keyConceptsContent');
                                     contentContainer.innerHTML = ''; // 清空
 
@@ -8947,17 +8977,40 @@
                                         return;
                                     }
 
-                                    const sheetData = sheet.data;
+                                    let conceptRows = sheet.data.slice(1); // 獲取所有數據行
+                                    const lowerSearchText = searchText.trim().toLowerCase();
 
-                                    // 從第二行開始遍歷 (索引為 1)
-                                    for (let i = 1; i < sheetData.length; i++) {
-                                        const row = sheetData[i];
+                                    // 如果有搜尋文字，則過濾數據
+                                    if (lowerSearchText) {
+                                        conceptRows = conceptRows.filter(row => {
+                                            const conceptText = getCellTextContent(row[0]).toLowerCase();
+                                            const definitionText = getCellTextContent(row[1]).toLowerCase();
+                                            const extraInfoText = row.length > 2 ? getCellTextContent(row[2]).toLowerCase() : '';
+
+                                            return conceptText.includes(lowerSearchText) ||
+                                                   definitionText.includes(lowerSearchText) ||
+                                                   extraInfoText.includes(lowerSearchText);
+                                        });
+                                    }
+
+                                    // 如果過濾後沒有結果
+                                    if (conceptRows.length === 0) {
+                                        if (searchText) {
+                                            contentContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4">在此工作表中找不到符合「${searchText}」的內容。</p>`;
+                                        } else {
+                                            contentContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">此工作表無內容。</p>';
+                                        }
+                                        return;
+                                    }
+
+                                    // 遍歷過濾後的結果
+                                    conceptRows.forEach(row => {
                                         const concept = row[0]; // 第 1 欄
                                         const definition = row[1]; // 第 2 欄
                                         const extraInfo = row.length > 2 ? row[2] : null; // 第 3 欄 (可選)
 
                                         // 如果第一欄沒有內容，則跳過此行
-                                        if (!concept) continue;
+                                        if (!concept) return;
 
                                         const detailsEl = document.createElement('details');
                                         detailsEl.className = 'bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm group';
@@ -8965,7 +9018,6 @@
                                         const summaryEl = document.createElement('summary');
                                         summaryEl.className = 'font-medium text-lg list-none cursor-pointer flex justify-between items-center';
 
-                                        // 處理可能帶有格式的內容
                                         const conceptHTML = processCellContent(concept);
 
                                         summaryEl.innerHTML = `
@@ -8983,7 +9035,6 @@
                                             answerHTML += `<div>${processCellContent(definition)}</div>`;
                                         }
                                         if (extraInfo) {
-                                            // 將第三欄的內容用不同樣式顯示
                                             answerHTML += `<div class="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">${processCellContent(extraInfo)}</div>`;
                                         }
 
@@ -8992,7 +9043,7 @@
                                         detailsEl.appendChild(summaryEl);
                                         detailsEl.appendChild(answerDiv);
                                         contentContainer.appendChild(detailsEl);
-                                    }
+                                    });
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (可能為字串或帶格式的物件)
@@ -9007,7 +9058,23 @@
                                     return cell.toString().replace(/\n/g, '<br>');
                                 }
 
-                                // 6. 在應用初始化時，設置新的導覽邏輯
+                                // 6. 新增輔助函數以獲取單元格的純文本內容，用於搜尋
+                                function getCellTextContent(cell) {
+                                    if (!cell) return '';
+                                    // 如果是帶格式的物件
+                                    if (typeof cell === 'object' && cell.delta) {
+                                        // 使用一個臨時的Quill實例來提取純文本
+                                        const tempEditor = document.createElement('div');
+                                        const tempQuill = new Quill(tempEditor);
+                                        tempQuill.setContents(cell.delta);
+                                        return tempQuill.getText();
+                                    }
+                                    // 如果是普通字串
+                                    return cell.toString();
+                                }
+
+
+                                // 7. 在應用初始化時，設置新的導覽邏輯
                                 // 將這個調用放在現有的 DOMContentLoaded 事件監聽器中
                                 document.addEventListener('DOMContentLoaded', () => {
                                     // 替換現有的導航邏輯
