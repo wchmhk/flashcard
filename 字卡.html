@@ -616,6 +616,30 @@
             margin-left: 4px;
         }
 
+        /* 【新增】為內容顯示區塊的段落和列表添加間距，解決換行問題 */
+        #cardFront p, #cardBack p,
+        #keyConceptsContent p,
+        .quill-content-preview-table p {
+            margin-bottom: 1rem; /* 為每個段落下方增加間距 */
+        }
+
+        /* 【新增】處理列表的縮排和間距 */
+        #cardFront ul, #cardFront ol,
+        #cardBack ul, #cardBack ol,
+        #keyConceptsContent ul, #keyConceptsContent ol,
+        .quill-content-preview-table ul, .quill-content-preview-table ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* 【新增】確保最後一個元素沒有多餘的底部間距 */
+        #cardFront > *:last-child,
+        #cardBack > *:last-child,
+        #keyConceptsContent > *:last-child,
+        .quill-content-preview-table > *:last-child {
+            margin-bottom: 0;
+        }
+
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen pt-0">
