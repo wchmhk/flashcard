@@ -653,6 +653,7 @@
                 <button id="createCardBtn" class="py-3 px-4 border-b-2 border-transparent font-medium whitespace-nowrap">建立字卡</button>
                 <button id="manageDeckBtn" class="py-3 px-4 border-b-2 border-transparent font-medium whitespace-nowrap">管理卡組</button>
                 <button id="manageCardBtn" class="py-3 px-4 border-b-2 border-transparent font-medium whitespace-nowrap">管理字卡</button>
+                <button id="dataManagementBtn" class="py-3 px-4 border-b-2 border-transparent font-medium whitespace-nowrap">數據管理</button>
             </div>
         </div>
     </div>
@@ -660,45 +661,8 @@
     <!-- Main container for the flashcard app -->
     <div class="container mx-auto px-4 py-4 max-w-3xl flex flex-col min-h-[calc(100vh-4rem)]">
 
-      <!-- Data import/export buttons -->
-      <div class="flex justify-end mb-6 gap-2">
-          <button id="importExcelBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd" />
-              </svg>
-              導入Excel
-          </button>
-          <button id="importGSheetsBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                  <path d="M7 7h2v10H7zm4 0h2v10h-2zm4 0h2v10h-2z"/>
-              </svg>
-              從 Google Sheets 導入
-          </button>
-          <button id="exportExcelBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              導出Excel
-          </button>
-          <button id="exportDataBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              匯出數據
-          </button>
-          <label for="importDataInput" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
-              </svg>
-              匯入數據
-              <input id="importDataInput" type="file" accept=".json" class="hidden">
-          </label>
-      </div>
-
       <!-- Key Concepts Section -->
       <div id="keyConceptsSection" class="space-y-6 hidden">
-          <h2 class="text-2xl font-bold">關鍵概念一覽表</h2>
           <!-- Container for sheet selection buttons -->
           <div id="keyConceptsSheetList" class="flex flex-wrap gap-2 mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
               <!-- Sheet buttons will be dynamically added here -->
@@ -1080,6 +1044,89 @@
                 <!-- Decks will be added here dynamically -->
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                     沒有可用的卡組。請先建立卡組。
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div id="dataManagementSection" class="space-y-10 hidden">
+            <h2 class="text-2xl font-bold">數據管理</h2>
+
+            <!-- Import Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-300 dark:border-gray-700">
+                <h3 class="text-xl font-semibold mb-4 border-b border-gray-200 dark:border-gray-600 pb-3">匯入數據</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6 text-sm">從外部檔案將字卡和卡組匯入到本程式中。</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Import from Excel -->
+                    <button id="importExcelBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd" />
+                        </svg>
+                        從 Excel 導入
+                    </button>
+                    <!-- Import from Google Sheets -->
+                    <button id="importGSheetsBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            <path d="M7 7h2v10H7zm4 0h2v10h-2zm4 0h2v10h-2z"/>
+                        </svg>
+                        從 Google Sheets 導入
+                    </button>
+                    <!-- Import from JSON -->
+                    <label for="importDataInput" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
+                        </svg>
+                        匯入備份 (.json)
+                        <input id="importDataInput" type="file" accept=".json" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-300 dark:border-gray-700">
+                <h3 class="text-xl font-semibold mb-4 border-b border-gray-200 dark:border-gray-600 pb-3">匯出數據</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6 text-sm">將本程式中的資料匯出成檔案，用於備份或在其他裝置上使用。</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Export to Excel -->
+                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        導出為 Excel
+                    </button>
+                    <!-- Export to JSON -->
+                    <button id="exportDataBtn" class="bg-primary hover:bg-opacity-80 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        匯出備份 (.json)
+                    </button>
+                </div>
+            </div>
+            <!-- Local Storage Management -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-yellow-500/50 dark:border-yellow-400/50">
+                <h3 class="text-xl font-semibold mb-4 border-b border-gray-200 dark:border-gray-600 pb-3 text-yellow-600 dark:text-yellow-300">本地儲存管理</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+                    您的資料會自動儲存在此瀏覽器中。您也可以手動執行以下操作。
+                    <br>
+                    <span id="lastSavedTimestamp" class="text-xs mt-2 block">最後儲存時間：尚未儲存</span>
+                </p>
+                <div class="flex flex-wrap gap-4">
+                    <!-- Force Save Button -->
+                    <button id="forceSaveBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        立即儲存
+                    </button>
+                    <!-- Clear Local Storage Button -->
+                    <button id="clearLocalStorageBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        清除此瀏覽器的所有存檔
+                    </button>
                 </div>
             </div>
         </div>
@@ -8725,6 +8772,21 @@
                                   // 初始化 Google Sheets 導入功能
                                   initGSheetsImport();
 
+                                  // 【新增】由於按鈕位置改變，我們需要重新獲取元素並確保事件已綁定
+                                  // 這些按鈕現在在新頁面中，所以我們在 initApp 裡確保它們的功能正常
+                                  const newImportExcelBtn = document.getElementById('importExcelBtn');
+                                  const newExportExcelBtn = document.getElementById('exportExcelBtn');
+                                  const newImportGSheetsBtn = document.getElementById('importGSheetsBtn');
+                                  const newExportDataBtn = document.getElementById('exportDataBtn');
+                                  const newImportDataInput = document.getElementById('importDataInput');
+
+                                  if(newImportExcelBtn) newImportExcelBtn.addEventListener('click', openExcelImportModal);
+                                  if(newExportExcelBtn) newExportExcelBtn.addEventListener('click', openExportExcelModal);
+                                  if(newImportGSheetsBtn) newImportGSheetsBtn.addEventListener('click', openGSheetsImportModal);
+                                  if(newExportDataBtn) newExportDataBtn.addEventListener('click', openExportModal);
+                                  if(newImportDataInput) newImportDataInput.addEventListener('change', handleImportFile);
+
+
                                   // 初始化 API 設置
                                   initApiSettings();
 
@@ -8777,6 +8839,21 @@
                                         // 使用原始函數而非被包裝的函數
                                         showSection('review');
                                     }, 0);
+
+                                    // 【新增】綁定本地儲存管理按鈕的事件
+                                    const forceSaveBtn = document.getElementById('forceSaveBtn');
+                                    const clearLocalStorageBtn = document.getElementById('clearLocalStorageBtn');
+
+                                    if (forceSaveBtn) {
+                                        forceSaveBtn.addEventListener('click', () => {
+                                            saveDataToLocalStorage();
+                                            showNotification('已手動儲存所有資料！', 2000);
+                                        });
+                                    }
+
+                                    if (clearLocalStorageBtn) {
+                                        clearLocalStorageBtn.addEventListener('click', clearLocalStorageData);
+                                    }
                                 }
 
                                 // Initialize app when DOM is ready
@@ -8860,7 +8937,9 @@
                                 // 2. 修改 showSection 函數以處理新頁面
                                 // 我們需要找到原始的 showSection 函數並擴充它
                                 function setupNewNavigation() {
-                                    const originalShowSection = window.showSection; // 保存原始函數
+                                    // 【新增】獲取數據管理頁面的按鈕和區塊
+                                    const dataManagementBtn = document.getElementById('dataManagementBtn');
+                                    const dataManagementSection = document.getElementById('dataManagementSection');
 
                                     window.showSection = function(section) {
                                         // 先重置所有按鈕和區塊
@@ -8869,18 +8948,21 @@
                                         manageCardBtn.classList.remove('border-primary');
                                         manageDeckBtn.classList.remove('border-primary');
                                         keyConceptsBtn.classList.remove('border-primary');
+                                        dataManagementBtn.classList.remove('border-primary'); // 【新增】
 
                                         reviewBtn.classList.add('border-transparent');
                                         createCardBtn.classList.add('border-transparent');
                                         manageCardBtn.classList.add('border-transparent');
                                         manageDeckBtn.classList.add('border-transparent');
                                         keyConceptsBtn.classList.add('border-transparent');
+                                        dataManagementBtn.classList.add('border-transparent'); // 【新增】
 
                                         reviewSection.classList.add('hidden');
                                         createCardSection.classList.add('hidden');
                                         manageCardSection.classList.add('hidden');
                                         manageDeckSection.classList.add('hidden');
                                         keyConceptsSection.classList.add('hidden');
+                                        dataManagementSection.classList.add('hidden'); // 【新增】
 
                                         // 清除所有計時器
                                         clearAllDrillTimers();
@@ -8891,9 +8973,12 @@
                                             keyConceptsBtn.classList.add('border-primary');
                                             keyConceptsSection.classList.remove('hidden');
                                             loadKeyConceptsView();
+                                        } else if (section === 'dataManagement') { // 【新增】
+                                            dataManagementBtn.classList.remove('border-transparent');
+                                            dataManagementBtn.classList.add('border-primary');
+                                            dataManagementSection.classList.remove('hidden');
                                         } else {
                                             // 如果不是新頁面，調用原始的 showSection 邏輯
-                                            // (我們直接在這裡重寫，因為原始邏輯很清晰)
                                             if (section === 'review') {
                                                 reviewBtn.classList.remove('border-transparent');
                                                 reviewBtn.classList.add('border-primary');
@@ -8937,9 +9022,9 @@
 
                                     // 為新按鈕添加事件監聽器
                                     keyConceptsBtn.addEventListener('click', () => window.showSection('keyConcepts'));
+                                    dataManagementBtn.addEventListener('click', () => window.showSection('dataManagement')); // 【新增】
 
                                     // 將預設顯示的頁面從 'review' 改為 'keyConcepts'
-                                    // 並且在DOM加載後延遲執行，確保所有東西都已初始化
                                     document.addEventListener('DOMContentLoaded', () => {
                                         setTimeout(() => {
                                             window.showSection('keyConcepts');
@@ -9169,6 +9254,97 @@
                                 });
 
                                 // --- END: 新增「關鍵概念一覽表」功能 ---
+
+                                // 【新增】將數據保存到瀏覽器的 localStorage
+                                function saveDataToLocalStorage() {
+                                    try {
+                                        const now = new Date();
+                                        // 將 cardsData 和 decksData 陣列轉換為 JSON 字串並儲存
+                                        localStorage.setItem('flashcard_cardsData', JSON.stringify(cardsData));
+                                        localStorage.setItem('flashcard_decksData', JSON.stringify(decksData));
+                                        // 記錄儲存時間
+                                        localStorage.setItem('flashcard_lastSaved', now.toISOString());
+
+                                        console.log("數據已成功保存到 localStorage。");
+                                        updateLastSavedTimestamp(now); // 更新頁面上的時間顯示
+                                    } catch (e) {
+                                        console.error("保存數據到 localStorage 失敗:", e);
+                                        // 如果儲存失敗（例如空間已滿），可以提示使用者
+                                        showNotification("錯誤：無法自動保存您的數據！請嘗試手動匯出。", 5000);
+                                    }
+                                }
+
+                                // 【新增】更新頁面上顯示的最後儲存時間
+                                function updateLastSavedTimestamp(date) {
+                                    const timestampEl = document.getElementById('lastSavedTimestamp');
+                                    if (timestampEl) {
+                                        if (date) {
+                                            const dateObj = (typeof date === 'string') ? new Date(date) : date;
+                                            timestampEl.textContent = `最後儲存時間：${dateObj.toLocaleString()}`;
+                                        } else {
+                                            timestampEl.textContent = '最後儲存時間：尚未儲存';
+                                        }
+                                    }
+                                }
+
+                                // 【新增】清除本地儲存的所有數據
+                                function clearLocalStorageData() {
+                                    customConfirm(
+                                        '您確定要清除儲存在這個瀏覽器上的所有字卡和卡組嗎？這個操作無法復原，除非您有另外匯出備份檔案。',
+                                        '確認清除所有本地存檔',
+                                        (confirmed) => {
+                                            if (confirmed) {
+                                                // 清除相關的 localStorage 項目
+                                                localStorage.removeItem('flashcard_cardsData');
+                                                localStorage.removeItem('flashcard_decksData');
+                                                localStorage.removeItem('flashcard_lastSaved');
+                                                localStorage.removeItem('flashcard_firstVisit'); // 也清除訪問記錄，以便下次顯示歡迎訊息
+
+                                                // 清空記憶體中的數據
+                                                cardsData = [];
+                                                decksData = [];
+                                                excelSheets = {}; // 清除匯入的Sheet數據
+
+                                                // 顯示成功訊息並重新載入頁面，回到初始狀態
+                                                showNotification('已清除所有本地存檔。頁面即將重新整理。', 3000);
+                                                setTimeout(() => {
+                                                    window.location.reload();
+                                                }, 3000);
+                                            }
+                                        }
+                                    );
+                                }
+
+                                // 【新增】從瀏覽器的 localStorage 載入數據
+                                function loadDataFromLocalStorage() {
+                                    try {
+                                        const savedCards = localStorage.getItem('flashcard_cardsData');
+                                        const savedDecks = localStorage.getItem('flashcard_decksData');
+                                        const lastSaved = localStorage.getItem('flashcard_lastSaved');
+
+                                        if (savedCards) {
+                                            cardsData = JSON.parse(savedCards);
+                                            console.log(`從 localStorage 載入了 ${cardsData.length} 張字卡。`);
+                                        }
+
+                                        if (savedDecks) {
+                                            decksData = JSON.parse(savedDecks);
+                                            console.log(`從 localStorage 載入了 ${decksData.length} 個卡組。`);
+                                        }
+
+                                        // 載入後更新時間戳顯示
+                                        if(lastSaved) {
+                                            updateLastSavedTimestamp(lastSaved);
+                                        }
+
+                                    } catch (e) {
+                                        console.error("從 localStorage 讀取數據失敗:", e);
+                                        // 如果解析失敗，重置為空，防止程式崩潰
+                                        cardsData = [];
+                                        decksData = [];
+                                        showNotification("錯誤：讀取本地存檔失敗，將以空白狀態啟動。", 5000);
+                                    }
+                                }
 
                             </script>
                         </body>
