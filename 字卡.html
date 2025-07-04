@@ -3853,25 +3853,50 @@
           return `data:image/jpeg;base64,${base64Str}`;
         }
 
-        // 处理导入的内容，检测并处理 base64 图片
+        // 【新增】輔助函數，將 Google Drive 分享連結轉換為直接存取連結
+        function convertGoogleDriveLink(url) {
+            if (!url || typeof url !== 'string') return null;
+
+            // 檢查是否為有效的 Google Drive 連結
+            let match = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                const fileId = match[1];
+                // 返回可以直接在 <img> 標籤中使用的連結格式
+                return `https://drive.google.com/uc?export=view&id=${fileId}`;
+            }
+            return null; // 如果不是有效的 Google Drive 連結，返回 null
+        }
+
+        // 處理導入的內容，檢測並處理 base64 圖片和 Google Drive 連結
         function processImportedContent(content) {
-          if (!content) return { text: '', image: null };
+            if (!content) return { text: '', image: null };
 
-          if (typeof content !== 'string') {
-            content = content.toString();
-          }
+            if (typeof content !== 'string') {
+                content = content.toString();
+            }
 
-          if (isBase64Image(content)) {
+            // 【優先處理 Google Drive 連結】
+            const driveImageUrl = convertGoogleDriveLink(content);
+            if (driveImageUrl) {
+                return {
+                    text: '', // 如果是圖片連結，則文字部分為空
+                    image: driveImageUrl
+                };
+            }
+
+            // 處理 Base64 圖片 (保留原有功能)
+            if (isBase64Image(content)) {
+                return {
+                    text: '',
+                    image: ensureBase64Prefix(content)
+                };
+            }
+
+            // 如果都不是，則視為普通文字
             return {
-              text: '',
-              image: ensureBase64Prefix(content)
+                text: content,
+                image: null
             };
-          }
-
-          return {
-            text: content,
-            image: null
-          };
         }
 
         // 圖片壓縮核心功能
@@ -8460,111 +8485,117 @@
         }
 
         // 修改的importExcelData函數 - 支持多工作表並自動刷新
-                function importExcelData() {
-                    if (Object.keys(excelSheets).length === 0) {
-                        showNotification('沒有可用的工作表數據');
-                        return;
+        function importExcelData() {
+            if (Object.keys(excelSheets).length === 0) {
+                showNotification('沒有可用的工作表數據');
+                return;
+            }
+
+            const results = [];
+
+            // 處理每個工作表
+            for (const sheetName of Object.keys(excelSheets)) {
+                const sheetData = excelSheets[sheetName].data;
+                const mapping = sheetMappings[sheetName];
+                const options = sheetOptions[sheetName];
+
+                if (options.frontColumn === options.backColumn) {
+                    results.push({ sheetName, success: false, message: '正面和背面不能選擇相同的欄位' });
+                    continue;
+                }
+
+                let targetDeckId;
+                let targetDeckName;
+                let newDeckCreated = false;
+
+                try {
+                    if (mapping.deckOption === 'existing') {
+                        targetDeckId = parseInt(mapping.deckId);
+                        const deckIndex = decksData.findIndex(d => d.id === targetDeckId);
+                        if (deckIndex === -1) {
+                            results.push({ sheetName, success: false, message: '找不到選擇的卡組' });
+                            continue;
+                        }
+                        targetDeckName = decksData[deckIndex].name;
+                    } else {
+                        const deckName = mapping.newDeckName.trim();
+                        if (!deckName) {
+                            results.push({ sheetName, success: false, message: '卡組名稱不能為空' });
+                            continue;
+                        }
+                        const newDeck = {
+                            id: Date.now() + Math.floor(Math.random() * 1000),
+                            name: deckName,
+                            description: mapping.newDeckDescription.trim(),
+                            cardIds: [],
+                            createdAt: Date.now()
+                        };
+                        decksData.push(newDeck);
+                        targetDeckId = newDeck.id;
+                        targetDeckName = newDeck.name;
+                        newDeckCreated = true;
                     }
 
-                    const results = [];
+                    const targetDeck = decksData.find(d => d.id === targetDeckId);
+                    let importedCount = 0;
+                    let skippedCount = 0;
 
-                    // 處理每個工作表
-                    for (const sheetName of Object.keys(excelSheets)) {
-                        const sheetData = excelSheets[sheetName].data;
-                        const mapping = sheetMappings[sheetName];
-                        const options = sheetOptions[sheetName];
-
-                        if (options.frontColumn === options.backColumn) {
-                            results.push({ sheetName, success: false, message: '正面和背面不能選擇相同的欄位' });
+                    for (let i = 1; i < sheetData.length; i++) {
+                        const row = sheetData[i];
+                        if (!row) {
+                            skippedCount++;
+                            continue;
+                        }
+                        const rawFrontContent = row[options.frontColumn];
+                        const rawBackContent = row[options.backColumn];
+                        if (!rawFrontContent && !rawBackContent) {
+                            skippedCount++;
                             continue;
                         }
 
-                        let targetDeckId;
-                        let targetDeckName;
-                        let newDeckCreated = false;
+                        // 【關鍵修改】這裡的呼叫現在會自動處理 Google Drive 連結
+                        const processedFront = processImportedContent(rawFrontContent);
+                        const frontText = processRawTextForCard(processedFront.text);
+                        const frontImage = processedFront.image;
 
-                        try {
-                            if (mapping.deckOption === 'existing') {
-                                targetDeckId = parseInt(mapping.deckId);
-                                const deckIndex = decksData.findIndex(d => d.id === targetDeckId);
-                                if (deckIndex === -1) {
-                                    results.push({ sheetName, success: false, message: '找不到選擇的卡組' });
-                                    continue;
-                                }
-                                targetDeckName = decksData[deckIndex].name;
-                            } else {
-                                const deckName = mapping.newDeckName.trim();
-                                if (!deckName) {
-                                    results.push({ sheetName, success: false, message: '卡組名稱不能為空' });
-                                    continue;
-                                }
-                                const newDeck = {
-                                    id: Date.now() + Math.floor(Math.random() * 1000),
-                                    name: deckName,
-                                    description: mapping.newDeckDescription.trim(),
-                                    cardIds: [],
-                                    createdAt: Date.now()
-                                };
-                                decksData.push(newDeck);
-                                targetDeckId = newDeck.id;
-                                targetDeckName = newDeck.name;
-                                newDeckCreated = true;
-                            }
+                        const processedBack = processImportedContent(rawBackContent);
+                        const backText = processRawTextForCard(processedBack.text);
+                        const backImage = processedBack.image;
 
-                            const targetDeck = decksData.find(d => d.id === targetDeckId);
-                            let importedCount = 0;
-                            let skippedCount = 0;
-
-                            for (let i = 1; i < sheetData.length; i++) {
-                                const row = sheetData[i];
-                                if (!row) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                const rawFrontContent = row[options.frontColumn];
-                                const rawBackContent = row[options.backColumn];
-                                if (!rawFrontContent && !rawBackContent) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                const processedFront = processImportedContent(rawFrontContent);
-                                const frontText = processRawTextForCard(processedFront.text);
-                                const frontImage = processedFront.image;
-                                const processedBack = processImportedContent(rawBackContent);
-                                const backText = processRawTextForCard(processedBack.text);
-                                const backImage = processedBack.image;
-                                const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
-                                const newCard = {
-                                    id: newCardId,
-                                    frontText: frontText,
-                                    frontImage: frontImage,
-                                    backText: backText,
-                                    backImage: backImage,
-                                    nextReview: Date.now(),
-                                    repetitions: 0,
-                                    easeFactor: 2.0,
-                                    interval: 1.0
-                                };
-                                cardsData.push(newCard);
-                                targetDeck.cardIds.push(newCardId);
-                                importedCount++;
-                            }
-                            results.push({ sheetName, success: true, targetDeckName, importedCount, skippedCount, newDeckCreated });
-                        } catch (error) {
-                            console.error(`工作表 "${sheetName}" 導入出錯:`, error);
-                            results.push({ sheetName, success: false, message: '導入數據過程中發生錯誤' });
+                        // 建立新卡片時，如果文字和圖片都為空，則跳過
+                        if (!frontText && !frontImage && !backText && !backImage) {
+                            skippedCount++;
+                            continue;
                         }
+
+                        const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
+                        const newCard = {
+                            id: newCardId,
+                            frontText: frontText,
+                            frontImage: frontImage,
+                            backText: backText,
+                            backImage: backImage,
+                            nextReview: Date.now(),
+                            repetitions: 0,
+                            easeFactor: 2.0,
+                            interval: 1.0
+                        };
+                        cardsData.push(newCard);
+                        targetDeck.cardIds.push(newCardId);
+                        importedCount++;
                     }
-
-                    // 【關鍵修改】在顯示結果前，先刷新所有UI
-                    refreshAllViews();
-
-                    // 顯示導入結果
-                    showExcelStep(3);
-                    displayMultiSheetImportResults(results);
-
-                    saveDataToLocalStorage();
+                    results.push({ sheetName, success: true, targetDeckName, importedCount, skippedCount, newDeckCreated });
+                } catch (error) {
+                    console.error(`工作表 "${sheetName}" 導入出錯:`, error);
+                    results.push({ sheetName, success: false, message: '導入數據過程中發生錯誤' });
                 }
+            }
+
+            refreshAllViews();
+            saveDataToLocalStorage();
+            showExcelStep(3);
+            displayMultiSheetImportResults(results);
+        }
 
                                 // 顯示多工作表導入結果
                                 function displayMultiSheetImportResults(results) {
