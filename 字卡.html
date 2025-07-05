@@ -2484,7 +2484,7 @@
                         }
                         totalImportCount += cardImportCount;
                     });
-
+                    processSheetsIntoCardsAndDecks();
                     refreshAllViews();
                     saveDataToLocalStorage();
                     closeGSheetsImportModal();
@@ -7850,7 +7850,7 @@
                     if (!spreadsheetId) throw new Error("無效的預設連結");
 
                     await loadFormattedGSheetsData(spreadsheetId, defaultUrl, false);
-
+                    processSheetsIntoCardsAndDecks();
                     // 載入成功後，刷新頁面並移除提示
                     refreshAllViews();
                     showNotification('預設概念表已成功載入！', 2500);
@@ -9297,6 +9297,79 @@
                                         // 如果儲存失敗（例如空間已滿），可以提示使用者
                                         showNotification("錯誤：無法自動保存您的數據！請嘗試手動匯出。", 5000);
                                     }
+                                }
+
+                                // 【新增】可重用的函數，用於將 excelSheets 轉換為 cardsData 和 decksData
+                                function processSheetsIntoCardsAndDecks() {
+                                    console.log("正在將工作表數據轉換為內部卡組和字卡...");
+                                    let totalImportCount = 0;
+
+                                    Object.keys(excelSheets).forEach(sheetName => {
+                                        if (!excelSheets[sheetName]) return;
+
+                                        // 檢查是否已存在同名卡組，如果存在則跳過，避免重複創建
+                                        const existingDeck = decksData.find(d => d.name === sheetName);
+                                        if (existingDeck) {
+                                            console.log(`卡組 "${sheetName}" 已存在，跳過創建。`);
+                                            // 您也可以在這裡實現合併或更新邏輯
+                                            return;
+                                        }
+
+                                        const newDeck = {
+                                            id: Date.now() + Math.floor(Math.random() * 1000),
+                                            name: `${sheetName}`,
+                                            description: `從 Google Sheets 自動導入`,
+                                            cardIds: [],
+                                            createdAt: Date.now()
+                                        };
+                                        decksData.push(newDeck);
+
+                                        const sheet = excelSheets[sheetName];
+                                        if (!sheet || !sheet.data) return;
+
+                                        const sheetData = sheet.data;
+                                        let cardImportCount = 0;
+
+                                        // 假設第一列是正面，第二列是背面
+                                        const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
+                                        const backCol = sheetOptions[sheetName]?.backColumn || 1;
+
+                                        // 從第二行開始（跳過標題行）
+                                        for (let i = 1; i < sheetData.length; i++) {
+                                            const row = sheetData[i];
+                                            if (!row || !row.length) continue;
+
+                                            const frontContentSource = row[frontCol];
+                                            const backContentSource = row[backCol];
+
+                                            // 使用您已有的 processImportedContent 函數
+                                            const processedFront = processImportedContent(frontContentSource);
+                                            const processedBack = processImportedContent(backContentSource);
+
+                                            // 如果正反面都沒有任何內容，則跳過
+                                            if (!processedFront.text && !processedFront.image && !processedBack.text && !processedBack.image) continue;
+
+                                            const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
+                                            const newCard = {
+                                                id: newCardId,
+                                                frontText: processedFront.text,
+                                                frontImage: processedFront.image,
+                                                backText: processedBack.text,
+                                                backImage: processedBack.image,
+                                                nextReview: Date.now(),
+                                                repetitions: 0,
+                                                easeFactor: 2.0,
+                                                interval: 1.0
+                                            };
+                                            cardsData.push(newCard);
+                                            newDeck.cardIds.push(newCardId);
+                                            cardImportCount++;
+                                        }
+                                        totalImportCount += cardImportCount;
+                                        console.log(`已為卡組 "${sheetName}" 導入 ${cardImportCount} 張字卡。`);
+                                    });
+
+                                    console.log(`總共導入了 ${totalImportCount} 張字卡。`);
                                 }
 
                             </script>
