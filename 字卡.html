@@ -2412,15 +2412,45 @@
             loadBtn.disabled = true;
             loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
 
+            // 為了更好的用戶體驗，先關閉主導入窗口
+            closeGSheetsImportModal();
+
             try {
                 const spreadsheetId = extractSpreadsheetId(gSheetsUrl);
                 if (!spreadsheetId) throw new Error('無法從URL中提取試算表ID');
 
-                // 使用帶格式的方式載入數據
+                // 1. 載入數據到 excelSheets 變數中
                 await loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync);
 
-                // 【核心修改】載入數據後，彈出衝突解決對話框
-                showGSheetsConflictModal();
+                // 2. 【核心修改】檢查是否存在名稱衝突
+                const sheetNames = Object.keys(excelSheets);
+                const hasConflicts = sheetNames.some(sheetName =>
+                    decksData.some(deck => deck.name === sheetName)
+                );
+
+                // 3. 根據是否有衝突，決定下一步操作
+                if (hasConflicts) {
+                    // 如果有衝突，顯示衝突解決對話框讓用戶選擇
+                    console.log("偵測到名稱衝突，顯示解決對話框。");
+                    showGSheetsConflictModal();
+                } else {
+                    // 如果沒有衝突，直接將所有工作表視為新卡組進行導入
+                    console.log("未偵測到名稱衝突，直接導入所有工作表。");
+
+                    // 手動設定所有工作表的處理方式為 'new'
+                    gSheetsConflictResolutions = {};
+                    sheetNames.forEach(sheetName => {
+                        gSheetsConflictResolutions[sheetName] = 'new';
+                    });
+
+                    // 直接調用處理函數
+                    processSheetsIntoCardsAndDecks();
+
+                    // 刷新UI並儲存數據
+                    refreshAllViews();
+                    saveDataToLocalStorage();
+                    showNotification('Google Sheets 數據已成功導入！', 2500);
+                }
 
             } catch (error) {
                 console.error('Google Sheets 載入失敗:', error);
@@ -2428,8 +2458,6 @@
             } finally {
                 loadBtn.disabled = false;
                 loadBtn.textContent = originalText;
-                // 關閉主導入對話框，因為接下來由衝突解決對話框接管
-                closeGSheetsImportModal();
             }
         }
 
