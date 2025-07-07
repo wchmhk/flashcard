@@ -9022,10 +9022,10 @@
                                         const summaryEl = document.createElement('summary');
                                         summaryEl.className = 'font-medium text-lg list-none cursor-pointer flex justify-between items-center';
 
-                                        const conceptHTML = renderMixedContent(conceptCell);
+                                        const conceptContent = renderMixedContent(conceptCell);
 
                                         summaryEl.innerHTML = `
-                                            <div>${conceptHTML.text || '<span class="italic text-gray-500">無標題</span>'}</div>
+                                            <div>${conceptContent || '<span class="italic text-gray-500">無標題</span>'}</div>
                                             <svg class="w-5 h-5 transition-transform duration-300 group-open:rotate-180 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                               <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
@@ -9035,25 +9035,23 @@
                                         answerDiv.className = 'mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 space-y-4';
 
                                         // 處理定義 (第二欄) 和補充資訊 (第三欄)
-                                        const definitionHTML = renderMixedContent(definitionCell);
-                                        const extraInfoHTML = renderMixedContent(extraInfoCell);
+                                        const definitionContent = renderMixedContent(definitionCell);
+                                        const extraInfoContent = renderMixedContent(extraInfoCell);
 
-                                        let answerContent = '';
-                                        if (definitionHTML.text) answerContent += `<div>${definitionHTML.text}</div>`;
-                                        if (definitionHTML.image) answerContent += `<div><img src="${definitionHTML.image}" class="max-w-full h-auto rounded-lg mt-2"></div>`;
-
-                                        if (extraInfoHTML.text || extraInfoHTML.image) {
-                                            answerContent += `<div class="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded text-sm space-y-2">`;
-                                            if (extraInfoHTML.text) answerContent += `<div>${extraInfoHTML.text}</div>`;
-                                            if (extraInfoHTML.image) answerContent += `<div><img src="${extraInfoHTML.image}" class="max-w-full h-auto rounded-lg mt-2"></div>`;
-                                            answerContent += `</div>`;
+                                        let finalAnswerHTML = '';
+                                        if (definitionContent) {
+                                            finalAnswerHTML += `<div>${definitionContent}</div>`;
                                         }
 
-                                        if (!answerContent) {
-                                             answerContent = '<p class="text-gray-500 italic">無詳細內容。</p>';
+                                        if (extraInfoContent) {
+                                            finalAnswerHTML += `<div class="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded text-sm">${extraInfoContent}</div>`;
                                         }
 
-                                        answerDiv.innerHTML = answerContent;
+                                        if (!finalAnswerHTML) {
+                                             finalAnswerHTML = '<p class="text-gray-500 italic">無詳細內容。</p>';
+                                        }
+
+                                        answerDiv.innerHTML = finalAnswerHTML;
 
                                         detailsEl.appendChild(summaryEl);
                                         detailsEl.appendChild(answerDiv);
@@ -9080,44 +9078,33 @@
 
                                 // 【新增】處理混合內容（文字+圖片連結）的輔助函數
                                 function renderMixedContent(cell) {
-                                    let result = { text: '', image: null };
-                                    if (!cell) return result;
+                                    if (!cell) return '';
 
                                     let contentStr = '';
-                                    // 如果是帶格式的物件，先轉成 HTML
+                                    // 如果是從 Google Sheets API 來的帶格式物件，先轉成 HTML
                                     if (typeof cell === 'object' && cell.delta) {
                                         contentStr = convertDeltaToHTML(cell.delta);
                                     } else {
                                         contentStr = cell.toString();
                                     }
 
-                                    // 正則表達式，用來尋找 Google Drive 連結
+                                    // 正則表達式，用來尋找 Google Drive 連結 (g flag 表示全局搜索)
                                     const urlRegex = /(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)/g;
 
-                                    let match;
-                                    let lastIndex = 0;
-                                    let textParts = [];
-
-                                    // 遍歷所有找到的 URL
-                                    while ((match = urlRegex.exec(contentStr)) !== null) {
-                                        // 將 URL 前面的文字部分加進來
-                                        textParts.push(contentStr.substring(lastIndex, match.index));
-
-                                        // 處理找到的第一個 URL 作為圖片
-                                        if (!result.image) {
-                                            result.image = convertGoogleDriveLink(match[0]);
+                                    // 將所有匹配的 URL 替換為 <img> 標籤
+                                    let finalHTML = contentStr.replace(urlRegex, (match) => {
+                                        const convertedUrl = convertGoogleDriveLink(match);
+                                        if (convertedUrl) {
+                                            // 返回一個圖片標籤，並添加一些樣式來改善間距
+                                            return `<img src="${convertedUrl}" class="max-w-full h-auto rounded-lg my-2 block">`;
                                         }
+                                        return match; // 如果轉換失敗，返回原始 URL 文字
+                                    });
 
-                                        lastIndex = match.index + match[0].length;
-                                    }
+                                    // 為了安全，確保在替換圖片後再處理換行符
+                                    finalHTML = finalHTML.replace(/\n/g, '<br>');
 
-                                    // 添加最後剩餘的文字部分
-                                    textParts.push(contentStr.substring(lastIndex));
-
-                                    // 將所有文字部分合併，並處理換行
-                                    result.text = textParts.join('').replace(/\n/g, '<br>').trim();
-
-                                    return result;
+                                    return finalHTML.trim();
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (返回類型和內容)
