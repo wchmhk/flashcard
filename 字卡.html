@@ -6407,11 +6407,11 @@
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
 
-            // 清空專用的圖片容器，因為圖片現在已嵌入文字內容中
+            // 清空專用的圖片容器，因為圖片和影片現在已經嵌入在文字內容中
             frontImage.innerHTML = '';
             backImage.innerHTML = '';
 
-            // 根據 sidesFlipped 決定顯示方式
+            // 根據 sidesFlipped 決定顯示方式，直接渲染包含所有媒體的HTML
             if (sidesFlipped) {
                 // 正反面互換
                 frontText.innerHTML = card.backText || '';
