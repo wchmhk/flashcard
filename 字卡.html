@@ -9024,33 +9024,37 @@
                                 function renderMixedContent(cell) {
                                     if (!cell) return '';
 
-                                    let contentStr = '';
-                                    // 如果是從 Google Sheets API 來的帶格式物件，先轉成 HTML
-                                    if (typeof cell === 'object' && cell.delta) {
-                                        contentStr = convertDeltaToHTML(cell.delta);
-                                    } else {
-                                        contentStr = cell.toString();
-                                    }
+                                    // 使用之前已有的 getCellTextContent 函數獲取最原始的純文字內容
+                                    const rawText = getCellTextContent(cell);
+                                    if (!rawText.trim()) return '';
 
-                                    // 定義用於尋找連結的正則表達式 (g flag 表示全局搜索)
-                                    const youtubeRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}[^\s<]*)/g;
-                                    const driveRegex = /(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)/g;
+                                    // 將內容按換行符分割成多行，以便逐行處理
+                                    const lines = rawText.split('\n');
 
-                                    // 鏈式替換：先處理 YouTube 影片，再處理 Google Drive 圖片
-                                    let finalHTML = contentStr
-                                        .replace(youtubeRegex, (match) => {
-                                            return convertYoutubeLink(match) || match; // 如果是有效連結則替換，否則保留原文
-                                        })
-                                        .replace(driveRegex, (match) => {
-                                            const convertedUrl = convertGoogleDriveLink(match);
-                                            // 如果是有效連結則替換為圖片標籤，否則保留原文
-                                            return convertedUrl ? `<img src="${convertedUrl}" class="max-w-full h-auto rounded-lg my-2 block">` : match;
-                                        });
+                                    const processedElements = lines.map(line => {
+                                        const trimmedLine = line.trim();
+                                        if (!trimmedLine) return ''; // 忽略空行
 
-                                    // 最後處理文字中的換行符
-                                    finalHTML = finalHTML.replace(/\n/g, '<br>');
+                                        // 優先檢查是否為 YouTube 連結
+                                        const youtubeEmbed = convertYoutubeLink(trimmedLine);
+                                        if (youtubeEmbed) {
+                                            return youtubeEmbed; // 如果是，返回 iframe 的 HTML
+                                        }
 
-                                    return finalHTML.trim();
+                                        // 接著檢查是否為 Google Drive 圖片連結
+                                        const driveImage = convertGoogleDriveLink(trimmedLine);
+                                        if (driveImage) {
+                                            // 如果是，返回 <img> 標籤的 HTML
+                                            return `<img src="${driveImage}" class="max-w-full h-auto rounded-lg my-2 block">`;
+                                        }
+
+                                        // 如果以上都不是，則視為普通文字。
+                                        // 使用 escapeHtml 進行安全處理，並用 <div> 包裹以保留段落感。
+                                        return `<div>${escapeHtml(line)}</div>`;
+                                    });
+
+                                    // 將所有處理好的 HTML 片段組合起來
+                                    return processedElements.join('');
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (返回類型和內容)
@@ -9320,6 +9324,14 @@
                                         `;
                                     }
                                     return null; // 如果不是有效的 YouTube 連結，返回 null
+                                }
+
+                                // 【新增】輔助函數，用於轉義HTML，防止XSS攻擊
+                                function escapeHtml(text) {
+                                    if (typeof text !== 'string') return text;
+                                    const div = document.createElement('div');
+                                    div.textContent = text;
+                                    return div.innerHTML;
                                 }
 
                             </script>
