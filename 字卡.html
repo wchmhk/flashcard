@@ -6396,70 +6396,30 @@
             saveDataToLocalStorage();
         }
 
-        // Show current card to review
+        // 【替換此函數】Show current card to review
         function showCurrentCard() {
             // 重置卡片狀態
             cardFront.classList.remove('hidden');
             cardBack.classList.add('hidden');
             ratingButtons.classList.add('hidden');
 
-            // 设置卡片布局样式
-            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
-            cardBack.className = "flex flex-col w-full h-full justify-between hidden";
-
-            // 确保文字区域有最小高度
-            frontText.style.minHeight = "80px";
-            backText.style.minHeight = "80px";
-
-            // 增加文字区域的边距
-            frontText.className = "mb-6 px-2";
-            backText.className = "mb-6 px-2";
-
             // 獲取當前卡片
             const card = cardsToReview[currentCardIndex];
             if (!card) return;
 
-            // 根據sidesFlipped決定顯示方式
+            // 清空專用的圖片容器，因為圖片現在已嵌入文字內容中
+            frontImage.innerHTML = '';
+            backImage.innerHTML = '';
+
+            // 根據 sidesFlipped 決定顯示方式
             if (sidesFlipped) {
                 // 正反面互換
                 frontText.innerHTML = card.backText || '';
                 backText.innerHTML = card.frontText || '';
-
-                // 處理圖片顯示
-                frontImage.innerHTML = '';
-                backImage.innerHTML = '';
-
-                if (card.backImage) {
-                    const imgContainer = createZoomableImage(card.backImage);
-                    frontImage.appendChild(imgContainer);
-                }
-
-                if (card.frontImage) {
-                    const imgContainer = createZoomableImage(card.frontImage);
-                    backImage.appendChild(imgContainer);
-                }
             } else {
                 // 正常顯示
                 frontText.innerHTML = card.frontText || '';
                 backText.innerHTML = card.backText || '';
-
-                // 增加間距類
-                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
-                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
-
-                // 處理圖片顯示
-                frontImage.innerHTML = '';
-                backImage.innerHTML = '';
-
-                if (card.frontImage) {
-                    const imgContainer = createZoomableImage(card.frontImage);
-                    frontImage.appendChild(imgContainer);
-                }
-
-                if (card.backImage) {
-                    const imgContainer = createZoomableImage(card.backImage);
-                    backImage.appendChild(imgContainer);
-                }
             }
         }
 
@@ -8433,7 +8393,7 @@
             XLSX.writeFile(wb, '字卡模板_多工作表.xlsx');
         }
 
-        // 修改的importExcelData函數 - 支持多工作表並自動刷新
+        // 【替換此函數】修改的importExcelData函數 - 支持多工作表並自動刷新
         function importExcelData() {
             if (Object.keys(excelSheets).length === 0) {
                 showNotification('沒有可用的工作表數據');
@@ -8495,24 +8455,12 @@
                             skippedCount++;
                             continue;
                         }
-                        const rawFrontContent = row[options.frontColumn];
-                        const rawBackContent = row[options.backColumn];
-                        if (!rawFrontContent && !rawBackContent) {
-                            skippedCount++;
-                            continue;
-                        }
 
-                        // 【關鍵修改】這裡的呼叫現在會自動處理 Google Drive 連結
-                        const processedFront = processImportedContent(rawFrontContent);
-                        const frontText = processRawTextForCard(processedFront.text);
-                        const frontImage = processedFront.image;
+                        // 【核心修改】直接使用 renderMixedContent 產生完整的 HTML
+                        const frontHTML = renderMixedContent(row[options.frontColumn]);
+                        const backHTML = renderMixedContent(row[options.backColumn]);
 
-                        const processedBack = processImportedContent(rawBackContent);
-                        const backText = processRawTextForCard(processedBack.text);
-                        const backImage = processedBack.image;
-
-                        // 建立新卡片時，如果文字和圖片都為空，則跳過
-                        if (!frontText && !frontImage && !backText && !backImage) {
+                        if (!frontHTML && !backHTML) {
                             skippedCount++;
                             continue;
                         }
@@ -8520,10 +8468,10 @@
                         const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
                         const newCard = {
                             id: newCardId,
-                            frontText: frontText,
-                            frontImage: frontImage,
-                            backText: backText,
-                            backImage: backImage,
+                            frontText: frontHTML, // 直接儲存完整 HTML
+                            frontImage: null,     // 不再使用獨立的 image 屬性
+                            backText: backHTML,   // 直接儲存完整 HTML
+                            backImage: null,      // 不再使用獨立的 image 屬性
                             nextReview: Date.now(),
                             repetitions: 0,
                             easeFactor: 2.0,
@@ -9072,7 +9020,7 @@
                                     }
                                 }
 
-                                // 【新增】處理混合內容（文字+圖片連結）的輔助函數
+                                // 【替換此函數】處理混合內容（文字+圖片連結+影片連結）的輔助函數
                                 function renderMixedContent(cell) {
                                     if (!cell) return '';
 
@@ -9084,20 +9032,22 @@
                                         contentStr = cell.toString();
                                     }
 
-                                    // 正則表達式，用來尋找 Google Drive 連結 (g flag 表示全局搜索)
-                                    const urlRegex = /(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)/g;
+                                    // 定義用於尋找連結的正則表達式 (g flag 表示全局搜索)
+                                    const youtubeRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}[^\s<]*)/g;
+                                    const driveRegex = /(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)/g;
 
-                                    // 將所有匹配的 URL 替換為 <img> 標籤
-                                    let finalHTML = contentStr.replace(urlRegex, (match) => {
-                                        const convertedUrl = convertGoogleDriveLink(match);
-                                        if (convertedUrl) {
-                                            // 返回一個圖片標籤，並添加一些樣式來改善間距
-                                            return `<img src="${convertedUrl}" class="max-w-full h-auto rounded-lg my-2 block">`;
-                                        }
-                                        return match; // 如果轉換失敗，返回原始 URL 文字
-                                    });
+                                    // 鏈式替換：先處理 YouTube 影片，再處理 Google Drive 圖片
+                                    let finalHTML = contentStr
+                                        .replace(youtubeRegex, (match) => {
+                                            return convertYoutubeLink(match) || match; // 如果是有效連結則替換，否則保留原文
+                                        })
+                                        .replace(driveRegex, (match) => {
+                                            const convertedUrl = convertGoogleDriveLink(match);
+                                            // 如果是有效連結則替換為圖片標籤，否則保留原文
+                                            return convertedUrl ? `<img src="${convertedUrl}" class="max-w-full h-auto rounded-lg my-2 block">` : match;
+                                        });
 
-                                    // 為了安全，確保在替換圖片後再處理換行符
+                                    // 最後處理文字中的換行符
                                     finalHTML = finalHTML.replace(/\n/g, '<br>');
 
                                     return finalHTML.trim();
@@ -9282,7 +9232,7 @@
                                     }
                                 }
 
-                                // 【新增】可重用的函數，用於將 excelSheets 轉換為 cardsData 和 decksData
+                                // 【替換此函數】可重用的函數，用於將 excelSheets 轉換為 cardsData 和 decksData
                                 function processSheetsIntoCardsAndDecks() {
                                     console.log("正在將工作表數據轉換為內部卡組和字卡...");
                                     let totalImportCount = 0;
@@ -9290,11 +9240,9 @@
                                     Object.keys(excelSheets).forEach(sheetName => {
                                         if (!excelSheets[sheetName]) return;
 
-                                        // 檢查是否已存在同名卡組，如果存在則跳過，避免重複創建
                                         const existingDeck = decksData.find(d => d.name === sheetName);
                                         if (existingDeck) {
                                             console.log(`卡組 "${sheetName}" 已存在，跳過創建。`);
-                                            // 您也可以在這裡實現合併或更新邏輯
                                             return;
                                         }
 
@@ -9313,32 +9261,26 @@
                                         const sheetData = sheet.data;
                                         let cardImportCount = 0;
 
-                                        // 假設第一列是正面，第二列是背面
                                         const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
                                         const backCol = sheetOptions[sheetName]?.backColumn || 1;
 
-                                        // 從第二行開始（跳過標題行）
                                         for (let i = 1; i < sheetData.length; i++) {
                                             const row = sheetData[i];
                                             if (!row || !row.length) continue;
 
-                                            const frontContentSource = row[frontCol];
-                                            const backContentSource = row[backCol];
+                                            // 【核心修改】直接使用 renderMixedContent 產生完整的 HTML
+                                            const frontHTML = renderMixedContent(row[frontCol]);
+                                            const backHTML = renderMixedContent(row[backCol]);
 
-                                            // 使用您已有的 processImportedContent 函數
-                                            const processedFront = processImportedContent(frontContentSource);
-                                            const processedBack = processImportedContent(backContentSource);
-
-                                            // 如果正反面都沒有任何內容，則跳過
-                                            if (!processedFront.text && !processedFront.image && !processedBack.text && !processedBack.image) continue;
+                                            if (!frontHTML && !backHTML) continue;
 
                                             const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
                                             const newCard = {
                                                 id: newCardId,
-                                                frontText: processedFront.text,
-                                                frontImage: processedFront.image,
-                                                backText: processedBack.text,
-                                                backImage: processedBack.image,
+                                                frontText: frontHTML, // 直接儲存完整 HTML
+                                                frontImage: null,     // 不再使用獨立的 image 屬性
+                                                backText: backHTML,   // 直接儲存完整 HTML
+                                                backImage: null,      // 不再使用獨立的 image 屬性
                                                 nextReview: Date.now(),
                                                 repetitions: 0,
                                                 easeFactor: 2.0,
@@ -9353,6 +9295,31 @@
                                     });
 
                                     console.log(`總共導入了 ${totalImportCount} 張字卡。`);
+                                }
+
+                                // 【新增】輔助函數，將 YouTube 分享連結轉換為可嵌入的 iframe
+                                function convertYoutubeLink(url) {
+                                    // 正則表達式，用來從各種常見的 YouTube URL 格式中捕獲影片 ID
+                                    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                                    const match = url.match(youtubeRegex);
+
+                                    if (match && match[1]) {
+                                        const videoId = match[1];
+                                        // 返回一個帶有響應式容器的 iframe HTML 代碼，以確保影片比例正確
+                                        return `
+                                            <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 1rem 0; border-radius: 8px;">
+                                                <iframe
+                                                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                                                    src="https://www.youtube.com/embed/${videoId}"
+                                                    frameborder="0"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowfullscreen
+                                                    title="Embedded YouTube video">
+                                                </iframe>
+                                            </div>
+                                        `;
+                                    }
+                                    return null; // 如果不是有效的 YouTube 連結，返回 null
                                 }
 
                             </script>
