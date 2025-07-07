@@ -3411,7 +3411,21 @@
             }
         }
 
-        // 增強的格式應用函數,特別注重顏色處理和對齊方式
+        // 【新增】輔助函數：解析顏色字串並計算其亮度 (0=黑, 1=白)
+        function getLuminance(colorStr) {
+            if (!colorStr) return -1;
+            const match = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (!match) return -1;
+
+            // 將 0-255 的 RGB 值標準化到 0-1
+            const r = parseInt(match[1]) / 255;
+            const g = parseInt(match[2]) / 255;
+            const b = parseInt(match[3]) / 255;
+
+            // 使用 W3C 標準公式計算感知亮度
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        }
+
         function applyFormattingWithColorEnhancement(element, attributes, isDarkMode) {
             if (!attributes) return;
 
@@ -3441,63 +3455,45 @@
                 }
             }
 
-            // 前景色處理 - 優化暗模式下的顏色顯示
+            // 【核心修改】智慧型文字顏色處理 (使用純黑/純白修正)
             if (attributes.color) {
-                // 直接使用color屬性
-                element.style.color = attributes.color;
+                const luminance = getLuminance(attributes.color);
 
-                // 對特定顏色在暗模式下進行調整
                 if (isDarkMode) {
-                    // 可能需要根據暗模式調整某些顏色的亮度/對比度
-                    // 例如:在暗模式下加亮深色文字
-                    const colorMatch = attributes.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-                    if (colorMatch) {
-                        const r = parseInt(colorMatch[1]);
-                        const g = parseInt(colorMatch[2]);
-                        const b = parseInt(colorMatch[3]);
-
-                        // 計算顏色亮度 (0-255)
-                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-                        // 如果顏色太暗,在暗模式下提亮
-                        if (brightness < 128) {
-                            // 提亮顏色,但保持色調
-                            element.style.color = `rgb(${Math.min(r + 100, 255)}, ${Math.min(g + 100, 255)}, ${Math.min(b + 100, 255)})`;
-                            // 添加文字陰影增加可讀性
-                            element.style.textShadow = '0 0 2px rgba(0,0,0,0.5)';
-                        }
+                    // 在深色模式下，如果文字顏色太暗 (例如黑色)，則強制改為純白色
+                    if (luminance !== -1 && luminance < 0.2) {
+                        element.style.color = '#FFFFFF'; // 純白色
+                    } else {
+                        element.style.color = attributes.color;
+                    }
+                } else {
+                    // 在淺色模式下，如果文字顏色太亮 (例如白色)，則強制改為純黑色
+                    if (luminance !== -1 && luminance > 0.85) {
+                        element.style.color = '#000000'; // 純黑色
+                    } else {
+                        element.style.color = attributes.color;
                     }
                 }
             }
 
-            // 背景色處理
+            // 智慧型背景顏色處理 (保留原有邏輯)
             if (attributes.background) {
-                // 檢查是否為白色或接近白色的背景
-                if (attributes.background === 'rgb(255, 255, 255)' ||
-                    attributes.background.match(/rgb\(2[0-9][0-9], 2[0-9][0-9], 2[0-9][0-9]\)/)) {
+                const bgLuminance = getLuminance(attributes.background);
 
-                    if (isDarkMode) {
-                        // 在暗模式下將白色背景改為半透明
-                        element.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                        // 確保文字可見
+                if (isDarkMode) {
+                    // 在深色模式下，如果背景顏色太亮 (例如白色)，則將其變為半透明的疊加層
+                    if (bgLuminance !== -1 && bgLuminance > 0.9) {
+                        element.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                        // 確保文字在此背景上有足夠對比度
                         if (!attributes.color) {
-                            element.style.color = '#fff';
+                            element.style.color = '#f9fafb'; // 一個更亮的灰色
                         }
                     } else {
                         element.style.backgroundColor = attributes.background;
                     }
                 } else {
-                    // 其他背景色直接應用,可能還需按暗模式調整
+                    // 在淺色模式下，深色背景通常沒問題，直接應用
                     element.style.backgroundColor = attributes.background;
-
-                    // 在暗模式下,可能需要調整背景色的透明度
-                    if (isDarkMode) {
-                        const match = attributes.background.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-                        if (match) {
-                            // 使背景色半透明以配合暗模式
-                            element.style.backgroundColor = `rgba(${match[1]}, ${match[2]}, ${match[3]}, 0.7)`;
-                        }
-                    }
                 }
             }
 
