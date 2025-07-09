@@ -7809,7 +7809,7 @@
                     processSheetsIntoCardsAndDecks();
                     // 載入成功後，刷新頁面並移除提示
                     refreshAllViews();
-                    showNotification('預設概念表已成功載入！', 2500);
+                    showNotification('成功載入！', 2500);
 
                 } catch (error) {
                     console.error("自動載入預設 Google Sheet 失敗:", error);
@@ -9026,40 +9026,35 @@
                                     }
                                 }
 
-                                // 【替換此函數】處理混合內容（文字+圖片連結+影片連結）的輔助函數
+                                // 【替換此函數】處理混合內容（文字+圖片+影片+地圖連結）的輔助函數
                                 function renderMixedContent(cell) {
                                     if (!cell) return '';
 
-                                    // 使用之前已有的 getCellTextContent 函數獲取最原始的純文字內容
                                     const rawText = getCellTextContent(cell);
                                     if (!rawText.trim()) return '';
 
-                                    // 將內容按換行符分割成多行，以便逐行處理
                                     const lines = rawText.split('\n');
 
                                     const processedElements = lines.map(line => {
                                         const trimmedLine = line.trim();
-                                        if (!trimmedLine) return ''; // 忽略空行
+                                        if (!trimmedLine) return '';
 
                                         // 優先檢查是否為 YouTube 連結
                                         const youtubeEmbed = convertYoutubeLink(trimmedLine);
-                                        if (youtubeEmbed) {
-                                            return youtubeEmbed; // 如果是，返回 iframe 的 HTML
-                                        }
+                                        if (youtubeEmbed) return youtubeEmbed;
+
+                                        // 接著檢查是否為 Google Map 連結
+                                        const mapEmbed = convertGoogleMapLink(trimmedLine);
+                                        if (mapEmbed) return mapEmbed;
 
                                         // 接著檢查是否為 Google Drive 圖片連結
                                         const driveImage = convertGoogleDriveLink(trimmedLine);
-                                        if (driveImage) {
-                                            // 如果是，返回 <img> 標籤的 HTML
-                                            return `<img src="${driveImage}" class="max-w-full h-auto rounded-lg my-2 block">`;
-                                        }
+                                        if (driveImage) return `<img src="${driveImage}" class="max-w-full h-auto rounded-lg my-2 block">`;
 
-                                        // 如果以上都不是，則視為普通文字。
-                                        // 使用 escapeHtml 進行安全處理，並用 <div> 包裹以保留段落感。
+                                        // 如果都不是，則視為普通文字
                                         return `<div>${escapeHtml(line)}</div>`;
                                     });
 
-                                    // 將所有處理好的 HTML 片段組合起來
                                     return processedElements.join('');
                                 }
 
@@ -9338,6 +9333,40 @@
                                     const div = document.createElement('div');
                                     div.textContent = text;
                                     return div.innerHTML;
+                                }
+
+                                // 【新增】輔助函數，將 Google Map 分享連結轉換為可嵌入的 iframe
+                                function convertGoogleMapLink(url) {
+                                    if (!GOOGLE_API_KEY) {
+                                        console.warn("Google Maps 嵌入功能需要 API Key。");
+                                        return null;
+                                    }
+
+                                    // 正則表達式，用來從標準的 Google Maps 'place' URL 中捕獲地點名稱
+                                    // 例如：https://www.google.com/maps/place/Taipei+101/...
+                                    const placeRegex = /google\.com\/maps\/place\/([^/]+)/;
+                                    const match = url.match(placeRegex);
+
+                                    if (match && match[1]) {
+                                        const placeQuery = match[1]; // 這將捕獲 "Taipei+101" 這部分
+
+                                        // 使用 Google Maps Embed API 構建嵌入式 URL
+                                        const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_API_KEY}&q=${placeQuery}`;
+
+                                        // 返回一個帶有響應式容器的 iframe HTML 代碼
+                                        return `
+                                            <div style="position: relative; padding-bottom: 75%; height: 0; overflow: hidden; max-width: 100%; margin: 1rem 0; border-radius: 8px; border: 1px solid #ccc;">
+                                                <iframe
+                                                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                                                    src="${embedUrl}"
+                                                    frameborder="0"
+                                                    allowfullscreen
+                                                    title="Embedded Google Map">
+                                                </iframe>
+                                            </div>
+                                        `;
+                                    }
+                                    return null; // 如果不是可識別的地點連結，返回 null
                                 }
 
                             </script>
