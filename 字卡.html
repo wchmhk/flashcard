@@ -6398,34 +6398,25 @@
 
         // Show current card to review
         function showCurrentCard() {
-            // 重置卡片狀態
+            // 重置卡片的可見狀態
             cardFront.classList.remove('hidden');
             cardBack.classList.add('hidden');
             ratingButtons.classList.add('hidden');
 
-            // 设置卡片布局样式
-            cardFront.className = "flex flex-col w-full h-full justify-between"; // 使用justify-between分配空间
-            cardBack.className = "flex flex-col w-full h-full justify-between hidden";
-
-            // 确保文字区域有最小高度
-            frontText.style.minHeight = "80px";
-            backText.style.minHeight = "80px";
-
-            // 增加文字区域的边距
-            frontText.className = "mb-6 px-2";
-            backText.className = "mb-6 px-2";
-
-            // 獲取當前卡片
+            // 獲取當前要複習的卡片
             const card = cardsToReview[currentCardIndex];
-            if (!card) return;
+            if (!card) {
+                console.error("無法顯示卡片：在索引處找不到卡片", currentCardIndex);
+                return; // 如果沒有卡片，則提前退出
+            }
 
-            // 根據sidesFlipped決定顯示方式
+            // 根據是否啟用「正反互換」(sidesFlipped) 來決定顯示內容
             if (sidesFlipped) {
-                // 正反面互換
+                // 互換模式：正面顯示背面內容，背面顯示正面內容
                 frontText.innerHTML = card.backText || '';
                 backText.innerHTML = card.frontText || '';
 
-                // 處理圖片顯示
+                // 清空並處理圖片
                 frontImage.innerHTML = '';
                 backImage.innerHTML = '';
 
@@ -6433,21 +6424,16 @@
                     const imgContainer = createZoomableImage(card.backImage);
                     frontImage.appendChild(imgContainer);
                 }
-
                 if (card.frontImage) {
                     const imgContainer = createZoomableImage(card.frontImage);
                     backImage.appendChild(imgContainer);
                 }
             } else {
-                // 正常顯示
+                // 正常模式：正常顯示正反面內容
                 frontText.innerHTML = card.frontText || '';
                 backText.innerHTML = card.backText || '';
 
-                // 增加間距類
-                frontText.className = "mb-6 px-2"; // 增加底部間距和左右內邊距
-                backText.className = "mb-6 px-2";  // 增加底部間距和左右內邊距
-
-                // 處理圖片顯示
+                // 清空並處理圖片
                 frontImage.innerHTML = '';
                 backImage.innerHTML = '';
 
@@ -6455,7 +6441,6 @@
                     const imgContainer = createZoomableImage(card.frontImage);
                     frontImage.appendChild(imgContainer);
                 }
-
                 if (card.backImage) {
                     const imgContainer = createZoomableImage(card.backImage);
                     backImage.appendChild(imgContainer);
