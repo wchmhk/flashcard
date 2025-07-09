@@ -9321,17 +9321,22 @@
                                             if (!row || !row.length) continue;
 
                                             const frontContentSource = row[frontCol];
-                                            const backContentSource = row[backCol];
 
-                                            // 【核心修復】處理正面內容，並檢查其是否為空
+                                            // --- 【核心修改開始】---
+                                            // 1. 先處理正面內容
                                             const processedFront = processImportedContent(frontContentSource);
+
+                                            // 2. 檢查正面處理後是否為空 (沒有文字也沒有圖片)
+                                            // 這是防止為空白行建立字卡的關鍵
                                             if (!processedFront.text && !processedFront.image) {
                                                 // 如果卡片正面（第一欄）沒有任何文字或圖片，則跳過此行，不建立卡片。
                                                 console.log(`已跳過工作表 "${sheetName}" 的第 ${i + 1} 行，原因：正面內容為空。`);
                                                 continue;
                                             }
+                                            // --- 【核心修改結束】---
 
                                             // 只有在正面有內容時，才繼續處理背面
+                                            const backContentSource = row[backCol];
                                             const processedBack = processImportedContent(backContentSource);
 
                                             let frontText = '', frontImage = null, backText = '', backImage = null;
