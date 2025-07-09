@@ -2436,57 +2436,17 @@
 
             loadFormattedGSheetsData(spreadsheetId, gSheetsUrl, enableSync)
                 .then(() => {
-                    let totalImportCount = 0;
-                    Object.keys(excelSheets).forEach(sheetName => {
-                        if (!excelSheets[sheetName]) return;
-                        const newDeck = {
-                            id: Date.now() + Math.floor(Math.random() * 1000),
-                            name: `${sheetName}`,
-                            description: ``,
-                            cardIds: [],
-                            createdAt: Date.now()
-                        };
-                        decksData.push(newDeck);
-                        const sheetData = excelSheets[sheetName].data;
-                        let cardImportCount = 0;
-                        const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
-                        const backCol = sheetOptions[sheetName]?.backColumn || 1;
-                        for (let i = 1; i < sheetData.length; i++) {
-                            const row = sheetData[i];
-                            if (!row || !row.length) continue;
-
-                            // 【關鍵修改】使用 processImportedContent 處理正反面內容
-                            const processedFront = processImportedContent(row[frontCol]);
-                            const frontText = processedFront.text;
-                            const frontImage = processedFront.image;
-
-                            const processedBack = processImportedContent(row[backCol]);
-                            const backText = processedBack.text;
-                            const backImage = processedBack.image;
-
-                            if (!frontText && !frontImage && !backText && !backImage) continue;
-
-                            const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
-                            const newCard = {
-                                id: newCardId,
-                                frontText: frontText,
-                                frontImage: frontImage,
-                                backText: backText,
-                                backImage: backImage,
-                                nextReview: Date.now(),
-                                repetitions: 0,
-                                easeFactor: 2.0,
-                                interval: 1.0
-                            };
-                            cardsData.push(newCard);
-                            newDeck.cardIds.push(newCardId);
-                            cardImportCount++;
-                        }
-                        totalImportCount += cardImportCount;
-                    });
+                    // 【核心修改】移除這裡所有重複的處理邏輯
+                    // 直接調用統一的處理函數
                     processSheetsIntoCardsAndDecks();
+
+                    // 刷新所有相關視圖
                     refreshAllViews();
+
+                    // 保存到本地存儲
                     saveDataToLocalStorage();
+
+                    // 關閉導入對話框
                     closeGSheetsImportModal();
                 })
                 .catch(error => {
