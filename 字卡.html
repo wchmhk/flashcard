@@ -10,7 +10,8 @@
     <title>🌏軒Sir的地理科程式 - 概念表</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- 【修正】使用 Google API 的標準 onload 回呼機制 -->
+    <script async defer src="https://apis.google.com/js/api.js?onload=gapiLoaded"></script>
     <!-- Quill.js is used for rendering rich text content, not for editing -->
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.0-rc.2/dist/quill.snow.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.0-rc.2/dist/quill.min.js"></script>
@@ -545,7 +546,7 @@
     </div>
 
     <!-- Custom Confirm Modal -->
-    <div id="customConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div id="customConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-[101]">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
             <h3 class="text-lg font-medium mb-4" id="confirmModalTitle">確認操作</h3>
             <p id="confirmModalMessage" class="mb-6">您確定要執行此操作嗎？</p>
@@ -588,7 +589,27 @@
     let selectedExportExcelDeckIds = [];
     let selectedImportDeckIds = [];
 
-    // --- DOM ELEMENTS ---
+    // --- 【修正】GAPI Initialization Handling ---
+    let gapiInitialized;
+    let initializeGapiClient;
+
+    // Create a promise that will resolve when the GAPI client is ready.
+    gapiInitialized = new Promise(resolve => {
+        initializeGapiClient = () => {
+            console.log("Google API client is ready.");
+            resolve();
+        };
+    });
+
+    // This function is called by the Google API script tag's onload parameter.
+    function gapiLoaded() {
+        console.log("Google API script has loaded. Loading client...");
+        gapi.load('client', initializeGapiClient);
+    }
+    // --- End GAPI Fix ---
+
+
+    // --- DOM ELEMENTS (simplified) ---
     const keyConceptsSection = document.getElementById('keyConceptsSection');
     const dataManagementSection = document.getElementById('dataManagementSection');
 
@@ -647,7 +668,6 @@
     function processImportedContent(content) {
         if (!content) return { text: '', image: null };
         const contentStr = String(content);
-
         const driveImageUrl = convertGoogleDriveLink(contentStr);
         if (driveImageUrl) {
             return { text: '', image: driveImageUrl };
@@ -661,6 +681,7 @@
     function convertDeltaToHTML(delta) {
         if (!delta || !delta.ops) return '';
         const tempContainer = document.createElement('div');
+        // Use a temporary Quill instance to convert delta to HTML
         const q = new Quill(tempContainer);
         q.setContents(delta);
         return tempContainer.querySelector('.ql-editor').innerHTML;
@@ -991,7 +1012,8 @@
             if (effectiveFormat?.textFormat?.bold) format.bold = true;
             if (effectiveFormat?.textFormat?.italic) format.italic = true;
             if (effectiveFormat?.textFormat?.underline) format.underline = true;
-            ops.push({ insert: value, attributes: format });
+            if(effectiveFormat?.horizontalAlignment) format.align = effectiveFormat.horizontalAlignment.toLowerCase();
+            ops.push({ insert: value + '\n', attributes: format });
         } else {
             textFormatRuns.forEach(run => {
                 const startIndex = run.startIndex || 0;
@@ -1003,12 +1025,14 @@
                 if (run.format?.bold) format.bold = true;
                 if (run.format?.italic) format.italic = true;
                 if (run.format?.underline) format.underline = true;
+                if(effectiveFormat?.horizontalAlignment) format.align = effectiveFormat.horizontalAlignment.toLowerCase();
                 ops.push({ insert: text, attributes: format });
                 lastIndex = startIndex + text.length;
             });
             if (lastIndex < value.length) {
                 ops.push({ insert: value.substring(lastIndex) });
             }
+            ops.push({ insert: '\n' });
         }
         return { ops: ops };
     }
@@ -1016,22 +1040,15 @@
     // --- GOOGLE SHEETS IMPORT ---
 
     function initGSheetsImport() {
-        const importGSheetsBtn = document.getElementById('importGSheetsBtn');
-        const importGSheetsModal = document.getElementById('importGSheetsModal');
-        const closeGSheetsModalBtn = document.getElementById('closeGSheetsModalBtn');
-        const loadGSheetsBtn = document.getElementById('loadGSheetsBtn');
-
-        importGSheetsBtn.addEventListener('click', openGSheetsImportModal);
-        closeGSheetsModalBtn.addEventListener('click', closeGSheetsImportModal);
-        loadGSheetsBtn.addEventListener('click', loadGSheetsData);
-
+        document.getElementById('importGSheetsBtn').addEventListener('click', openGSheetsImportModal);
+        document.getElementById('closeGSheetsModalBtn').addEventListener('click', closeGSheetsImportModal);
+        document.getElementById('loadGSheetsBtn').addEventListener('click', loadGSheetsData);
         document.getElementById('clearApiKeyBtn').addEventListener('click', () => {
             localStorage.removeItem('google_api_key');
             GOOGLE_API_KEY = '';
             updateApiKeyStatus();
             showNotification('Google API Key 已清除');
         });
-
         updateApiKeyStatus();
     }
 
@@ -1075,7 +1092,7 @@
         return match ? match[1] : null;
     }
 
-    function loadGSheetsData() {
+    async function loadGSheetsData() {
         if (!GOOGLE_API_KEY) {
             showNotification('請先設置Google API密鑰');
             document.getElementById('apiSettingsModal').classList.remove('hidden');
@@ -1094,85 +1111,91 @@
         if (setDefault) {
             localStorage.setItem('flashcard_defaultGSheetUrl', gSheetsUrl);
         } else {
-            localStorage.removeItem('flashcard_defaultGSheetUrl');
+            if (localStorage.getItem('flashcard_defaultGSheetUrl') === gSheetsUrl) {
+                localStorage.removeItem('flashcard_defaultGSheetUrl');
+            }
         }
 
         const loadBtn = document.getElementById('loadGSheetsBtn');
         loadBtn.disabled = true;
         loadBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> 載入中...';
 
-        loadFormattedGSheetsData(spreadsheetId)
-            .then(() => {
-                processSheetsIntoCardsAndDecks();
-                refreshAllViews();
-                saveDataToLocalStorage();
-                closeGSheetsImportModal();
-            })
-            .catch(error => {
-                showNotification(`載入失敗: ${error.message}`, 4000);
-            })
-            .finally(() => {
-                loadBtn.disabled = false;
-                loadBtn.textContent = '載入';
-            });
+        try {
+            await loadFormattedGSheetsData(spreadsheetId);
+            processSheetsIntoCardsAndDecks();
+            refreshAllViews();
+            saveDataToLocalStorage();
+            closeGSheetsImportModal();
+        } catch (error) {
+            showNotification(`載入失敗: ${error.message}`, 4000);
+        } finally {
+            loadBtn.disabled = false;
+            loadBtn.textContent = '載入';
+        }
     }
 
-    function loadFormattedGSheetsData(spreadsheetId) {
-        return new Promise((resolve, reject) => {
-            if (typeof gapi === 'undefined' || typeof gapi.client === 'undefined') {
-                return reject(new Error('Google API 未載入或初始化失敗'));
-            }
-            gapi.load('client', () => {
-                gapi.client.init({
-                    apiKey: GOOGLE_API_KEY,
-                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                }).then(() => gapi.client.sheets.spreadsheets.get({
-                    spreadsheetId: spreadsheetId,
-                    includeGridData: true,
-                    ranges: []
-                })).then(response => {
-                    excelSheets = {}; // Reset before populating
-                    const sheets = response.result.sheets;
-                    if (!sheets || sheets.length === 0) return reject(new Error('未找到工作表數據'));
+    async function loadFormattedGSheetsData(spreadsheetId) {
+        try {
+            // Wait for gapi.client to be available
+            await gapiInitialized;
 
-                    sheets.forEach(sheet => {
-                        const sheetName = sheet.properties.title;
-                        const gridData = sheet.data[0];
-                        if (!gridData || !gridData.rowData) return;
+            // Now initialize for the Sheets API specifically
+            await gapi.client.init({
+                apiKey: GOOGLE_API_KEY,
+                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+            });
 
-                        const formattedData = gridData.rowData.map(row => {
-                            if (!row.values) return [];
-                            return row.values.map(cell => ({
-                                value: cell.formattedValue || '',
-                                delta: convertGSheetsCellToQuillDelta(cell.formattedValue, cell.textFormatRuns, cell.effectiveFormat)
-                            }));
-                        });
+            // Now make the actual API call
+            const response = await gapi.client.sheets.spreadsheets.get({
+                spreadsheetId: spreadsheetId,
+                includeGridData: true,
+                ranges: []
+            });
 
-                        excelSheets[sheetName] = {
-                            data: formattedData,
-                            columns: formattedData.length > 0 ? formattedData[0].map(cell => cell.value) : [],
-                            hasFormatting: true,
-                            isGSheet: true
-                        };
-                        sheetMappings[sheetName] = { deckOption: 'new', deckId: '', newDeckName: sheetName, newDeckDescription: '' };
-                        sheetOptions[sheetName] = { frontColumn: 0, backColumn: 1 };
-                    });
-                    activeSheetName = Object.keys(excelSheets)[0];
-                    resolve();
-                }).catch(error => {
-                    console.error('Google Sheets API 錯誤:', error);
-                    reject(new Error(error.result?.error?.message || 'API 請求失敗'));
+            excelSheets = {}; // Reset before populating
+            const sheets = response.result.sheets;
+            if (!sheets || sheets.length === 0) throw new Error('未找到工作表數據');
+
+            sheets.forEach(sheet => {
+                const sheetName = sheet.properties.title;
+                const gridData = sheet.data[0];
+                if (!gridData || !gridData.rowData) return;
+
+                const formattedData = gridData.rowData.map(row => {
+                    if (!row.values) return [];
+                    return row.values.map(cell => ({
+                        value: cell.formattedValue || '',
+                        delta: convertGSheetsCellToQuillDelta(cell.formattedValue, cell.textFormatRuns, cell.effectiveFormat)
+                    }));
                 });
+
+                excelSheets[sheetName] = {
+                    data: formattedData,
+                    columns: formattedData.length > 0 ? formattedData[0].map(cell => cell.value) : [],
+                    hasFormatting: true,
+                    isGSheet: true
+                };
+                sheetMappings[sheetName] = { deckOption: 'new', deckId: '', newDeckName: sheetName, newDeckDescription: '' };
+                sheetOptions[sheetName] = { frontColumn: 0, backColumn: 1 };
             });
-        });
+            activeSheetName = Object.keys(excelSheets)[0];
+        } catch (error) {
+            console.error('Google Sheets API 錯誤:', error);
+            const errorMessage = error.result?.error?.message || error.message || 'API 請求失敗';
+            throw new Error(errorMessage);
+        }
     }
+
 
     function processSheetsIntoCardsAndDecks() {
         console.log("正在將工作表數據轉換為內部卡組和字卡...");
         Object.keys(excelSheets).forEach(sheetName => {
-            if (!excelSheets[sheetName] || decksData.find(d => d.name === sheetName)) return;
+            if (!excelSheets[sheetName] || decksData.find(d => d.name === sheetName)) {
+                if(decksData.find(d => d.name === sheetName)) console.log(`卡組 "${sheetName}" 已存在，跳過創建。`);
+                return;
+            }
 
-            const newDeck = { id: Date.now() + Math.random(), name: sheetName, description: `從導入自動創建`, cardIds: [], createdAt: Date.now() };
+            const newDeck = { id: Date.now() + Math.random(), name: sheetName, description: '從導入自動創建', cardIds: [], createdAt: Date.now() };
             decksData.push(newDeck);
 
             const sheet = excelSheets[sheetName];
@@ -1214,7 +1237,7 @@
                     }
                 }
 
-                const newCard = { id: Date.now() + Math.random(), frontText, frontImage, backText, backImage, nextReview: Date.now(), repetitions: 0, easeFactor: 2.0, interval: 1.0 };
+                const newCard = { id: Date.now() + Math.random(), frontText, frontImage, backText, backImage };
                 cardsData.push(newCard);
                 newDeck.cardIds.push(newCard.id);
             }
@@ -1719,21 +1742,21 @@
         document.getElementById('exportDataBtn').addEventListener('click', openExportModal);
         document.getElementById('confirmExportBtn').addEventListener('click', exportData);
         document.getElementById('cancelExportBtn').addEventListener('click', () => document.getElementById('exportModal').classList.add('hidden'));
-        document.getElementById('selectAllExportDecksBtn').addEventListener('click', () => document.querySelectorAll('#exportDecksList input').forEach(c => c.checked=true) || (selectedExportDeckIds = decksData.map(d => d.id)));
-        document.getElementById('deselectAllExportDecksBtn').addEventListener('click', () => document.querySelectorAll('#exportDecksList input').forEach(c => c.checked=false) || (selectedExportDeckIds = []));
+        document.getElementById('selectAllExportDecksBtn').addEventListener('click', () => { document.querySelectorAll('#exportDecksList input').forEach(c => c.checked=true); selectedExportDeckIds = decksData.map(d => d.id); });
+        document.getElementById('deselectAllExportDecksBtn').addEventListener('click', () => { document.querySelectorAll('#exportDecksList input').forEach(c => c.checked=false); selectedExportDeckIds = []; });
 
         document.getElementById('exportExcelBtn').addEventListener('click', openExportExcelModal);
         document.getElementById('confirmExportExcelBtn').addEventListener('click', exportExcelData);
         document.getElementById('cancelExportExcelBtn').addEventListener('click', () => document.getElementById('exportExcelModal').classList.add('hidden'));
-        document.getElementById('selectAllExportExcelDecksBtn').addEventListener('click', () => document.querySelectorAll('#exportExcelDecksList input').forEach(c => c.checked=true) || (selectedExportExcelDeckIds = decksData.map(d => d.id)));
-        document.getElementById('deselectAllExportExcelDecksBtn').addEventListener('click', () => document.querySelectorAll('#exportExcelDecksList input').forEach(c => c.checked=false) || (selectedExportExcelDeckIds = []));
+        document.getElementById('selectAllExportExcelDecksBtn').addEventListener('click', () => { document.querySelectorAll('#exportExcelDecksList input').forEach(c => c.checked=true); selectedExportExcelDeckIds = decksData.map(d => d.id); });
+        document.getElementById('deselectAllExportExcelDecksBtn').addEventListener('click', () => { document.querySelectorAll('#exportExcelDecksList input').forEach(c => c.checked=false); selectedExportExcelDeckIds = []; });
 
         // Setup Import Buttons
         document.getElementById('importDataInput').addEventListener('change', handleImportFile);
         document.getElementById('confirmImportBtn').addEventListener('click', processImport);
         document.getElementById('cancelImportBtn').addEventListener('click', () => document.getElementById('importPreviewModal').classList.add('hidden'));
-        document.getElementById('selectAllImportDecksBtn').addEventListener('click', () => document.querySelectorAll('#importDecksList input').forEach(c => c.checked=true) || (selectedImportDeckIds = importDataCache.decksData.map(d => String(d.id))));
-        document.getElementById('deselectAllImportDecksBtn').addEventListener('click', () => document.querySelectorAll('#importDecksList input').forEach(c => c.checked=false) || (selectedImportDeckIds = []));
+        document.getElementById('selectAllImportDecksBtn').addEventListener('click', () => { document.querySelectorAll('#importDecksList input').forEach(c => c.checked=true); selectedImportDeckIds = importDataCache.decksData.map(d => String(d.id)); });
+        document.getElementById('deselectAllImportDecksBtn').addEventListener('click', () => { document.querySelectorAll('#importDecksList input').forEach(c => c.checked=false); selectedImportDeckIds = []; });
 
         // Setup Local Storage Buttons
         document.getElementById('forceSaveBtn').addEventListener('click', () => {
