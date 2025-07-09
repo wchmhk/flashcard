@@ -286,15 +286,38 @@
             background-color: rgb(75, 85, 99);
         }
 
-        /* 字卡正面背面分隔線 */
-        #cardFront, #cardBack {
-            word-break: break-word;
+        /* 複習界面的字卡樣式 - 增強版 */
+        #cardContainer {
+            /* 核心修改：高度不再固定，而是根據內容自適應，但有最大高度限制 */
+            height: auto;
+            min-height: 24rem; /* 保持一個最小高度，避免內容少時太小 */
+            max-height: 80vh; /* 最大高度為視窗高度的80% */
+            overflow-y: auto; /* 當內容超出最大高度時，顯示滾動條 */
+            align-items: flex-start; /* 讓內容從頂部開始，而不是垂直居中 */
+            text-align: left; /* 【重要】預設文字置左 */
         }
 
-        /* 複習界面的字卡樣式 */
-        #cardFront p, #cardBack p,
+        #cardFront, #cardBack {
+            width: 100%;
+            height: auto; /* 讓內部容器也自適應高度 */
+            text-align: left; /* 【重要】確保內部容器也預設置左 */
+            display: block; /* 改為塊級元素，更容易控制 */
+        }
+
         #frontText, #backText {
-            margin-bottom: 0.5rem;
+            width: 100%;
+            text-align: inherit; /* 繼承父元素的對齊方式 */
+        }
+
+        /* 確保來自Quill的對齊類別能覆蓋預設樣式 */
+        #cardContainer .ql-align-center, #cardContainer .ql-align-center * {
+            text-align: center;
+        }
+        #cardContainer .ql-align-right, #cardContainer .ql-align-right * {
+            text-align: right;
+        }
+        #cardContainer .ql-align-justify, #cardContainer .ql-align-justify * {
+            text-align: justify;
         }
 
         /* 確保Quill編輯器在模態框中的可見性 */
@@ -660,10 +683,6 @@
 
         .dark .nav-btn-desktop:not(.active):hover, .dark .nav-btn-mobile:not(.active):hover {
             background-color: rgba(93, 92, 222, 0.2);
-        }
-
-        .text-container {
-          white-space: pre-wrap;
         }
 
     </style>
@@ -9030,36 +9049,38 @@
                                     }
                                 }
 
-                                // 【替換此函數】處理混合內容（文字+圖片+影片+地圖連結）的輔助函數
+                                // 【替換此函數】處理混合內容（文字+圖片+影片+地圖連結+空行）的輔助函數
                                 function renderMixedContent(cell) {
                                     if (!cell) return '';
 
+                                    // 1. 先獲取最原始的純文字內容
                                     const rawText = getCellTextContent(cell);
-                                    if (!rawText.trim()) return '';
+                                    if (!rawText) return '';
 
-                                    const lines = rawText.split('\n');
+                                    // 2. 將原始文字中的所有換行符 `\n` 替換為HTML的 `<br>` 標籤。
+                                    //    同時，我們先將文字進行HTML安全轉義，防止XSS攻擊。
+                                    let processedHtml = escapeHtml(rawText).replace(/\n/g, '<br>');
 
-                                    const processedElements = lines.map(line => {
-                                        const trimmedLine = line.trim();
-                                        if (!trimmedLine) return '';
+                                    // 3. 在處理完文字和換行後，再用正則表達式尋找並替換媒體連結。
+                                    //    這樣可以避免媒體URL被錯誤地轉義。
+                                    const mediaRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}[^\s<]*)|(https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)[a-zA-Z0-9_-]+[^\s<]*)|(https?:\/\/www\.google\.com\/maps\/place\/[^/]+[^\s<]*)/g;
 
-                                        // 優先檢查是否為 YouTube 連結
-                                        const youtubeEmbed = convertYoutubeLink(trimmedLine);
+                                    processedHtml = processedHtml.replace(mediaRegex, (match) => {
+                                        // 嘗試將匹配到的URL轉換為各種嵌入內容
+                                        const youtubeEmbed = convertYoutubeLink(match);
                                         if (youtubeEmbed) return youtubeEmbed;
 
-                                        // 接著檢查是否為 Google Map 連結
-                                        const mapEmbed = convertGoogleMapLink(trimmedLine);
+                                        const mapEmbed = convertGoogleMapLink(match);
                                         if (mapEmbed) return mapEmbed;
 
-                                        // 接著檢查是否為 Google Drive 圖片連結
-                                        const driveImage = convertGoogleDriveLink(trimmedLine);
+                                        const driveImage = convertGoogleDriveLink(match);
                                         if (driveImage) return `<img src="${driveImage}" class="max-w-full h-auto rounded-lg my-2 block">`;
 
-                                        // 如果都不是，則視為普通文字
-                                        return `<div>${escapeHtml(line)}</div>`;
+                                        // 如果都不是，就返回原始匹配（雖然理論上不會走到這一步，但作為安全備份）
+                                        return match;
                                     });
 
-                                    return processedElements.join('');
+                                    return processedHtml;
                                 }
 
                                 // 5. 新增輔助函數來處理單元格內容 (返回類型和內容)
