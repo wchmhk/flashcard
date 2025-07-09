@@ -9279,26 +9279,29 @@
                                     }
                                 }
 
-                                // 【新增】可重用的函數，用於將 excelSheets 轉換為 cardsData 和 decksData
+                                // 【新增】可重用的函數，用於將 excelSheets 轉換為 cardsData 和 decksData (已修復和強化)
                                 function processSheetsIntoCardsAndDecks() {
                                     console.log("正在將工作表數據轉換為內部卡組和字卡...");
                                     let totalImportCount = 0;
+                                    let gsheetsConflictDecks = [];
 
                                     Object.keys(excelSheets).forEach(sheetName => {
                                         if (!excelSheets[sheetName]) return;
 
-                                        // 檢查是否已存在同名卡組，如果存在則跳過，避免重複創建
+                                        // 檢查是否已存在同名卡組
                                         const existingDeck = decksData.find(d => d.name === sheetName);
                                         if (existingDeck) {
                                             console.log(`卡組 "${sheetName}" 已存在，跳過創建。`);
-                                            // 您也可以在這裡實現合併或更新邏輯
+                                            if (excelSheets[sheetName].isGSheet) {
+                                                gsheetsConflictDecks.push(sheetName);
+                                            }
                                             return;
                                         }
 
                                         const newDeck = {
                                             id: Date.now() + Math.floor(Math.random() * 1000),
-                                            name: `${sheetName}`,
-                                            description: `從 Google Sheets 自動導入`,
+                                            name: sheetName,
+                                            description: `從 ${excelSheets[sheetName].isGSheet ? 'Google Sheets' : '檔案'} 自動導入`,
                                             cardIds: [],
                                             createdAt: Date.now()
                                         };
@@ -9308,9 +9311,7 @@
                                         if (!sheet || !sheet.data) return;
 
                                         const sheetData = sheet.data;
-                                        let cardImportCount = 0;
-
-                                        // 假設第一列是正面，第二列是背面
+                                        const hasFormatting = sheet.hasFormatting;
                                         const frontCol = sheetOptions[sheetName]?.frontColumn || 0;
                                         const backCol = sheetOptions[sheetName]?.backColumn || 1;
 
@@ -9322,20 +9323,36 @@
                                             const frontContentSource = row[frontCol];
                                             const backContentSource = row[backCol];
 
-                                            // 使用您已有的 processImportedContent 函數
+                                            // 【核心修復】處理正面內容，並檢查其是否為空
                                             const processedFront = processImportedContent(frontContentSource);
+                                            if (!processedFront.text && !processedFront.image) {
+                                                // 如果卡片正面（第一欄）沒有任何文字或圖片，則跳過此行，不建立卡片。
+                                                console.log(`已跳過工作表 "${sheetName}" 的第 ${i + 1} 行，原因：正面內容為空。`);
+                                                continue;
+                                            }
+
+                                            // 只有在正面有內容時，才繼續處理背面
                                             const processedBack = processImportedContent(backContentSource);
 
-                                            // 如果正反面都沒有任何內容，則跳過
-                                            if (!processedFront.text && !processedFront.image && !processedBack.text && !processedBack.image) continue;
+                                            let frontText = '', frontImage = null, backText = '', backImage = null;
+
+                                            if (hasFormatting && typeof frontContentSource === 'object' && frontContentSource.delta) {
+                                                frontText = frontContentSource ? convertDeltaToHTML(frontContentSource.delta) : '';
+                                                backText = backContentSource ? convertDeltaToHTML(backContentSource.delta) : '';
+                                            } else {
+                                                frontText = processedFront.text ? processedFront.text.replace(/\n/g, '<br>') : '';
+                                                frontImage = processedFront.image;
+                                                backText = processedBack.text ? processedBack.text.replace(/\n/g, '<br>') : '';
+                                                backImage = processedBack.image;
+                                            }
 
                                             const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
                                             const newCard = {
                                                 id: newCardId,
-                                                frontText: processedFront.text,
-                                                frontImage: processedFront.image,
-                                                backText: processedBack.text,
-                                                backImage: processedBack.image,
+                                                frontText: frontText,
+                                                frontImage: frontImage,
+                                                backText: backText,
+                                                backImage: backImage,
                                                 nextReview: Date.now(),
                                                 repetitions: 0,
                                                 easeFactor: 2.0,
@@ -9343,13 +9360,15 @@
                                             };
                                             cardsData.push(newCard);
                                             newDeck.cardIds.push(newCardId);
-                                            cardImportCount++;
+                                            totalImportCount++;
                                         }
-                                        totalImportCount += cardImportCount;
-                                        console.log(`已為卡組 "${sheetName}" 導入 ${cardImportCount} 張字卡。`);
                                     });
 
-                                    console.log(`總共導入了 ${totalImportCount} 張字卡。`);
+                                    console.log(`總共導入了 ${totalImportCount} 張有效字卡。`);
+
+                                    if(gsheetsConflictDecks.length > 0){
+                                        showNotification(`注意: ${gsheetsConflictDecks.join(', ')} 已存在，本次導入已跳過。`, 4000);
+                                    }
                                 }
 
                             </script>
