@@ -7771,7 +7771,7 @@
             }
         }
 
-        // 【新增】自動載入預設的 Google Sheet 連結
+        // 【替換此函數】自動載入預設的 Google Sheet 連結
         async function autoLoadDefaultGSheet() {
             const defaultUrl = localStorage.getItem('flashcard_defaultGSheetUrl');
             const apiKey = localStorage.getItem('google_api_key');
@@ -7780,7 +7780,6 @@
             if (defaultUrl && apiKey) {
                 console.log("偵測到預設 Google Sheet 連結，開始自動載入:", defaultUrl);
 
-                // 顯示一個小提示，告知使用者正在自動載入
                 const loadingToast = document.createElement('div');
                 loadingToast.id = 'loading-toast';
                 loadingToast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center';
@@ -7789,7 +7788,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    正在自動載入預設概念表...
+                    正在自動載入預設內容...
                 `;
                 document.body.appendChild(loadingToast);
 
@@ -7798,10 +7797,20 @@
                     if (!spreadsheetId) throw new Error("無效的預設連結");
 
                     await loadFormattedGSheetsData(spreadsheetId, defaultUrl, false);
+
+                    // 【核心修正】在自動載入後，手動設定所有工作表的處理方式為 'new'
+                    gSheetsConflictResolutions = {};
+                    Object.keys(excelSheets).forEach(sheetName => {
+                        gSheetsConflictResolutions[sheetName] = 'new';
+                    });
+
+                    // 現在 gSheetsConflictResolutions 有數據了，再調用處理函數
                     processSheetsIntoCardsAndDecks();
-                    // 載入成功後，刷新頁面並移除提示
+
+                    // 載入成功後，刷新UI並儲存數據
                     refreshAllViews();
-                    showNotification('成功載入！', 2500);
+                    saveDataToLocalStorage();
+                    showNotification('預設內容已成功載入！', 2500);
 
                 } catch (error) {
                     console.error("自動載入預設 Google Sheet 失敗:", error);
