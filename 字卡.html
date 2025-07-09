@@ -6135,36 +6135,22 @@
             return container;
         }
 
-        // 操練模式 - 根據難度重新插入字卡
-                function reinsertCardBasedOnDifficulty(currentIndex, interval) {
-                    if (interval <= 0 || cardsToReview.length <= 1) return currentIndex;
+        // 操練模式 - 根據難度重新插入字卡 (已修復)
+        function reinsertCardBasedOnDifficulty(cardToReinsert, currentIndex, interval) {
+            if (interval <= 0 || cardsToReview.length <= 1) {
+                return; // 如果無法重新插入，則不做任何事
+            }
 
-                    // 取出當前卡片
-                    const currentCard = cardsToReview[currentIndex];
+            // 從陣列中移除當前卡片
+            cardsToReview.splice(currentIndex, 1);
 
-                    // 計算重新插入的位置
-                    let insertPosition = currentIndex + interval;
+            // 計算新的插入位置
+            // + currentIndex 是為了讓間隔從當前位置算起，% (length) 確保循環
+            let insertPosition = (currentIndex + interval) % (cardsToReview.length + 1);
 
-                    // 如果位置超出數組範圍，則循環回到合理範圍內
-                    if (insertPosition >= cardsToReview.length) {
-                        insertPosition = insertPosition % cardsToReview.length;
-                    }
-
-                    // 從數組中移除當前卡片
-                    cardsToReview.splice(currentIndex, 1);
-
-                    // 在新位置插入卡片
-                    cardsToReview.splice(insertPosition, 0, currentCard);
-
-                    // 【關鍵修改】返回調整後的當前索引
-                    // 因為我們從當前索引移除了卡片，所以下一個要複習的卡片
-                    // 實際上就是現在佔據了 `currentIndex` 位置的新卡片。
-                    // 因此，我們不需要改變索引值。
-                    // 只有在刪除的是列表中的第一張卡片時，索引才保持為 0。
-                    // 考慮到 splice 後數組長度變化，直接返回 currentIndex 是安全的。
-                    // 如果刪除的是最後一張卡，外部的 ++ 會讓它變為0，這也是對的。
-                    return currentIndex;
-                }
+            // 在新位置插入卡片
+            cardsToReview.splice(insertPosition, 0, cardToReinsert);
+        }
 
         // Restart drill mode
         function restartDrill() {
@@ -6219,45 +6205,46 @@
             });
         });
 
-        // Process card rating based on mode
+        // Process card rating based on mode (已修復和重構)
         function processCardRating(rating) {
+            if (currentCardIndex >= cardsToReview.length) {
+                console.error("處理評分時索引超出範圍，複習可能已結束。");
+                return;
+            }
+
             const card = cardsToReview[currentCardIndex];
 
             if (currentMode === 'daily') {
-                // Daily mode - update using SM-2 algorithm
                 updateCardSchedule(card, rating);
                 moveToNextCard();
             } else if (currentMode === 'drill') {
-                // 操練模式 - 根據難度設置間隔
                 scheduleDrillCard(card, rating);
 
-                // 增加已檢閱計數
-                drillReviewedCount++;
-
-                // 如果評級不是"簡單"(4)，則根據設置的間隔重新插入卡片
                 if (rating < 4) {
-                    // 根據難度重新插入卡片。`reinsertCardBasedOnDifficulty` 會修改 `cardsToReview` 陣列。
-                    // 它返回的 `currentIndex` 已經是下一張要顯示的卡片的索引。
-                    currentCardIndex = reinsertCardBasedOnDifficulty(currentCardIndex, card.drillInterval);
+                    // 評級為「困難」，重新插入卡片
+                    // 函數內部會處理 `cardsToReview` 陣列的修改
+                    reinsertCardBasedOnDifficulty(card, currentCardIndex, card.drillInterval);
+                    // 索引不需要增加，因為當前位置的卡片已經被新的卡片取代。
+                    // 但我們需要確保索引不會超出新陣列的邊界。
+                    if (currentCardIndex >= cardsToReview.length) {
+                        currentCardIndex = 0;
+                    }
                 } else {
-                    // 如果是"簡單"，則直接從列表中移除
+                    // 評級為「簡單」，從陣列中永久移除
                     cardsToReview.splice(currentCardIndex, 1);
-                    // 索引不需改變，因為它現在指向了下一張卡片。
-                    // 我們只需要處理當刪除的是最後一張卡片時的情況。
+                    // 索引同樣不需要增加。
+                    // 如果移除的是最後一張卡，索引需要重設為 0。
+                    if (currentCardIndex >= cardsToReview.length && cardsToReview.length > 0) {
+                        currentCardIndex = 0;
+                    }
                 }
 
-                // 檢查是否所有卡片都已被移除
+                // 檢查複習是否結束
                 if (cardsToReview.length === 0) {
-                    // 顯示新一輪開始的提示
                     showNotification('所有卡片都已複習完畢，開始新一輪操練！');
-                    // 重新載入所有卡片開始新的循環
-                    restartDrill(); // 這個函數會重置索引並調用 showCurrentCard
+                    restartDrill(); // 此函數會重置所有內容並顯示第一張卡
                 } else {
-                    // 檢查索引是否超出範圍（例如，當刪除了列表中的最後一張卡片時）
-                    if (currentCardIndex >= cardsToReview.length) {
-                        currentCardIndex = 0; // 循環回到開頭
-                    }
-                    // 直接顯示下一張卡片，不再錯誤地增加索引
+                    // 直接顯示下一張卡片（它現在位於 currentCardIndex）
                     showCurrentCard();
                 }
             }
