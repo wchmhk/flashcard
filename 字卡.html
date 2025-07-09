@@ -9278,35 +9278,46 @@
                                             if (!row || !row.length) continue;
 
                                             const frontContentSource = row[frontCol];
+                                            const backContentSource = row[backCol];
+                                            let frontText = '', frontImage = null, backText = '', backImage = null;
 
                                             // --- 【核心修改開始】---
-                                            // 1. 先處理正面內容
-                                            const processedFront = processImportedContent(frontContentSource);
+                                            // 1. 處理正面內容
+                                            if (frontContentSource) {
+                                                if (hasFormatting && typeof frontContentSource === 'object' && frontContentSource.delta) {
+                                                    // 處理來自Google API的帶格式內容
+                                                    frontText = convertDeltaToHTML(frontContentSource.delta);
+                                                    // 檢查是否有圖片連結（即使是帶格式內容，也可能包含圖片連結）
+                                                    const processedForImage = processImportedContent(frontContentSource.value || '');
+                                                    frontImage = processedForImage.image;
+                                                } else {
+                                                    // 處理純文本或來自Excel的內容
+                                                    const processed = processImportedContent(String(frontContentSource));
+                                                    frontText = processed.text ? processed.text.replace(/\n/g, '<br>') : '';
+                                                    frontImage = processed.image;
+                                                }
+                                            }
 
-                                            // 2. 檢查正面處理後是否為空 (沒有文字也沒有圖片)
-                                            // 這是防止為空白行建立字卡的關鍵
-                                            if (!processedFront.text && !processedFront.image) {
-                                                // 如果卡片正面（第一欄）沒有任何文字或圖片，則跳過此行，不建立卡片。
+                                            // 2. 驗證正面內容是否為空
+                                            // 使用 stripHtml 移除HTML標籤後再檢查，確保 <p><br></p> 這種情況被視為空
+                                            if (stripHtml(frontText).trim() === '' && !frontImage) {
                                                 console.log(`已跳過工作表 "${sheetName}" 的第 ${i + 1} 行，原因：正面內容為空。`);
                                                 continue;
                                             }
-                                            // --- 【核心修改結束】---
 
-                                            // 只有在正面有內容時，才繼續處理背面
-                                            const backContentSource = row[backCol];
-                                            const processedBack = processImportedContent(backContentSource);
-
-                                            let frontText = '', frontImage = null, backText = '', backImage = null;
-
-                                            if (hasFormatting && typeof frontContentSource === 'object' && frontContentSource.delta) {
-                                                frontText = frontContentSource ? convertDeltaToHTML(frontContentSource.delta) : '';
-                                                backText = backContentSource ? convertDeltaToHTML(backContentSource.delta) : '';
-                                            } else {
-                                                frontText = processedFront.text ? processedFront.text.replace(/\n/g, '<br>') : '';
-                                                frontImage = processedFront.image;
-                                                backText = processedBack.text ? processedBack.text.replace(/\n/g, '<br>') : '';
-                                                backImage = processedBack.image;
+                                            // 3. 處理背面內容
+                                            if (backContentSource) {
+                                                 if (hasFormatting && typeof backContentSource === 'object' && backContentSource.delta) {
+                                                    backText = convertDeltaToHTML(backContentSource.delta);
+                                                    const processedForImage = processImportedContent(backContentSource.value || '');
+                                                    backImage = processedForImage.image;
+                                                } else {
+                                                    const processed = processImportedContent(String(backContentSource));
+                                                    backText = processed.text ? processed.text.replace(/\n/g, '<br>') : '';
+                                                    backImage = processed.image;
+                                                }
                                             }
+                                            // --- 【核心修改結束】---
 
                                             const newCardId = Date.now() + i + Math.floor(Math.random() * 10000);
                                             const newCard = {
