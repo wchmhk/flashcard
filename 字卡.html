@@ -6277,31 +6277,28 @@
 
                 // 如果評級不是"簡單"(4)，則根據設置的間隔重新插入卡片
                 if (rating < 4) {
-                    // 根據難度重新插入卡片
+                    // 根據難度重新插入卡片。`reinsertCardBasedOnDifficulty` 會修改 `cardsToReview` 陣列。
+                    // 它返回的 `currentIndex` 已經是下一張要顯示的卡片的索引。
                     currentCardIndex = reinsertCardBasedOnDifficulty(currentCardIndex, card.drillInterval);
                 } else {
                     // 如果是"簡單"，則直接從列表中移除
                     cardsToReview.splice(currentCardIndex, 1);
-
-                    // 調整索引（如果剛才移除的是最後一張卡片）
-                    if (currentCardIndex >= cardsToReview.length && cardsToReview.length > 0) {
-                        currentCardIndex = 0; // 回到第一張卡片
-                    }
+                    // 索引不需改變，因為它現在指向了下一張卡片。
+                    // 我們只需要處理當刪除的是最後一張卡片時的情況。
                 }
 
                 // 檢查是否所有卡片都已被移除
                 if (cardsToReview.length === 0) {
                     // 顯示新一輪開始的提示
                     showNotification('所有卡片都已複習完畢，開始新一輪操練！');
-
                     // 重新載入所有卡片開始新的循環
-                    restartDrill();
+                    restartDrill(); // 這個函數會重置索引並調用 showCurrentCard
                 } else {
-                    // 顯示下一張卡片
-                    currentCardIndex++;
+                    // 檢查索引是否超出範圍（例如，當刪除了列表中的最後一張卡片時）
                     if (currentCardIndex >= cardsToReview.length) {
-                        currentCardIndex = 0;
+                        currentCardIndex = 0; // 循環回到開頭
                     }
+                    // 直接顯示下一張卡片，不再錯誤地增加索引
                     showCurrentCard();
                 }
             }
